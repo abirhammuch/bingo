@@ -39,7 +39,12 @@ const WalletIcon = () => (
   </svg>
 );
 
-const Header = ({ onToggleSidebar, isSidebarCollapsed, onRefresh }) => {
+const Header = ({
+  onToggleSidebar,
+  isSidebarCollapsed,
+  isMobileOpen,
+  onRefresh,
+}) => {
   const [hidden, setHidden] = useState(false);
   const balance = "0.95 ETB";
 
@@ -145,6 +150,8 @@ const Header = ({ onToggleSidebar, isSidebarCollapsed, onRefresh }) => {
                   <option>አማርኛ</option>
                 </select>
               </div>
+
+              {/* Profile / Appearance / Logout moved to sidebar */}
 
               <button
                 onClick={onToggleSidebar}
