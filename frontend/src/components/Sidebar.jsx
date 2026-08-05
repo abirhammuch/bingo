@@ -71,7 +71,12 @@ const Sidebar = ({ collapsed, mobileOpen, onClose }) => {
                 location.pathname === it.to ||
                 (it.to === "/lobby" && location.pathname === "/");
               return (
-                <Link key={it.title} to={it.to} title={it.title}>
+                <Link
+                  key={it.title}
+                  to={it.to}
+                  title={it.title}
+                  onClick={onClose}
+                >
                   <div
                     className={`w-12 h-12 rounded-lg flex items-center justify-center bg-slate-800/50 border border-slate-700 ${
                       isActive ? "ring-2 ring-emerald-600" : ""
@@ -104,9 +109,12 @@ const Sidebar = ({ collapsed, mobileOpen, onClose }) => {
             </Link>
 
             <button
-              onClick={() => navigate("/logout")}
+              onClick={() => {
+                onClose();
+                navigate("/logout");
+              }}
               title="Logout"
-              className="w-12 h-12 rounded-lg flex items-center justify-center bg-slate-800/50 border border-slate-700"
+              className="w-12 h-12 rounded-lg flex items-center justify-center bg-rose-500/15 text-rose-200 border border-rose-600 hover:bg-rose-500/25"
             >
               <svg
                 className="w-5 h-5 text-slate-200"
@@ -178,6 +186,7 @@ const Sidebar = ({ collapsed, mobileOpen, onClose }) => {
               <div className="mt-3">
                 <Link
                   to="/profile"
+                  onClick={onClose}
                   className="flex items-center gap-2 px-3 py-2 rounded-md bg-slate-800/40 hover:bg-slate-800/30 border border-slate-700"
                 >
                   <FaUser className="text-slate-200" />
@@ -192,7 +201,7 @@ const Sidebar = ({ collapsed, mobileOpen, onClose }) => {
                   location.pathname === it.to ||
                   (it.to === "/lobby" && location.pathname === "/");
                 return (
-                  <Link key={it.title} to={it.to}>
+                  <Link key={it.title} to={it.to} onClick={onClose}>
                     <Item
                       icon={it.icon}
                       title={it.title}
@@ -209,6 +218,7 @@ const Sidebar = ({ collapsed, mobileOpen, onClose }) => {
             <div className="flex flex-col gap-2">
               <Link
                 to="/appearance"
+                onClick={onClose}
                 className="flex items-center gap-2 px-3 py-2 rounded-md bg-slate-800/40 hover:bg-slate-800/30 border border-slate-700"
               >
                 <svg
@@ -228,8 +238,11 @@ const Sidebar = ({ collapsed, mobileOpen, onClose }) => {
               </Link>
 
               <button
-                onClick={() => navigate("/logout")}
-                className="flex items-center gap-2 px-3 py-2 rounded-md bg-slate-800/40 hover:bg-slate-800/30 border border-slate-700 text-left w-full"
+                onClick={() => {
+                  onClose();
+                  navigate("/logout");
+                }}
+                className="flex items-center gap-2 px-3 py-2 rounded-md bg-rose-500/15 hover:bg-rose-500/25 border border-rose-600 text-left w-full text-rose-100"
               >
                 <svg
                   className="w-4 h-4 text-slate-200"
