@@ -3,11 +3,16 @@ import { Routes, Route, useLocation } from "react-router-dom";
 import Header from "./components/Header";
 import Sidebar from "./components/Sidebar";
 import LobbyPage from "./pages/LobbyPage";
+import BingoPage from "./pages/bingopage/BingoPage";
+import LudoPage from "./pages/LudoPage";
+import SpinPage from "./pages/SpinPage";
 import TournamentPage from "./pages/TournamentPage";
 import PromotionPage from "./pages/PromotionPage";
 import PromoCodePage from "./pages/PromoCodePage";
 import PredictionPoolPage from "./pages/PredictionPoolPage";
+import OpenPredictionPage from "./pages/OpenPredictionPage";
 import ReferralPage from "./pages/ReferralPage";
+import ProfilePage from "./pages/ProfilePage";
 import VIPRewardPage from "./pages/VIPRewardPage";
 import CashbackPage from "./pages/CashbackPage";
 import HappyHour from "./pages/HappyHour";
@@ -16,6 +21,7 @@ import AppearancePage from "./pages/AppearancePage";
 const App = () => {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [theme, setTheme] = useState("green");
   const location = useLocation();
 
   useEffect(() => {
@@ -48,11 +54,14 @@ const App = () => {
         onToggleSidebar={toggle}
         isSidebarCollapsed={collapsed}
         isMobileOpen={mobileOpen}
+        theme={theme}
       />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col md:flex-row gap-6 relative">
         <Sidebar
           collapsed={collapsed}
           mobileOpen={mobileOpen}
+          theme={theme}
+          setTheme={setTheme}
           onClose={() => setMobileOpen(false)}
         />
         {mobileOpen && (
@@ -65,17 +74,22 @@ const App = () => {
         <main className="flex-1 relative z-10">
           <div className="rounded-2xl bg-slate-800/40 border border-slate-700 p-6 min-h-[60vh]">
             <Routes>
-              <Route path="/" element={<LobbyPage />} />
-              <Route path="/lobby" element={<LobbyPage />} />
+              <Route path="/" element={<LobbyPage theme={theme} />} />
+              <Route path="/lobby" element={<LobbyPage theme={theme} />} />
               <Route path="/tournament" element={<TournamentPage />} />
               <Route path="/promotions" element={<PromotionPage />} />
               <Route path="/promo-codes" element={<PromoCodePage />} />
               <Route path="/prediction" element={<PredictionPoolPage />} />
+              <Route path="/prediction/open" element={<OpenPredictionPage />} />
               <Route path="/referral" element={<ReferralPage />} />
+              <Route path="/profile" element={<ProfilePage />} />
               <Route path="/vip" element={<VIPRewardPage />} />
               <Route path="/cashback" element={<CashbackPage />} />
               <Route path="/happy-hour" element={<HappyHour />} />
               <Route path="/appearance" element={<AppearancePage />} />
+              <Route path="/bingopage" element={<BingoPage />} />
+              <Route path="/ludo" element={<LudoPage />} />
+              <Route path="/spin" element={<SpinPage />} />
             </Routes>
           </div>
         </main>

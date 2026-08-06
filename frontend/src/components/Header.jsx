@@ -44,9 +44,38 @@ const Header = ({
   isSidebarCollapsed,
   isMobileOpen,
   onRefresh,
+  theme,
 }) => {
   const [hidden, setHidden] = useState(false);
   const balance = "0.95 ETB";
+
+  const themeMap = {
+    green: {
+      accentText: "text-emerald-300",
+      icon: "text-emerald-400",
+      btnFrom: "from-emerald-400",
+      btnTo: "to-green-600",
+    },
+    yellow: {
+      accentText: "text-amber-300",
+      icon: "text-amber-400",
+      btnFrom: "from-amber-400",
+      btnTo: "to-amber-600",
+    },
+    blue: {
+      accentText: "text-sky-300",
+      icon: "text-sky-400",
+      btnFrom: "from-sky-400",
+      btnTo: "to-sky-600",
+    },
+    red: {
+      accentText: "text-rose-300",
+      icon: "text-rose-400",
+      btnFrom: "from-rose-400",
+      btnTo: "to-rose-600",
+    },
+  };
+  const accent = themeMap[theme] || themeMap.green;
 
   return (
     <header className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-slate-100">
@@ -54,7 +83,9 @@ const Header = ({
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-emerald-400 to-green-600 rounded-full flex items-center justify-center font-bold text-slate-900">
+              <div
+                className={`w-10 h-10 bg-gradient-to-br ${accent.btnFrom} ${accent.btnTo} rounded-full flex items-center justify-center font-bold text-slate-900`}
+              >
                 MB
               </div>
               <span className="font-semibold text-lg tracking-wide">
@@ -85,7 +116,7 @@ const Header = ({
               <WalletIcon />
               <div className="text-center">
                 <div className="text-xs text-slate-300">TOTAL BALANCE</div>
-                <div className="font-semibold text-emerald-300">
+                <div className={`font-semibold ${accent.accentText}`}>
                   {hidden ? "••••" : balance}
                 </div>
               </div>
@@ -99,7 +130,7 @@ const Header = ({
                   title="Refresh balance"
                   aria-label="Refresh balance"
                 >
-                  <FaRedo className="w-4 h-4 text-slate-200" />
+                  <FaRedo className={`w-4 h-4 ${accent.icon}`} />
                 </button>
 
                 <button
@@ -109,9 +140,9 @@ const Header = ({
                   aria-label="Toggle hide balance"
                 >
                   {hidden ? (
-                    <FaEyeSlash className="w-4 h-4 text-slate-200" />
+                    <FaEyeSlash className={`w-4 h-4 ${accent.icon}`} />
                   ) : (
-                    <FaEye className="w-4 h-4 text-slate-200" />
+                    <FaEye className={`w-4 h-4 ${accent.icon}`} />
                   )}
                 </button>
               </div>
@@ -119,7 +150,9 @@ const Header = ({
           </div>
 
           <div className="flex items-center gap-3">
-            <button className="bg-emerald-400 hover:bg-emerald-500 text-slate-900 font-semibold px-4 py-2 rounded-full">
+            <button
+              className={`bg-gradient-to-br ${accent.btnFrom} ${accent.btnTo} text-slate-900 font-semibold px-4 py-2 rounded-full`}
+            >
               Deposit
             </button>
 

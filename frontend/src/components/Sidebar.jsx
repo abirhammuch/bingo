@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   FaGamepad,
@@ -12,18 +12,23 @@ import {
   FaBolt,
   FaCloudShowersHeavy,
   FaUser,
+  FaChevronDown,
 } from "react-icons/fa";
 
-const Item = ({ icon, title, subtitle, active }) => (
+const Item = ({ icon, title, subtitle, active, accent }) => (
   <div
-    className={`flex items-center justify-between p-3 rounded-xl mb-3 cursor-pointer ${
+    className={`flex items-center justify-between p-3 rounded-xl mb-3 cursor-pointer border ${
       active
-        ? "bg-emerald-700/20 border-emerald-700"
+        ? `bg-slate-800/40 ${accent.activeBorder}`
         : "bg-slate-800/50 border-slate-700"
-    } border`}
+    }`}
   >
     <div className="flex items-center gap-3">
-      <div className="w-10 h-10 rounded-lg bg-slate-900/40 flex items-center justify-center text-xl">
+      <div
+        className={`w-10 h-10 rounded-lg bg-slate-900/40 flex items-center justify-center text-xl ${
+          active ? accent.icon : "text-slate-300"
+        }`}
+      >
         {icon}
       </div>
       <div>
@@ -35,7 +40,39 @@ const Item = ({ icon, title, subtitle, active }) => (
   </div>
 );
 
-const Sidebar = ({ collapsed, mobileOpen, onClose }) => {
+const Sidebar = ({ collapsed, mobileOpen, theme, setTheme, onClose }) => {
+  const themeClasses = {
+    green: {
+      activeBorder: "border-emerald-500",
+      activeRing: "ring-emerald-500",
+      selectedBg: "bg-slate-800 border-emerald-500",
+      icon: "text-emerald-400",
+      selectedText: "text-emerald-300",
+    },
+    yellow: {
+      activeBorder: "border-amber-500",
+      activeRing: "ring-amber-500",
+      selectedBg: "bg-slate-800 border-amber-500",
+      icon: "text-amber-400",
+      selectedText: "text-amber-300",
+    },
+    blue: {
+      activeBorder: "border-sky-500",
+      activeRing: "ring-sky-500",
+      selectedBg: "bg-slate-800 border-sky-500",
+      icon: "text-sky-400",
+      selectedText: "text-sky-300",
+    },
+    red: {
+      activeBorder: "border-rose-500",
+      activeRing: "ring-rose-500",
+      selectedBg: "bg-slate-800 border-rose-500",
+      icon: "text-rose-400",
+      selectedText: "text-rose-300",
+    },
+  };
+  const accent = themeClasses[theme] || themeClasses.green;
+
   const items = [
     { icon: <FaGamepad />, title: "Home", to: "/lobby" },
     { icon: <FaTrophy />, title: "Tournament", to: "/tournament" },
@@ -60,6 +97,14 @@ const Sidebar = ({ collapsed, mobileOpen, onClose }) => {
 
   const location = useLocation();
   const navigate = useNavigate();
+  const [appearanceOpen, setAppearanceOpen] = useState(false);
+
+  const appearanceOptions = [
+    { label: "Green", value: "green", dot: "bg-emerald-400" },
+    { label: "Yellow", value: "yellow", dot: "bg-amber-400" },
+    { label: "Blue", value: "blue", dot: "bg-sky-400" },
+    { label: "Red", value: "red", dot: "bg-rose-400" },
+  ];
 
   if (collapsed && !mobileOpen) {
     return (
@@ -79,7 +124,7 @@ const Sidebar = ({ collapsed, mobileOpen, onClose }) => {
                 >
                   <div
                     className={`w-12 h-12 rounded-lg flex items-center justify-center bg-slate-800/50 border border-slate-700 ${
-                      isActive ? "ring-2 ring-emerald-600" : ""
+                      isActive ? `ring-2 ${accent.activeRing}` : ""
                     }`}
                   >
                     <span>{it.icon}</span>
@@ -207,6 +252,7 @@ const Sidebar = ({ collapsed, mobileOpen, onClose }) => {
                       title={it.title}
                       subtitle={it.subtitle}
                       active={isActive}
+                      accent={accent}
                     />
                   </Link>
                 );
@@ -216,26 +262,68 @@ const Sidebar = ({ collapsed, mobileOpen, onClose }) => {
 
           <div className="mt-4">
             <div className="flex flex-col gap-2">
-              <Link
-                to="/appearance"
-                onClick={onClose}
-                className="flex items-center gap-2 px-3 py-2 rounded-md bg-slate-800/40 hover:bg-slate-800/30 border border-slate-700"
+              <button
+                type="button"
+                onClick={() => setAppearanceOpen((open) => !open)}
+                className="flex items-center justify-between gap-2 px-3 py-2 rounded-md bg-slate-800/40 hover:bg-slate-800/30 border border-slate-700 w-full"
+                aria-expanded={appearanceOpen}
               >
-                <svg
-                  className="w-4 h-4 text-slate-200"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M12 3v1m0 16v1M4.2 4.2l.7.7M18.1 18.1l.7.7M1 12h1m20 0h1"
-                  />
-                </svg>
-                <span className="text-sm text-slate-100">Appearance</span>
-              </Link>
+                <div className="flex items-center gap-2">
+                  <svg
+                    className="w-4 h-4 text-slate-200"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M12 3v1m0 16v1M4.2 4.2l.7.7M18.1 18.1l.7.7M1 12h1m20 0h1"
+                    />
+                  </svg>
+                  <span className="text-sm text-slate-100">Appearance</span>
+                </div>
+                <FaChevronDown
+                  className={`w-4 h-4 transition-transform ${
+                    appearanceOpen ? "rotate-180" : "rotate-0"
+                  } text-slate-400`}
+                />
+              </button>
+              {appearanceOpen && (
+                <div className="mt-2 space-y-2 rounded-xl border border-slate-700 bg-slate-950/95 p-3">
+                  {appearanceOptions.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => {
+                        setTheme(option.value);
+                        setAppearanceOpen(false);
+                        onClose();
+                      }}
+                      className={`flex items-center justify-between w-full rounded-lg px-3 py-2 text-left transition ${
+                        theme === option.value
+                          ? accent.selectedBg
+                          : "bg-slate-900/70 hover:bg-slate-900/90"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span
+                          className={`inline-block w-3 h-3 rounded-full ${option.dot}`}
+                        />
+                        <span className="text-sm text-slate-100">
+                          {option.label}
+                        </span>
+                      </div>
+                      {theme === option.value && (
+                        <span className={`text-xs ${accent.selectedText}`}>
+                          Selected
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
 
               <button
                 onClick={() => {
