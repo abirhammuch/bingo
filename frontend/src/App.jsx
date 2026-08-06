@@ -13,6 +13,7 @@ import PredictionPoolPage from "./pages/PredictionPoolPage";
 import OpenPredictionPage from "./pages/OpenPredictionPage";
 import ReferralPage from "./pages/ReferralPage";
 import ProfilePage from "./pages/ProfilePage";
+import MyWalletPage from "./pages/MyWalletPage";
 import VIPRewardPage from "./pages/VIPRewardPage";
 import CashbackPage from "./pages/CashbackPage";
 import HappyHour from "./pages/HappyHour";
@@ -83,6 +84,7 @@ const App = () => {
               <Route path="/prediction/open" element={<OpenPredictionPage />} />
               <Route path="/referral" element={<ReferralPage />} />
               <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/wallet" element={<MyWalletPage />} />
               <Route path="/vip" element={<VIPRewardPage />} />
               <Route path="/cashback" element={<CashbackPage />} />
               <Route path="/happy-hour" element={<HappyHour />} />

@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { FaRedo, FaEye, FaEyeSlash } from "react-icons/fa";
 
 const SearchIcon = () => (
@@ -46,6 +47,7 @@ const Header = ({
   onRefresh,
   theme,
 }) => {
+  const navigate = useNavigate();
   const [hidden, setHidden] = useState(false);
   const balance = "0.95 ETB";
 
@@ -151,6 +153,7 @@ const Header = ({
 
           <div className="flex items-center gap-3">
             <button
+              onClick={() => navigate("/wallet")}
               className={`bg-gradient-to-br ${accent.btnFrom} ${accent.btnTo} text-slate-900 font-semibold px-4 py-2 rounded-full`}
             >
               Deposit

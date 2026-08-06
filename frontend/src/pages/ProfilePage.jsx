@@ -1,5 +1,9 @@
 import React from "react";
 import EditProfile from "../components/EditProfile";
+import BonnusAndHistory from "../components/BonnusAndHistory";
+import AccountDetail from "../components/AccountDetail";
+import Dangerzone from "../components/Dangerzone";
+import Responsible from "../components/Responsible";
 
 const ProfilePage = () => {
   return (
@@ -16,6 +20,10 @@ const ProfilePage = () => {
       </section>
 
       <EditProfile />
+      <BonnusAndHistory />
+      <AccountDetail />
+      <Dangerzone />
+      <Responsible />
     </div>
   );
 };
