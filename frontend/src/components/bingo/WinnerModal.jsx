@@ -1,25 +1,37 @@
 import React from "react";
 
-const WinnerModal = ({ open, winner, onClose, accent = {} }) => {
+const WinnerModal = ({ open, winner, cardNumber, onClose, accent = {} }) => {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="bg-slate-900/95 p-6 rounded-xl border border-slate-700 w-full max-w-md transform transition duration-200 ease-out scale-100">
-        <div className="text-lg font-semibold text-slate-100">Winner!</div>
+    <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-50">
+      <div className="w-[90%] max-w-lg rounded-[2.5rem] border border-slate-700 bg-slate-900/95 p-8 shadow-2xl shadow-cyan-500/10 text-center">
+        <div className="mx-auto flex h-24 w-24 items-center justify-center rounded-full bg-emerald-500/15 text-5xl text-emerald-300 shadow-inner">
+          🏆
+        </div>
+
+        <h2 className="mt-6 text-3xl font-bold text-slate-100">Bingo Winner</h2>
+        <p className="mt-3 text-sm text-slate-400">
+          Congratulations! A new winner has been announced.
+        </p>
+
         <div
-          className={`mt-4 text-2xl font-bold ${accent.selectedText || "text-emerald-300"}`}
+          className={`mt-6 rounded-3xl border ${accent.accentBg || "border-emerald-500/20"} bg-slate-950/90 p-5 text-2xl font-semibold ${accent.accentText || "text-emerald-300"}`}
         >
-          {winner}
+          <div>{winner}</div>
+          {cardNumber ? (
+            <div className="mt-2 text-sm font-medium text-slate-400">
+              Winning card: #{cardNumber}
+            </div>
+          ) : null}
         </div>
-        <div className="mt-6 text-right">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 rounded-md bg-slate-800/40 border border-slate-700 transition hover:scale-105"
-          >
-            Close
-          </button>
-        </div>
+
+        <button
+          onClick={onClose}
+          className="mt-8 inline-flex w-full justify-center rounded-full bg-emerald-500 px-6 py-3 text-sm font-semibold text-slate-950 transition hover:brightness-110"
+        >
+          Close
+        </button>
       </div>
     </div>
   );

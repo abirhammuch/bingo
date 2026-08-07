@@ -1,12 +1,16 @@
 import React from "react";
 
-const BingoCell = ({ number, marked, accent = {} }) => {
+const BingoCell = ({ number, marked = false, accent = {} }) => {
+  const isFree = number === "FREE";
+
   return (
     <div
-      className={`w-full h-12 rounded-md flex items-center justify-center text-sm font-medium border transition transform duration-200 ease-out hover:scale-105 active:scale-95 ${
+      className={`w-full aspect-square rounded-2xl flex items-center justify-center text-sm font-semibold border transition-all duration-200 ease-out ${
         marked
-          ? "bg-emerald-700/20 border-emerald-500 text-emerald-200 animate-pulse"
-          : "bg-slate-800/40 text-slate-100"
+          ? `bg-emerald-600/20 border-emerald-400 text-emerald-200 shadow-inner ${accent.accentText || ""}`
+          : isFree
+            ? "bg-amber-500/20 border-amber-400 text-amber-100"
+            : "bg-slate-950 border-slate-700 text-slate-100 hover:bg-slate-900 hover:border-slate-500"
       }`}
     >
       {number}

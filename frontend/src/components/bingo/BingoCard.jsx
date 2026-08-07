@@ -2,11 +2,14 @@ import React from "react";
 
 const BingoCard = ({ title = "Bingo Card", children, accent = {} }) => {
   return (
-    <div
-      className={`p-3 rounded-lg bg-slate-900/40 border border-slate-700 transition transform duration-300 hover:-translate-y-1`}
-    >
-      <div className={`font-semibold text-slate-100 mb-2`}>{title}</div>
-      <div className="grid grid-cols-5 gap-2">{children}</div>
+    <div className="p-4 rounded-xl bg-slate-900/40 border border-slate-700 shadow-lg transition-all duration-300 hover:-translate-y-1 hover:shadow-cyan-500/20">
+      <h2
+        className={`text-lg font-semibold mb-4 ${accent.title || "text-white"}`}
+      >
+        {title}
+      </h2>
+
+      <div>{children}</div>
     </div>
   );
 };
