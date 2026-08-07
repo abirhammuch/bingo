@@ -1,6 +1,6 @@
 import React from "react";
 
-const WinnerModal = ({ open, winner, cardNumber, onClose, accent = {} }) => {
+const WinnerModal = ({ open, winner, luckyNumber, onClose, accent = {} }) => {
   if (!open) return null;
 
   return (
@@ -19,9 +19,9 @@ const WinnerModal = ({ open, winner, cardNumber, onClose, accent = {} }) => {
           className={`mt-6 rounded-3xl border ${accent.accentBg || "border-emerald-500/20"} bg-slate-950/90 p-5 text-2xl font-semibold ${accent.accentText || "text-emerald-300"}`}
         >
           <div>{winner}</div>
-          {cardNumber ? (
+          {luckyNumber ? (
             <div className="mt-2 text-sm font-medium text-slate-400">
-              Winning card: #{cardNumber}
+              Winning lucky number: {luckyNumber}
             </div>
           ) : null}
         </div>

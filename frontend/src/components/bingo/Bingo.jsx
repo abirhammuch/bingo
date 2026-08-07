@@ -51,7 +51,7 @@ const Bingo = ({ theme }) => {
   const [gameStatus, setGameStatus] = useState("waiting");
   const [numberPool, setNumberPool] = useState(() => createNumberPool());
   const [winner, setWinner] = useState(null);
-  const [winningCardNumber, setWinningCardNumber] = useState(null);
+  const [winningLuckyNumber, setWinningLuckyNumber] = useState(null);
   const [livePlayers] = useState(128);
   const [prizePool] = useState(1250);
 
@@ -89,7 +89,7 @@ const Bingo = ({ theme }) => {
     setCurrentNumber(null);
     setCalledNumbers([]);
     setWinner(null);
-    setWinningCardNumber(null);
+    setWinningLuckyNumber(null);
     setGameStatus("live");
     setDrawTimeLeft(7);
     setPhase("live");
@@ -131,7 +131,7 @@ const Bingo = ({ theme }) => {
         const winningIndex = nextCards.findIndex((card) => hasBingo(card));
         if (winningIndex >= 0) {
           setWinner("You");
-          setWinningCardNumber(winningIndex + 1);
+          setWinningLuckyNumber(selectionNumbers[winningIndex]);
           setGameStatus("finished");
         }
 
@@ -189,7 +189,7 @@ const Bingo = ({ theme }) => {
     setPhase("selection");
     setGameStatus("waiting");
     setWinner(null);
-    setWinningCardNumber(null);
+    setWinningLuckyNumber(null);
     setCurrentNumber(null);
     setCalledNumbers([]);
     setCards([]);
@@ -208,7 +208,7 @@ const Bingo = ({ theme }) => {
   return (
     <div className="grid grid-cols-1 xl:grid-cols-[1.55fr_0.95fr] gap-6">
       <div className="space-y-6">
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div className="rounded-3xl border border-slate-700 bg-slate-950/80 p-5 shadow-xl shadow-slate-950/20">
             <div className="mb-3 text-xs uppercase tracking-[0.3em] text-slate-400">
               Room
@@ -423,10 +423,10 @@ const Bingo = ({ theme }) => {
         <WinnerModal
           open={Boolean(winner)}
           winner={winner || "You"}
-          cardNumber={winningCardNumber}
+          luckyNumber={winningLuckyNumber}
           onClose={() => {
             setWinner(null);
-            setWinningCardNumber(null);
+            setWinningLuckyNumber(null);
           }}
           accent={accent}
         />
