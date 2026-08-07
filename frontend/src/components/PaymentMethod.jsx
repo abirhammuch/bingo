@@ -1,20 +1,23 @@
 import React, { useState } from "react";
+import telebirrIcon from "../assets/Image/telebirr.png";
+import cbeIcon from "../assets/Image/CBE.png";
+import mpesaIcon from "../assets/Image/mpesa.png";
 
 const paymentMethods = [
   {
     id: "telebirr",
     label: "Telebirr",
-    icon: "https://via.placeholder.com/48?text=T",
+    icon: telebirrIcon,
   },
   {
     id: "cbe",
     label: "CBE Birr",
-    icon: "https://via.placeholder.com/48?text=C",
+    icon: cbeIcon,
   },
   {
     id: "mpesa",
     label: "Mpesa",
-    icon: "https://via.placeholder.com/48?text=M",
+    icon: mpesaIcon,
   },
 ];
 

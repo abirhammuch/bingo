@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import { Routes, Route, useLocation } from "react-router-dom";
 import Header from "./components/Header";
 import Sidebar from "./components/Sidebar";
@@ -18,11 +18,17 @@ import VIPRewardPage from "./pages/VIPRewardPage";
 import CashbackPage from "./pages/CashbackPage";
 import HappyHour from "./pages/HappyHour";
 import AppearancePage from "./pages/AppearancePage";
+import { useAppContext } from "./context/AppContext.jsx";
 
 const App = () => {
-  const [collapsed, setCollapsed] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [theme, setTheme] = useState("green");
+  const {
+    collapsed,
+    setCollapsed,
+    mobileOpen,
+    setMobileOpen,
+    theme,
+    setTheme,
+  } = useAppContext();
   const location = useLocation();
 
   useEffect(() => {
