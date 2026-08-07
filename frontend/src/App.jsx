@@ -33,6 +33,20 @@ const App = () => {
   } = useAppContext();
   const location = useLocation();
 
+  const themeBackgrounds = {
+    green: "bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950",
+    yellow: "bg-gradient-to-br from-slate-950 via-slate-900 to-amber-950",
+    blue: "bg-gradient-to-br from-slate-950 via-slate-900 to-sky-950",
+    red: "bg-gradient-to-br from-slate-950 via-slate-900 to-rose-950",
+  };
+
+  const themeBorders = {
+    green: "border-emerald-500/20",
+    yellow: "border-amber-500/20",
+    blue: "border-sky-500/20",
+    red: "border-rose-500/20",
+  };
+
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth >= 768) {
@@ -41,13 +55,17 @@ const App = () => {
     };
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
-  }, []);
+  }, [setMobileOpen]);
 
   useEffect(() => {
     if (mobileOpen && window.innerWidth <= 768) {
       setMobileOpen(false);
     }
-  }, [location.pathname, mobileOpen]);
+  }, [location.pathname, mobileOpen, setMobileOpen]);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+  }, [theme]);
 
   const toggle = () => {
     if (window.innerWidth <= 768) {
@@ -58,7 +76,9 @@ const App = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100">
+    <div
+      className={`min-h-screen text-slate-100 ${themeBackgrounds[theme] || themeBackgrounds.green}`}
+    >
       <Header
         onToggleSidebar={toggle}
         isSidebarCollapsed={collapsed}
@@ -81,7 +101,9 @@ const App = () => {
         )}
 
         <main className="flex-1 relative z-10">
-          <div className="rounded-2xl bg-slate-800/40 border border-slate-700 p-6 min-h-[60vh]">
+          <div
+            className={`rounded-2xl bg-slate-800/40 border ${themeBorders[theme] || themeBorders.green} p-6 min-h-[60vh]`}
+          >
             <Routes>
               <Route path="/" element={<LobbyPage theme={theme} />} />
               <Route path="/lobby" element={<LobbyPage theme={theme} />} />

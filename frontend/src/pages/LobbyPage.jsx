@@ -1,8 +1,8 @@
 import React from "react";
 import { Link } from "react-router-dom";
-import Bingo from "../components/bingo/Bingo";
-import Ludo from "../components/Ludo";
-import SpinGame from "../components/SpinGame";
+import bingoImage from "../assets/Image/bingo.png";
+import ludoImage from "../assets/Image/ludo.png";
+import spinImage from "../assets/Image/spin.png";
 import Responsible from "../components/Responsible";
 
 const LobbyPage = ({ theme }) => {
@@ -74,22 +74,34 @@ const LobbyPage = ({ theme }) => {
             to="/bingopage"
             className="block rounded-xl bg-slate-800/40 border border-slate-700 p-4 hover:shadow-lg transition"
           >
-            <div className="mb-2 text-sm text-slate-300">Bingo</div>
-           
+            <div className="mb-3 text-sm text-slate-300">Bingo</div>
+            <img
+              src={bingoImage}
+              alt="Bingo"
+              className="h-40 w-full rounded-2xl object-cover"
+            />
           </Link>
           <Link
             to="/ludo"
             className="block rounded-xl bg-slate-800/40 border border-slate-700 p-4 hover:shadow-lg transition"
           >
-            <div className="mb-2 text-sm text-slate-300">Ludo</div>
-            <Ludo />
+            <div className="mb-3 text-sm text-slate-300">Ludo</div>
+            <img
+              src={ludoImage}
+              alt="Ludo"
+              className="h-40 w-full rounded-2xl object-cover"
+            />
           </Link>
           <Link
             to="/spin"
             className="block rounded-xl bg-slate-800/40 border border-slate-700 p-4 hover:shadow-lg transition"
           >
-            <div className="mb-2 text-sm text-slate-300">Spin</div>
-            <SpinGame />
+            <div className="mb-3 text-sm text-slate-300">Spin</div>
+            <img
+              src={spinImage}
+              alt="Spin"
+              className="h-40 w-full rounded-2xl object-cover"
+            />
           </Link>
         </div>
       </section>
