@@ -1,5 +1,6 @@
 import React from "react";
 import PromoCode from "../components/PromoCode";
+import Responsible from "../components/Responsible";
 
 const PromoCodePage = () => {
   return (
@@ -18,6 +19,7 @@ const PromoCodePage = () => {
       </section>
 
       <PromoCode />
+ 
     </div>
   );
 };

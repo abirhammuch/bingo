@@ -37,7 +37,7 @@ const Responsible = () => {
       </div>
 
       <div className="mt-8 text-xs uppercase tracking-[0.28em] text-slate-500">
-        © 2026 Zare Games · The ultimate experience
+        © 2026 Marshal Games · The ultimate experience
       </div>
     </div>
   );

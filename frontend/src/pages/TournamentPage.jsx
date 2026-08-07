@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import TournamentOverview from "../components/TournamentOverview";
 import TournamentUpcoming from "../components/TournamentUpcoming";
 import TournamentLive from "../components/TournamentLive";
+import Responsible from "../components/Responsible";
 
 const tabs = [
   { id: "all", label: "All" },
@@ -56,6 +57,7 @@ const TournamentPage = () => {
           {activeTab === "upcoming" && <TournamentUpcoming />}
         </div>
       </div>
+      <Responsible />
     </div>
   );
 };

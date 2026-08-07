@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import Bingo from "../components/bingo/Bingo";
 import Ludo from "../components/Ludo";
 import SpinGame from "../components/SpinGame";
+import Responsible from "../components/Responsible";
 
 const LobbyPage = ({ theme }) => {
   const themeMap = {
@@ -92,6 +93,7 @@ const LobbyPage = ({ theme }) => {
           </Link>
         </div>
       </section>
+      <Responsible />
     </div>
   );
 };

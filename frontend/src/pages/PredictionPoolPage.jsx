@@ -1,5 +1,6 @@
 import React from "react";
 import Prediction from "../components/Prediction";
+import Responsible from "../components/Responsible";
 
 const PredictionPoolPage = () => {
   return (
@@ -34,6 +35,7 @@ const PredictionPoolPage = () => {
       </section>
 
       <Prediction />
+      <Responsible />
     </div>
   );
 };

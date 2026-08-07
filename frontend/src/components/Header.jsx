@@ -49,6 +49,7 @@ const Header = ({
 }) => {
   const navigate = useNavigate();
   const [hidden, setHidden] = useState(false);
+  const [search, setSearch] = useState("");
   const balance = "0.95 ETB";
 
   const themeMap = {
@@ -85,19 +86,28 @@ const Header = ({
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-3">
-              <div
-                className={`w-10 h-10 bg-gradient-to-br ${accent.btnFrom} ${accent.btnTo} rounded-full flex items-center justify-center font-bold text-slate-900`}
-              >
-                MB
-              </div>
+              <img
+                src="/logo.png"
+                alt="Marshal Bingo"
+                className="w-10 h-10 rounded-full bg-slate-900/80 p-1"
+              />
               <span className="font-semibold text-lg tracking-wide">
-                Marshal Bingo
+                Marshal Games
               </span>
             </div>
 
             <div className="hidden sm:flex items-center bg-slate-800/60 rounded-full px-3 py-1 border border-slate-700">
               <SearchIcon />
               <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && search.trim()) {
+                    navigate(
+                      `/search?query=${encodeURIComponent(search.trim())}`,
+                    );
+                  }
+                }}
                 className="bg-transparent outline-none placeholder:text-slate-400 text-sm text-slate-100 w-56"
                 placeholder="Search games..."
                 aria-label="Search"

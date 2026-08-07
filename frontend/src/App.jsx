@@ -17,7 +17,9 @@ import MyWalletPage from "./pages/MyWalletPage";
 import VIPRewardPage from "./pages/VIPRewardPage";
 import CashbackPage from "./pages/CashbackPage";
 import HappyHour from "./pages/HappyHour";
+import FreeCashRain from "./pages/FreeCashRain";
 import AppearancePage from "./pages/AppearancePage";
+import SearchResults from "./pages/SearchResults";
 import { useAppContext } from "./context/AppContext.jsx";
 
 const App = () => {
@@ -94,7 +96,9 @@ const App = () => {
               <Route path="/vip" element={<VIPRewardPage />} />
               <Route path="/cashback" element={<CashbackPage />} />
               <Route path="/happy-hour" element={<HappyHour />} />
+              <Route path="/free-cash-rain" element={<FreeCashRain />} />
               <Route path="/appearance" element={<AppearancePage />} />
+              <Route path="/search" element={<SearchResults />} />
               <Route path="/bingopage" element={<BingoPage />} />
               <Route path="/ludo" element={<LudoPage />} />
               <Route path="/spin" element={<SpinPage />} />

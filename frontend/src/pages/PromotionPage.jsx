@@ -1,5 +1,6 @@
 import React from "react";
 import Promotion from "../components/Promotion";
+import Responsible from "../components/Responsible";
 
 const PromotionPage = () => {
   return (
@@ -30,6 +31,7 @@ const PromotionPage = () => {
         </div>
       </section>
       <Promotion />
+      <Responsible />
     </div>
   );
 };
