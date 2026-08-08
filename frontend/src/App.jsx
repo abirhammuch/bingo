@@ -61,7 +61,7 @@ const App = () => {
     if (mobileOpen && window.innerWidth <= 768) {
       setMobileOpen(false);
     }
-  }, [location.pathname, mobileOpen, setMobileOpen]);
+  }, [location.pathname, setMobileOpen]);
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;

@@ -208,28 +208,28 @@ const Bingo = ({ theme }) => {
   return (
     <div className="grid grid-cols-1 xl:grid-cols-[1.55fr_0.95fr] gap-6">
       <div className="space-y-6">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <div className="rounded-3xl border border-slate-700 bg-slate-950/80 p-5 shadow-xl shadow-slate-950/20">
-            <div className="mb-3 text-xs uppercase tracking-[0.3em] text-slate-400">
+        <div className="flex flex-nowrap gap-3 sm:gap-4">
+          <div className="flex-1 min-w-0 rounded-3xl border border-slate-700 bg-slate-950/80 p-3 shadow-xl shadow-slate-950/20 sm:p-5">
+            <div className="mb-2 text-[10px] uppercase tracking-[0.3em] text-slate-400 sm:mb-3 sm:text-xs">
               Room
             </div>
-            <div className="text-3xl font-semibold text-slate-100">
+            <div className="text-lg font-semibold text-slate-100 sm:text-2xl md:text-3xl">
               Main Room
             </div>
           </div>
-          <div className="rounded-3xl border border-slate-700 bg-slate-950/80 p-5 shadow-xl shadow-slate-950/20">
-            <div className="mb-3 text-xs uppercase tracking-[0.3em] text-slate-400">
+          <div className="flex-1 min-w-0 rounded-3xl border border-slate-700 bg-slate-950/80 p-3 shadow-xl shadow-slate-950/20 sm:p-5">
+            <div className="mb-2 text-[10px] uppercase tracking-[0.3em] text-slate-400 sm:mb-3 sm:text-xs">
               Prize pool
             </div>
-            <div className="text-3xl font-semibold text-slate-100">
+            <div className="text-lg font-semibold text-slate-100 sm:text-2xl md:text-3xl">
               ${prizePool}
             </div>
           </div>
-          <div className="rounded-3xl border border-slate-700 bg-slate-950/80 p-5 shadow-xl shadow-slate-950/20">
-            <div className="mb-3 text-xs uppercase tracking-[0.3em] text-slate-400">
+          <div className="flex-1 min-w-0 rounded-3xl border border-slate-700 bg-slate-950/80 p-3 shadow-xl shadow-slate-950/20 sm:p-5">
+            <div className="mb-2 text-[10px] uppercase tracking-[0.3em] text-slate-400 sm:mb-3 sm:text-xs">
               Remaining balls
             </div>
-            <div className="text-3xl font-semibold text-slate-100">
+            <div className="text-lg font-semibold text-slate-100 sm:text-2xl md:text-3xl">
               {remainingBalls}
             </div>
           </div>
@@ -239,7 +239,7 @@ const Bingo = ({ theme }) => {
           <div className="flex flex-col gap-4 border-b border-slate-700 bg-slate-950/90 p-5 md:flex-row md:items-center md:justify-between">
             <div>
               <div className="text-xs uppercase tracking-[0.3em] text-slate-400">
-                Flash · Bingo
+                Marshal · Bingo
               </div>
               <div className="mt-2 text-sm text-slate-300">
                 {joined
