@@ -1,6 +1,6 @@
-import BingoGame from "../models/BingoGame.js";
-import BingoTicket from "../models/BingoTicket.js";
-import User from "../models/User.js";
+import BingoGame from "../../models/BingoGame.js";
+import BingoTicket from "../../models/BingoTicket.js";
+import User from "../../models/User.js";
 import { v4 as uuidv4 } from "uuid";
 
 // Generate a 5x5 bingo card
