@@ -56,6 +56,11 @@ const LoginPage = () => {
           Use the Telegram bot to generate a login code, then enter your
           Telegram ID and the code here.
         </p>
+        {isTelegramWebApp && (
+          <div className="mb-4 rounded-2xl border border-emerald-600 bg-emerald-950/80 px-4 py-3 text-emerald-200">
+            Telegram WebApp detected. Logging in automatically...
+          </div>
+        )}
         {error && (
           <div className="mb-4 rounded-2xl border border-rose-600 bg-rose-950/80 px-4 py-3 text-rose-200">
             {error}
@@ -70,6 +75,7 @@ const LoginPage = () => {
               className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100 outline-none focus:border-emerald-500"
               placeholder="123456789"
               required
+              disabled={isTelegramWebApp}
             />
           </label>
 
@@ -81,6 +87,7 @@ const LoginPage = () => {
               className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100 outline-none focus:border-emerald-500"
               placeholder="Enter code from Telegram bot"
               required
+              disabled={isTelegramWebApp}
             />
           </label>
           <div className="text-xs text-slate-500">
@@ -90,7 +97,7 @@ const LoginPage = () => {
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || isTelegramWebApp}
             className="w-full rounded-2xl bg-emerald-500 px-4 py-3 text-slate-950 font-semibold hover:bg-emerald-400 disabled:opacity-70"
           >
             {loading ? "Logging in..." : "Login with Telegram"}

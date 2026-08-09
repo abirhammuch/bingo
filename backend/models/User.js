@@ -33,6 +33,11 @@ const userSchema = new mongoose.Schema(
       trim: true,
     },
 
+    isRegistered: {
+      type: Boolean,
+      default: false,
+    },
+
     loginCode: {
       type: String,
       default: null,

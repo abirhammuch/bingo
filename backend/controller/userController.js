@@ -141,27 +141,30 @@ export const telegramWebAppLogin = async (req, res) => {
       });
     }
 
-    let user = await User.findOne({ telegramId });
+    const user = await User.findOne({ telegramId });
 
     if (!user) {
-      user = new User({
-        telegramId,
-        firstName,
-        lastName,
-        username,
-        profilePhoto,
-        balance: 100,
-        lastLogin: new Date(),
+      return res.status(404).json({
+        success: false,
+        message:
+          "User not found. Please register through the Telegram bot first.",
       });
-      await user.save();
-    } else {
-      user.firstName = firstName || user.firstName;
-      user.lastName = lastName || user.lastName;
-      user.username = username || user.username;
-      user.profilePhoto = profilePhoto || user.profilePhoto;
-      user.lastLogin = new Date();
-      await user.save();
     }
+
+    if (!user.isRegistered) {
+      return res.status(403).json({
+        success: false,
+        message:
+          "Telegram registration is incomplete. Please share your phone number in the bot first.",
+      });
+    }
+
+    user.firstName = firstName || user.firstName;
+    user.lastName = lastName || user.lastName;
+    user.username = username || user.username;
+    user.profilePhoto = profilePhoto || user.profilePhoto;
+    user.lastLogin = new Date();
+    await user.save();
 
     const token = generateToken({
       id: user._id,

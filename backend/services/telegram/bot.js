@@ -5,6 +5,17 @@ import User from "../../models/User.js";
 dotenv.config();
 
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
+const telegramWebAppUrl = process.env.TELEGRAM_WEBAPP_URL || "";
+
+const playGameButton = () => {
+  if (!telegramWebAppUrl) {
+    return null;
+  }
+
+  return Markup.inlineKeyboard([
+    [Markup.button.webApp("🎮 Play Game", telegramWebAppUrl)],
+  ]).resize();
+};
 
 // /start
 bot.start(async (ctx) => {
@@ -22,11 +33,12 @@ bot.start(async (ctx) => {
         lastName: telegramUser.last_name || "",
         balance: 100,
         lastLogin: new Date(),
+        isRegistered: false,
       });
 
       await ctx.reply(
         `Welcome to Marshal Game 🎮\n\n` +
-          `Hi ${telegramUser.first_name || "Player"}! Your account has been created automatically using your Telegram profile.`,
+          `Hi ${telegramUser.first_name || "Player"}! Your account has been initialized.`,
       );
     } else {
       user.lastLogin = new Date();
@@ -37,7 +49,7 @@ bot.start(async (ctx) => {
       );
     }
 
-    if (!user.phoneNumber) {
+    if (!user.phoneNumber || !user.isRegistered) {
       await ctx.reply(
         `To complete your profile, please share your phone number.`,
         Markup.keyboard([
@@ -49,11 +61,16 @@ bot.start(async (ctx) => {
       return;
     }
 
-    await ctx.reply(
-      `You are all set! Use the buttons below to continue.`,
+    const keyboard = playGameButton();
+    const replyMarkup =
+      keyboard ||
       Markup.keyboard([["🎮 Play Game"], ["👤 My Profile", "💰 Wallet"]])
         .resize()
-        .oneTime(),
+        .oneTime();
+
+    await ctx.reply(
+      `You are all set! Use the button below to continue.`,
+      replyMarkup,
     );
   } catch (error) {
     console.error("Telegram /start error:", error);
@@ -84,19 +101,25 @@ bot.on("contact", async (ctx) => {
         phoneNumber: contact.phone_number,
         balance: 100,
         lastLogin: new Date(),
+        isRegistered: true,
       });
     } else {
       user.phoneNumber = contact.phone_number;
+      user.isRegistered = true;
       user.lastLogin = new Date();
       await user.save();
     }
 
+    const keyboard =
+      playGameButton() ||
+      Markup.keyboard([["🎮 Play Game"], ["👤 My Profile", "💰 Wallet"]])
+        .resize()
+        .oneTime();
+
     await ctx.reply(
       `🎉 Registration successful!\n\n` +
         `Welcome ${user.firstName}! Your account is now complete.`,
-      Markup.keyboard([["🎮 Play Game"], ["👤 My Profile", "💰 Wallet"]])
-        .resize()
-        .oneTime(),
+      keyboard,
     );
   } catch (error) {
     console.error("Telegram registration error:", error);
