@@ -91,7 +91,7 @@ bot.hears("🎮 Play Game", async (ctx) => {
 
     if (needsPhoneRegistration(user)) {
       return ctx.reply(
-        "Please share your phone number to complete registration before playing.",
+        "Your phone number is required to play games. Please share your contact now to complete registration.",
         registrationKeyboard(),
       );
     }
