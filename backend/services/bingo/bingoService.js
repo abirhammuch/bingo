@@ -141,14 +141,20 @@ export const createBingoGame = async (
     maxBet,
     players: [],
     calledNumbers: [],
+    selectedNumbers: [],
   });
 
   await game.save();
   return game;
 };
 
-// Join a bingo game
-export const joinBingoGame = async (gameId, telegramId, betAmount) => {
+// Join a bingo game (optionally reserving a lucky number)
+export const joinBingoGame = async (
+  gameId,
+  telegramId,
+  betAmount,
+  luckyNumber = null,
+) => {
   // Find game
   const game = await BingoGame.findOne({ gameId });
 
@@ -179,8 +185,76 @@ export const joinBingoGame = async (gameId, telegramId, betAmount) => {
   user.balance -= betAmount;
   await user.save();
 
-  // Generate bingo card
-  const card = generateBingoCard();
+  // If a luckyNumber is provided, ensure it's not already taken
+  if (luckyNumber != null) {
+    if (game.selectedNumbers && game.selectedNumbers.includes(luckyNumber)) {
+      throw new Error("Lucky number already selected by another player");
+    }
+    game.selectedNumbers = game.selectedNumbers || [];
+    game.selectedNumbers.push(luckyNumber);
+  }
+
+  // Generate bingo card, placing luckyNumber on the card if provided
+  const card = (() => {
+    if (luckyNumber == null) return generateBingoCard();
+
+    // create card ensuring luckyNumber is present in the correct column
+    const columns = [
+      { min: 1, max: 15 },
+      { min: 16, max: 30 },
+      { min: 31, max: 45 },
+      { min: 46, max: 60 },
+      { min: 61, max: 75 },
+    ];
+
+    // Determine column index
+    const colIndex = columns.findIndex(
+      (c) => luckyNumber >= c.min && luckyNumber <= c.max,
+    );
+    // Build column-based numbers and ensure luckyNumber placed in that column
+    const cardCols = [];
+    for (let col = 0; col < 5; col++) {
+      const available = [];
+      for (let n = columns[col].min; n <= columns[col].max; n++)
+        available.push(n);
+
+      // If this is the lucky number column, remove luckyNumber from available and we'll insert it
+      if (col === colIndex) {
+        const idx = available.indexOf(luckyNumber);
+        if (idx !== -1) available.splice(idx, 1);
+      }
+
+      // pick 5 numbers for the column
+      const colNums = [];
+      while (colNums.length < 5) {
+        const idx = Math.floor(Math.random() * available.length);
+        colNums.push(available.splice(idx, 1)[0]);
+      }
+      cardCols.push(colNums);
+    }
+
+    // convert to row-based
+    const rowCard = Array.from({ length: 5 }, () => Array(5).fill(0));
+    for (let c = 0; c < 5; c++) {
+      for (let r = 0; r < 5; r++) {
+        rowCard[r][c] = cardCols[c][r];
+      }
+    }
+
+    // free center
+    rowCard[2][2] = 0;
+
+    // ensure luckyNumber is placed in a non-center row for its column
+    if (colIndex >= 0) {
+      // choose a random row index that is not 2 (center)
+      const possibleRows = [0, 1, 3, 4];
+      const r = possibleRows[Math.floor(Math.random() * possibleRows.length)];
+      rowCard[r][colIndex] = luckyNumber;
+    }
+
+    return rowCard;
+  })();
+
   const numbers = getCardNumbers(card);
 
   // Create ticket

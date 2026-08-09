@@ -44,6 +44,12 @@ const bingoGameSchema = new mongoose.Schema(
 
     calledNumbers: [Number],
 
+    // Numbers reserved by players during selection phase
+    selectedNumbers: {
+      type: [Number],
+      default: [],
+    },
+
     currentNumber: {
       type: Number,
       default: 0,
@@ -80,6 +86,7 @@ const bingoGameSchema = new mongoose.Schema(
   },
 );
 
-const BingoGame = mongoose.model.BingoGame || mongoose.model("BingoGame", bingoGameSchema);
+const BingoGame =
+  mongoose.model.BingoGame || mongoose.model("BingoGame", bingoGameSchema);
 
 export default BingoGame;

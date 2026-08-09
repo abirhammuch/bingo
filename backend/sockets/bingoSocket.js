@@ -57,6 +57,7 @@ export const initBingoSocket = (io) => {
           players: game.players,
           status: game.status,
           maxPlayers: game.maxPlayers,
+          selectedNumbers: game.selectedNumbers || [],
         });
 
         // Schedule an automatic start countdown for this newly created room.
@@ -77,7 +78,7 @@ export const initBingoSocket = (io) => {
     // ------------------------------------------------------------------
     socket.on("joinRoom", async (data) => {
       try {
-        const { gameId, telegramId, betAmount } = data;
+        const { gameId, telegramId, betAmount, luckyNumber = null } = data;
 
         // Validate inputs
         if (!gameId || !telegramId || !betAmount || betAmount < 1) {
@@ -89,7 +90,12 @@ export const initBingoSocket = (io) => {
         }
 
         // Join the game logic (deducts balance, creates ticket, generates card)
-        const result = await joinBingoGame(gameId, telegramId, betAmount);
+        const result = await joinBingoGame(
+          gameId,
+          telegramId,
+          betAmount,
+          luckyNumber,
+        );
 
         // Join the Socket.IO room
         socket.join(result.game.roomId);
@@ -114,6 +120,7 @@ export const initBingoSocket = (io) => {
           },
           playerCount: result.game.players.length,
           totalPlayers: result.game.maxPlayers,
+          selectedNumbers: result.game.selectedNumbers || [],
         });
 
         // If the room is still waiting and we now have 2+ players, and
@@ -148,6 +155,12 @@ export const initBingoSocket = (io) => {
             success: false,
             message: "Game ID is required",
           });
+        }
+
+        // If an auto-start countdown exists for this game, cancel it
+        if (startCountdowns.has(gameId)) {
+          clearTimeout(startCountdowns.get(gameId));
+          startCountdowns.delete(gameId);
         }
 
         // Update game status to 'active' in DB
@@ -221,6 +234,33 @@ export const initBingoSocket = (io) => {
             message: "Game has ended. Thanks for playing!",
             winner: result.winner,
           });
+
+          // After a short delay, create a new waiting game for the same room
+          setTimeout(async () => {
+            try {
+              const newGame = await createBingoGame(
+                game.roomId,
+                game.maxPlayers,
+                game.minBet,
+                game.maxBet,
+              );
+              // Broadcast new room created state
+              io.to(game.roomId).emit("gameUpdate", {
+                type: "roomCreated",
+                gameId: newGame.gameId,
+                roomId: newGame.roomId,
+                players: newGame.players,
+                status: newGame.status,
+                maxPlayers: newGame.maxPlayers,
+                selectedNumbers: newGame.selectedNumbers || [],
+              });
+
+              // Schedule auto-start for the new game
+              scheduleAutoStart(newGame.gameId, newGame.roomId, 20);
+            } catch (err) {
+              console.error("Failed to create new round:", err.message || err);
+            }
+          }, 5000);
         }
       } catch (error) {
         console.error("Mark Number Error:", error.message);
@@ -320,6 +360,15 @@ const scheduleAutoStart = (gameId, roomId, seconds = 20) => {
 
   console.log(`⏳ Scheduling auto-start for game ${gameId} in ${seconds}s`);
 
+  // Notify room that a countdown has started
+  if (globalThis.io && typeof globalThis.io.to === "function") {
+    globalThis.io.to(roomId).emit("gameUpdate", {
+      type: "countdownStarted",
+      seconds,
+      message: `Game will auto-start in ${seconds} seconds if enough players join.`,
+    });
+  }
+
   const timeout = setTimeout(async () => {
     try {
       // Fetch game state
@@ -402,6 +451,24 @@ const startNumberCalling = (io, gameId, roomId) => {
           type: "gameEnded",
           message: "All numbers called! Game ended.",
         });
+        // create a new waiting round after a short delay
+        setTimeout(async () => {
+          try {
+            const newGame = await createBingoGame(roomId);
+            io.to(roomId).emit("gameUpdate", {
+              type: "roomCreated",
+              gameId: newGame.gameId,
+              roomId: newGame.roomId,
+              players: newGame.players,
+              status: newGame.status,
+              maxPlayers: newGame.maxPlayers,
+              selectedNumbers: newGame.selectedNumbers || [],
+            });
+            scheduleAutoStart(newGame.gameId, newGame.roomId, 20);
+          } catch (err) {
+            console.error("Failed to create next round:", err.message || err);
+          }
+        }, 5000);
         return;
       }
 
