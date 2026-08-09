@@ -5,7 +5,10 @@ import User from "../../models/User.js";
 dotenv.config();
 
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
-const telegramWebAppUrl = process.env.TELEGRAM_WEBAPP_URL || "";
+const rawWebAppUrl = process.env.TELEGRAM_WEBAPP_URL || "";
+const telegramWebAppUrl = rawWebAppUrl
+  .replace(/\/login\/?$/, "")
+  .replace(/\/$/, "");
 
 const playGameButton = () => {
   if (!telegramWebAppUrl) {
