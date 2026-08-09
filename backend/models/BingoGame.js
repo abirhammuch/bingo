@@ -57,10 +57,53 @@ const bingoGameSchema = new mongoose.Schema(
 
     lastCalledAt: Date,
 
+    roundNumber: {
+      type: Number,
+      default: 1,
+    },
+
+    playerCount: {
+      type: Number,
+      default: 0,
+    },
+
+    roundStartedAt: Date,
+    roundEndedAt: Date,
+
     winner: {
       telegramId: String,
       username: String,
       winAmount: Number,
+    },
+
+    roundSummary: {
+      playerCount: {
+        type: Number,
+        default: 0,
+      },
+      maxPlayers: {
+        type: Number,
+        default: 10,
+      },
+      totalBetAmount: {
+        type: Number,
+        default: 0,
+      },
+      calledNumbersCount: {
+        type: Number,
+        default: 0,
+      },
+      selectedNumbersCount: {
+        type: Number,
+        default: 0,
+      },
+      winnerTelegramId: String,
+      winnerUsername: String,
+      winnerAmount: Number,
+      endedReason: {
+        type: String,
+        default: "waiting",
+      },
     },
 
     startTime: Date,

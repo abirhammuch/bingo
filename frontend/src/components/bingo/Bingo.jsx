@@ -60,6 +60,7 @@ const Bingo = ({ theme }) => {
   const [participants, setParticipants] = useState(0);
   const [selectedNumbersGlobal, setSelectedNumbersGlobal] = useState([]);
   const [mySelectedNumber, setMySelectedNumber] = useState(null);
+  const [mySelections, setMySelections] = useState([]);
   const [countdownRemaining, setCountdownRemaining] = useState(null);
   const [pendingSelection, setPendingSelection] = useState(null);
 
@@ -79,8 +80,9 @@ const Bingo = ({ theme }) => {
 
   const toggleLuckyNumber = (number) => {
     if (phase !== "selection") return;
-    // Prevent multiple selections locally
-    if (mySelectedNumber) return;
+    if (!joined) return;
+    if (mySelections.length >= 3) return;
+    if (mySelections.includes(number)) return;
 
     // Emit join with chosen lucky number (server will reserve and return card)
     const telegramId = authUser?.telegramId;
@@ -95,8 +97,11 @@ const Bingo = ({ theme }) => {
 
     if (!telegramId) {
       // Allow the UI to reflect the choice even before auth details are available
+      setMySelections((prev) => [...prev, number]);
       setMySelectedNumber(number);
-      setSelectionNumbers([number]);
+      setSelectionNumbers((prev) =>
+        prev.includes(number) ? prev : [...prev, number],
+      );
       return;
     }
 
@@ -108,8 +113,11 @@ const Bingo = ({ theme }) => {
       luckyNumber: number,
     });
     // optimistically lock locally until server confirms
+    setMySelections((prev) => [...prev, number]);
     setMySelectedNumber(number);
-    setSelectionNumbers([number]);
+    setSelectionNumbers((prev) =>
+      prev.includes(number) ? prev : [...prev, number],
+    );
     const nextSelectedCount = (selectedNumbersGlobal?.length || 0) + 1;
     setSelectedNumbersGlobal((prev) =>
       prev.includes(number) ? prev : [...prev, number],
@@ -204,6 +212,7 @@ const Bingo = ({ theme }) => {
           );
           // reset local picks
           setMySelectedNumber(null);
+          setMySelections([]);
           setSelectionNumbers([]);
           setCalledNumbers([]);
           setWinner(null);
@@ -314,8 +323,13 @@ const Bingo = ({ theme }) => {
             betAmount: 1,
             luckyNumber: pendingSelection,
           });
+          setMySelections((prev) => [...prev, pendingSelection]);
           setMySelectedNumber(pendingSelection);
-          setSelectionNumbers([pendingSelection]);
+          setSelectionNumbers((prev) =>
+            prev.includes(pendingSelection)
+              ? prev
+              : [...prev, pendingSelection],
+          );
           setPendingSelection(null);
         }
       }
@@ -399,6 +413,9 @@ const Bingo = ({ theme }) => {
       if (!data) return;
       setJoined(true);
       setMySelectedNumber(selectionNumbers[0] || null);
+      if (mySelections.length === 0 && selectionNumbers.length > 0) {
+        setMySelections(selectionNumbers);
+      }
       setParticipants(
         getActivePlayerCount([], data.selectedNumbers || []) ||
           data.currentPlayers ||
@@ -418,8 +435,13 @@ const Bingo = ({ theme }) => {
             betAmount: 1,
             luckyNumber: pendingSelection,
           });
+          setMySelections((prev) => [...prev, pendingSelection]);
           setMySelectedNumber(pendingSelection);
-          setSelectionNumbers([pendingSelection]);
+          setSelectionNumbers((prev) =>
+            prev.includes(pendingSelection)
+              ? prev
+              : [...prev, pendingSelection],
+          );
           setPendingSelection(null);
         }
       }
@@ -634,10 +656,17 @@ const Bingo = ({ theme }) => {
                 </div>
               </div>
               <div className="flex flex-wrap gap-2">
-                {mySelectedNumber ? (
-                  <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-sm font-semibold text-emerald-300">
-                    {mySelectedNumber}
-                  </span>
+                {mySelections.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {mySelections.map((number) => (
+                      <span
+                        key={number}
+                        className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-sm font-semibold text-emerald-300"
+                      >
+                        {number}
+                      </span>
+                    ))}
+                  </div>
                 ) : (
                   <span className="text-sm text-slate-500">
                     No lucky numbers selected yet.
@@ -657,10 +686,10 @@ const Bingo = ({ theme }) => {
                   const disabled =
                     Boolean(
                       selectedNumbersGlobal.includes(number) &&
-                      mySelectedNumber !== number,
+                      !mySelections.includes(number),
                     ) ||
                     phase !== "selection" ||
-                    Boolean(mySelectedNumber);
+                    mySelections.length >= 3;
                   return (
                     <button
                       key={number}

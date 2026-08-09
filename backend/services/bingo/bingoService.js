@@ -131,17 +131,28 @@ export const createBingoGame = async (
   maxBet = 100,
 ) => {
   const gameId = uuidv4();
+  const roundNumber = (await BingoGame.countDocuments({ roomId })) + 1;
 
   const game = new BingoGame({
     gameId,
     roomId,
     status: "waiting",
+    roundNumber,
     maxPlayers,
     minBet,
     maxBet,
     players: [],
     calledNumbers: [],
     selectedNumbers: [],
+    playerCount: 0,
+    roundSummary: {
+      playerCount: 0,
+      maxPlayers,
+      totalBetAmount: 0,
+      calledNumbersCount: 0,
+      selectedNumbersCount: 0,
+      endedReason: "waiting",
+    },
   });
 
   await game.save();
@@ -280,6 +291,13 @@ export const joinBingoGame = async (
     betAmount,
   });
 
+  game.playerCount = game.players.length;
+  game.roundSummary.playerCount = game.players.length;
+  game.roundSummary.totalBetAmount = game.players.reduce(
+    (sum, player) => sum + (player.betAmount || 0),
+    0,
+  );
+
   await game.save();
 
   return {
@@ -313,7 +331,16 @@ export const callNumber = async (gameId) => {
   }
 
   if (availableNumbers.length === 0) {
-    throw new Error("All numbers have been called");
+    game.status = "completed";
+    game.roundEndedAt = new Date();
+    game.endTime = new Date();
+    game.playerCount = game.players.length;
+    game.roundSummary.playerCount = game.players.length;
+    game.roundSummary.calledNumbersCount = game.calledNumbers.length;
+    game.roundSummary.selectedNumbersCount = game.selectedNumbers.length;
+    game.roundSummary.endedReason = "all_numbers_called";
+    await game.save();
+    return null;
   }
 
   const randomIndex = Math.floor(Math.random() * availableNumbers.length);
@@ -322,6 +349,8 @@ export const callNumber = async (gameId) => {
   game.calledNumbers.push(number);
   game.currentNumber = number;
   game.lastCalledAt = new Date();
+  game.roundSummary.calledNumbersCount = game.calledNumbers.length;
+  game.roundSummary.selectedNumbersCount = game.selectedNumbers.length;
 
   await game.save();
 
@@ -376,11 +405,24 @@ export const markNumber = async (gameId, telegramId, number) => {
   if (bingoResult.bingo) {
     game.status = "completed";
     game.endTime = new Date();
+    game.roundEndedAt = new Date();
+    game.playerCount = game.players.length;
+    game.roundSummary.playerCount = game.players.length;
+    game.roundSummary.calledNumbersCount = game.calledNumbers.length;
+    game.roundSummary.selectedNumbersCount = game.selectedNumbers.length;
+    game.roundSummary.totalBetAmount = game.players.reduce(
+      (sum, playerItem) => sum + (playerItem.betAmount || 0),
+      0,
+    );
     game.winner = {
       telegramId: player.telegramId,
       username: player.username,
       winAmount: player.betAmount * 5, // 5x payout
     };
+    game.roundSummary.winnerTelegramId = game.winner.telegramId;
+    game.roundSummary.winnerUsername = game.winner.username;
+    game.roundSummary.winnerAmount = game.winner.winAmount;
+    game.roundSummary.endedReason = "bingo";
 
     // Update user balance
     const user = await User.findOne({ telegramId });
@@ -428,12 +470,22 @@ export const startGame = async (gameId) => {
     throw new Error("Game not found");
   }
 
-  if (game.players.length < 2) {
-    throw new Error("Need at least 2 players to start");
+  if (game.players.length < 1) {
+    throw new Error("Need at least 1 player to start");
   }
 
   game.status = "active";
   game.startTime = new Date();
+  game.roundStartedAt = game.roundStartedAt || new Date();
+  game.playerCount = game.players.length;
+  game.roundSummary.playerCount = game.players.length;
+  game.roundSummary.maxPlayers = game.maxPlayers;
+  game.roundSummary.calledNumbersCount = game.calledNumbers.length;
+  game.roundSummary.selectedNumbersCount = game.selectedNumbers.length;
+  game.roundSummary.totalBetAmount = game.players.reduce(
+    (sum, player) => sum + (player.betAmount || 0),
+    0,
+  );
   await game.save();
 
   return game;
