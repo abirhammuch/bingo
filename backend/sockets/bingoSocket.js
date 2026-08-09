@@ -50,14 +50,26 @@ export const initBingoSocket = (io) => {
         });
 
         // Broadcast to the room that the game is waiting
-        io.to(roomId).emit("gameUpdate", {
-          type: "roomCreated",
+        const waitingState = {
           gameId: game.gameId,
           roomId: game.roomId,
-          players: game.players,
+          players: (game.players || []).map((player) => ({
+            telegramId: player.telegramId,
+            username: player.username || player.firstName || "Player",
+          })),
+          playerCount: (game.players || []).length,
           status: game.status,
           maxPlayers: game.maxPlayers,
           selectedNumbers: game.selectedNumbers || [],
+        };
+
+        io.to(roomId).emit("gameUpdate", {
+          type: "roomCreated",
+          ...waitingState,
+        });
+        io.to(roomId).emit("bingo:roundState", {
+          ...waitingState,
+          status: "waiting",
         });
 
         // Schedule a 30-second join window for this newly created room.
@@ -108,6 +120,12 @@ export const initBingoSocket = (io) => {
           ticketId: result.ticket.ticketId,
           balance: result.user.balance,
           currentPlayers: result.game.players.length,
+          playerCount: result.game.players.length,
+          players: (result.game.players || []).map((player) => ({
+            telegramId: player.telegramId,
+            username: player.username || player.firstName || "Player",
+          })),
+          selectedNumbers: result.game.selectedNumbers || [],
         });
 
         // Notify ALL players in the room that someone joined
@@ -118,16 +136,31 @@ export const initBingoSocket = (io) => {
             ? gameTimers.get(result.game.gameId).remaining
             : undefined;
 
-        io.to(result.game.roomId).emit("gameUpdate", {
-          type: "playerJoined",
+        const joinedRoomState = {
+          gameId: result.game.gameId,
+          roomId: result.game.roomId,
           player: {
             telegramId,
             username: result.user.firstName || "Player",
           },
           playerCount: result.game.players.length,
+          players: (result.game.players || []).map((player) => ({
+            telegramId: player.telegramId,
+            username: player.username || player.firstName || "Player",
+          })),
           totalPlayers: result.game.maxPlayers,
           selectedNumbers: result.game.selectedNumbers || [],
           countdownRemaining,
+          status: result.game.status,
+        };
+
+        io.to(result.game.roomId).emit("gameUpdate", {
+          type: "playerJoined",
+          ...joinedRoomState,
+        });
+        io.to(result.game.roomId).emit("bingo:roundState", {
+          ...joinedRoomState,
+          status: "waiting",
         });
 
         // Keep the shared 30-second join window active for the room.
@@ -180,12 +213,25 @@ export const initBingoSocket = (io) => {
         const game = await startGame(gameId);
 
         // Notify all players in the room
-        io.to(game.roomId).emit("gameUpdate", {
-          type: "gameStarted",
+        const startedState = {
           gameId: game.gameId,
+          roomId: game.roomId,
+          playerCount: game.players.length,
+          players: (game.players || []).map((player) => ({
+            telegramId: player.telegramId,
+            username: player.username || player.firstName || "Player",
+          })),
+          selectedNumbers: game.selectedNumbers || [],
+          status: "active",
           message: "🚀 Game started! Numbers will be called every 5 seconds.",
           startTime: game.startTime,
+        };
+
+        io.to(game.roomId).emit("gameUpdate", {
+          type: "gameStarted",
+          ...startedState,
         });
+        io.to(game.roomId).emit("bingo:roundState", startedState);
 
         // Start the automatic number calling loop
         startNumberCalling(io, game.gameId, game.roomId);
@@ -421,18 +467,25 @@ const scheduleAutoStart = (gameId, roomId, seconds = 20, force = false) => {
         if (game.status === "waiting" && game.players.length >= 1) {
           const started = await startGame(gameId);
           if (globalThis.io && typeof globalThis.io.to === "function") {
+            const autoStartedState = {
+              gameId: started.gameId,
+              roomId: started.roomId,
+              playerCount: started.players.length,
+              players: (started.players || []).map((player) => ({
+                telegramId: player.telegramId,
+                username: player.username || player.firstName || "Player",
+              })),
+              selectedNumbers: started.selectedNumbers || [],
+              status: "active",
+              message: `🚀 Game auto-started with ${started.players.length} players.`,
+              startTime: started.startTime,
+            };
+
             globalThis.io.to(roomId).emit("gameUpdate", {
               type: "gameStarted",
-              gameId: started.gameId,
-              message: `🚀 Game auto-started with ${game.players.length} players.`,
-              startTime: started.startTime,
+              ...autoStartedState,
             });
-            globalThis.io.to(roomId).emit("bingo:roundState", {
-              gameId: started.gameId,
-              status: "active",
-              selectedNumbers: game.selectedNumbers || [],
-              players: game.players || [],
-            });
+            globalThis.io.to(roomId).emit("bingo:roundState", autoStartedState);
           }
           // start number calling
           if (globalThis.io && typeof globalThis.io.to === "function") {

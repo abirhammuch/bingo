@@ -69,13 +69,16 @@ const Bingo = ({ theme }) => {
     [selectionNumbers],
   );
 
-  const getActivePlayerCount = (players, selectedNumbers) => {
+  const getActivePlayerCount = (players, selectedNumbers, fallback = 0) => {
+    if (Array.isArray(players) && players.length > 0) {
+      return players.length;
+    }
+
     const selectedCount = Array.isArray(selectedNumbers)
       ? selectedNumbers.length
       : 0;
     if (selectedCount > 0) return selectedCount;
-    if (Array.isArray(players)) return players.length;
-    return 0;
+    return fallback;
   };
 
   const toggleLuckyNumber = (number) => {
@@ -118,11 +121,9 @@ const Bingo = ({ theme }) => {
     setSelectionNumbers((prev) =>
       prev.includes(number) ? prev : [...prev, number],
     );
-    const nextSelectedCount = (selectedNumbersGlobal?.length || 0) + 1;
     setSelectedNumbersGlobal((prev) =>
       prev.includes(number) ? prev : [...prev, number],
     );
-    setParticipants(nextSelectedCount);
   };
 
   const lockSelections = () => {
@@ -224,9 +225,8 @@ const Bingo = ({ theme }) => {
             getActivePlayerCount(
               payload.players || [],
               payload.selectedNumbers || [],
-            ) ||
-              payload.playerCount ||
-              0,
+              payload.playerCount || 0,
+            ),
           );
           setSelectedNumbersGlobal(payload.selectedNumbers || []);
           if (
@@ -304,11 +304,10 @@ const Bingo = ({ theme }) => {
       );
       setParticipants(
         getActivePlayerCount(
-          state.players || [],
+          state.players || state.game?.players || [],
           state.selectedNumbers || state.game?.selectedNumbers || [],
-        ) ||
-          state.playerCount ||
-          participants,
+          state.playerCount || state.game?.playerCount || 0,
+        ),
       );
       if (state.calledNumbers) setCalledNumbers(state.calledNumbers);
       if (state.currentNumber) setCurrentNumber(state.currentNumber);
@@ -354,9 +353,8 @@ const Bingo = ({ theme }) => {
             getActivePlayerCount(
               payload.players || [],
               payload.selectedNumbers || [],
-            ) ||
-              payload.playerCount ||
-              participants,
+              payload.playerCount || participants,
+            ),
           );
           setSelectedNumbersGlobal(payload.selectedNumbers || []);
           break;
@@ -383,9 +381,11 @@ const Bingo = ({ theme }) => {
       if (!data) return;
       if (data.selectedNumbers) setSelectedNumbersGlobal(data.selectedNumbers);
       setParticipants(
-        getActivePlayerCount(data.players || [], data.selectedNumbers || []) ||
-          data.count ||
-          participants,
+        getActivePlayerCount(
+          data.players || [],
+          data.selectedNumbers || [],
+          data.count || data.playerCount || 0,
+        ),
       );
     };
 
@@ -403,9 +403,11 @@ const Bingo = ({ theme }) => {
       // data may include { telegramId, luckyNumber, selectedNumbers, playerCount }
       if (data.selectedNumbers) setSelectedNumbersGlobal(data.selectedNumbers);
       setParticipants(
-        getActivePlayerCount([], data.selectedNumbers || []) ||
-          data.playerCount ||
-          participants,
+        getActivePlayerCount(
+          data.players || [],
+          data.selectedNumbers || [],
+          data.playerCount || participants,
+        ),
       );
     };
 
@@ -417,9 +419,11 @@ const Bingo = ({ theme }) => {
         setMySelections(selectionNumbers);
       }
       setParticipants(
-        getActivePlayerCount([], data.selectedNumbers || []) ||
-          data.currentPlayers ||
-          participants,
+        getActivePlayerCount(
+          data.players || [],
+          data.selectedNumbers || [],
+          data.playerCount || data.currentPlayers || participants,
+        ),
       );
       if (data.gameId && socket.connected) {
         socket.emit("getGameState", { gameId: data.gameId });
