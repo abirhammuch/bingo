@@ -212,17 +212,6 @@ const Bingo = ({ theme }) => {
       );
     };
 
-    const handleJoinedRoom = (data) => {
-      if (!data) return;
-      setJoined(true);
-      setMySelectedNumber(selectionNumbers[0] || null);
-      setParticipants(data.currentPlayers || participants);
-      // server returns the player's card
-      if (data.card) {
-        setCards([data.card]);
-      }
-    };
-
     // Ensure socket is connected
     if (!socket.connected) socket.connect();
 
