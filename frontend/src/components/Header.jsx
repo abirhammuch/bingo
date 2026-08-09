@@ -167,10 +167,11 @@ const Header = ({
           <div className="flex items-center gap-3">
             <button
               onClick={() => {
-                if (authUser && authUser.isRegistered === false) {
-                  if (promptTelegramShareContact()) return;
+                if (!authUser || authUser.isRegistered === false) {
+                  promptTelegramShareContact();
+                  return;
                 }
-                navigate(authUser ? "/wallet" : "/login");
+                navigate("/wallet");
               }}
               className={`bg-gradient-to-br ${accent.btnFrom} ${accent.btnTo} text-slate-900 font-semibold px-4 py-2 rounded-full`}
             >
@@ -181,7 +182,8 @@ const Header = ({
               <button
                 onClick={() => {
                   if (authUser.isRegistered === false) {
-                    if (promptTelegramShareContact()) return;
+                    promptTelegramShareContact();
+                    return;
                   }
                   navigate("/profile");
                 }}

@@ -84,104 +84,106 @@ const App = () => {
     <div
       className={`min-h-screen text-slate-100 ${themeBackgrounds[theme] || themeBackgrounds.green}`}
     >
-      {!isAdminPath && !isAuthPage ? (
-        <>
-          <Header
-            onToggleSidebar={toggle}
-            isSidebarCollapsed={collapsed}
-            isMobileOpen={mobileOpen}
-            theme={theme}
-          />
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col md:flex-row gap-6 relative">
-            <Sidebar
-              collapsed={collapsed}
-              mobileOpen={mobileOpen}
-              theme={theme}
-              setTheme={setTheme}
-              onClose={() => setMobileOpen(false)}
-            />
-            {mobileOpen && (
-              <div
-                className="fixed inset-0 z-30 bg-slate-950/50 md:hidden"
-                onClick={() => setMobileOpen(false)}
-              />
-            )}
-
-            <main className="flex-1 relative z-10">
-              <div
-                className={`rounded-2xl bg-slate-800/40 border ${themeBorders[theme] || themeBorders.green} p-6 min-h-[60vh]`}
-              >
-                <Routes>
-                  <Route path="/" element={<LobbyPage theme={theme} />} />
-                  <Route path="/lobby" element={<LobbyPage theme={theme} />} />
-                  <Route path="/tournament" element={<TournamentPage />} />
-                  <Route path="/promotions" element={<PromotionPage />} />
-                  <Route path="/promo-codes" element={<PromoCodePage />} />
-                  <Route path="/prediction" element={<PredictionPoolPage />} />
-                  <Route
-                    path="/prediction/open"
-                    element={<OpenPredictionPage />}
-                  />
-                  <Route path="/referral" element={<ReferralPage />} />
-                  <Route path="/profile" element={<ProfilePage />} />
-                  <Route path="/wallet" element={<MyWalletPage />} />
-                  <Route path="/vip" element={<VIPRewardPage />} />
-                  <Route path="/cashback" element={<CashbackPage />} />
-                  <Route path="/login" element={<LoginPage />} />
-                  <Route path="/logout" element={<LogoutPage />} />
-                  <Route path="/happy-hour" element={<HappyHour />} />
-                  <Route path="/free-cash-rain" element={<FreeCashRain />} />
-                  <Route path="/appearance" element={<AppearancePage />} />
-                  <Route path="/search" element={<SearchResults />} />
-                  <Route path="/bingopage" element={<BingoPage />} />
-                  <Route path="/ludo" element={<LudoPage />} />
-                  <Route path="/spin" element={<SpinPage />} />
-                </Routes>
-              </div>
-            </main>
-          </div>
-        </>
-      ) : (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <Routes>
-            <Route path="/admin" element={<AdminLayout />}>
-              <Route
-                index
-                element={
-                  <div className="text-slate-100">
-                    Admin dashboard content coming soon.
-                  </div>
-                }
-              />
-              <Route
-                path="users"
-                element={
-                  <div className="text-slate-100">
-                    Users management placeholder.
-                  </div>
-                }
-              />
-              <Route
-                path="rooms"
-                element={
-                  <div className="text-slate-100">
-                    Rooms management placeholder.
-                  </div>
-                }
-              />
-              <Route
-                path="transactions"
-                element={
-                  <div className="text-slate-100">
-                    Transactions management placeholder.
-                  </div>
-                }
-              />
-              <Route path="wallet" element={<MyWalletPage />} />
-            </Route>
-          </Routes>
-        </div>
+      {!isAdminPath && !isAuthPage && (
+        <Header
+          onToggleSidebar={toggle}
+          isSidebarCollapsed={collapsed}
+          isMobileOpen={mobileOpen}
+          theme={theme}
+        />
       )}
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col md:flex-row gap-6 relative">
+        {!isAdminPath && !isAuthPage && (
+          <Sidebar
+            collapsed={collapsed}
+            mobileOpen={mobileOpen}
+            theme={theme}
+            setTheme={setTheme}
+            onClose={() => setMobileOpen(false)}
+          />
+        )}
+
+        {!isAdminPath && mobileOpen && (
+          <div
+            className="fixed inset-0 z-30 bg-slate-950/50 md:hidden"
+            onClick={() => setMobileOpen(false)}
+          />
+        )}
+
+        <main className="flex-1 relative z-10">
+          <div
+            className={`rounded-2xl bg-slate-800/40 border ${themeBorders[theme] || themeBorders.green} p-6 min-h-[60vh]`}
+          >
+            {!isAdminPath ? (
+              <Routes>
+                <Route path="/" element={<LobbyPage theme={theme} />} />
+                <Route path="/lobby" element={<LobbyPage theme={theme} />} />
+                <Route path="/tournament" element={<TournamentPage />} />
+                <Route path="/promotions" element={<PromotionPage />} />
+                <Route path="/promo-codes" element={<PromoCodePage />} />
+                <Route path="/prediction" element={<PredictionPoolPage />} />
+                <Route
+                  path="/prediction/open"
+                  element={<OpenPredictionPage />}
+                />
+                <Route path="/referral" element={<ReferralPage />} />
+                <Route path="/profile" element={<ProfilePage />} />
+                <Route path="/wallet" element={<MyWalletPage />} />
+                <Route path="/vip" element={<VIPRewardPage />} />
+                <Route path="/cashback" element={<CashbackPage />} />
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/logout" element={<LogoutPage />} />
+                <Route path="/happy-hour" element={<HappyHour />} />
+                <Route path="/free-cash-rain" element={<FreeCashRain />} />
+                <Route path="/appearance" element={<AppearancePage />} />
+                <Route path="/search" element={<SearchResults />} />
+                <Route path="/bingopage" element={<BingoPage />} />
+                <Route path="/ludo" element={<LudoPage />} />
+                <Route path="/spin" element={<SpinPage />} />
+              </Routes>
+            ) : (
+              <Routes>
+                <Route path="/admin" element={<AdminLayout />}>
+                  <Route
+                    index
+                    element={
+                      <div className="text-slate-100">
+                        Admin dashboard content coming soon.
+                      </div>
+                    }
+                  />
+                  <Route
+                    path="users"
+                    element={
+                      <div className="text-slate-100">
+                        Users management placeholder.
+                      </div>
+                    }
+                  />
+                  <Route
+                    path="rooms"
+                    element={
+                      <div className="text-slate-100">
+                        Rooms management placeholder.
+                      </div>
+                    }
+                  />
+                  <Route
+                    path="transactions"
+                    element={
+                      <div className="text-slate-100">
+                        Transactions management placeholder.
+                      </div>
+                    }
+                  />
+                  <Route path="wallet" element={<MyWalletPage />} />
+                </Route>
+              </Routes>
+            )}
+          </div>
+        </main>
+      </div>
     </div>
   );
 };

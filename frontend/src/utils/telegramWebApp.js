@@ -24,6 +24,7 @@ export const promptTelegramShareContact = () => {
 
 export const ensureTelegramRegistration = (authUser) => {
   if (!authUser) {
+    promptTelegramShareContact();
     return false;
   }
 
