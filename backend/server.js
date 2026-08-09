@@ -22,7 +22,8 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.get("/favicon.ico", (req, res) => {
-  res.sendStatus(204);
+  console.log("favicon request received");
+  res.status(204).end();
 });
 
 app.get("/", (req, res) => {
@@ -32,6 +33,19 @@ app.get("/", (req, res) => {
 app.use("/api/users", userRouter);
 app.use("/api/bingo", bingoRouter);
 app.use("/api/rooms", roomRouter);
+
+app.get("/favicon.ico", (req, res) => {
+  res.sendStatus(204);
+});
+
+app.use((req, res) => {
+  res.status(404).json({ error: "Not Found" });
+});
+
+app.use((err, req, res, next) => {
+  console.error("Express error:", err);
+  res.status(500).json({ error: "Internal Server Error" });
+});
 
 // 1. Create HTTP server
 const server = http.createServer(app);
