@@ -1,5 +1,7 @@
 import React from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import { ensureTelegramRegistration } from "../utils/telegramWebApp";
 import bingoImage from "../assets/Image/bingo.png";
 import ludoImage from "../assets/Image/ludo.png";
 import spinImage from "../assets/Image/spin.png";
@@ -21,6 +23,16 @@ const LobbyPage = ({ theme }) => {
     red: { from: "from-rose-400", to: "to-rose-600", text: "text-rose-300" },
   };
   const accent = themeMap[theme] || themeMap.green;
+
+  const navigate = useNavigate();
+  const { user: authUser } = useAuth();
+
+  const handleGameNavigation = (event, to) => {
+    if (!ensureTelegramRegistration(authUser, navigate)) {
+      event.preventDefault();
+      return;
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -72,6 +84,7 @@ const LobbyPage = ({ theme }) => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Link
             to="/bingopage"
+            onClick={(event) => handleGameNavigation(event, "/bingopage")}
             className="block rounded-xl bg-slate-800/40 border border-slate-700 p-4 hover:shadow-lg transition"
           >
             <div className="mb-3 text-sm text-slate-300">Bingo</div>
@@ -83,6 +96,7 @@ const LobbyPage = ({ theme }) => {
           </Link>
           <Link
             to="/ludo"
+            onClick={(event) => handleGameNavigation(event, "/ludo")}
             className="block rounded-xl bg-slate-800/40 border border-slate-700 p-4 hover:shadow-lg transition"
           >
             <div className="mb-3 text-sm text-slate-300">Ludo</div>
@@ -94,6 +108,7 @@ const LobbyPage = ({ theme }) => {
           </Link>
           <Link
             to="/spin"
+            onClick={(event) => handleGameNavigation(event, "/spin")}
             className="block rounded-xl bg-slate-800/40 border border-slate-700 p-4 hover:shadow-lg transition"
           >
             <div className="mb-3 text-sm text-slate-300">Spin</div>

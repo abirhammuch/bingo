@@ -1,7 +1,19 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import { ensureTelegramRegistration } from "../utils/telegramWebApp";
 import { useAppContext } from "../context/AppContext.jsx";
 const BonnusAndHistory = () => {
   const { navigateTo } = useAppContext();
+  const navigate = useNavigate();
+  const { user: authUser } = useAuth();
+
+  const handleWalletNavigation = (to) => {
+    if (!ensureTelegramRegistration(authUser, navigate)) {
+      return;
+    }
+    navigateTo(to);
+  };
 
   return (
     <div className="rounded-3xl border border-slate-700/80 bg-slate-950/80 p-6 shadow-xl shadow-slate-950/20">
@@ -31,7 +43,7 @@ const BonnusAndHistory = () => {
         </button>
 
         <button
-          onClick={() => navigateTo("/wallet")}
+          onClick={() => handleWalletNavigation("/wallet")}
           className="rounded-3xl border border-emerald-500/20 bg-emerald-500/5 px-5 py-4 text-left text-sm font-semibold text-emerald-300 transition hover:border-emerald-400 hover:bg-emerald-500/10"
         >
           <span className="inline-flex items-center gap-2 text-base font-bold text-emerald-200">

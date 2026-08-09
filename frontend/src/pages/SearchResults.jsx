@@ -1,5 +1,7 @@
 import React from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import { ensureTelegramRegistration } from "../utils/telegramWebApp";
 
 const searchCatalog = [
   {
@@ -48,6 +50,8 @@ const searchCatalog = [
 
 const SearchResults = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user: authUser } = useAuth();
   const query = new URLSearchParams(location.search).get("query")?.trim() || "";
   const filteredResults = query
     ? searchCatalog.filter((item) => {
@@ -95,6 +99,11 @@ const SearchResults = () => {
             <Link
               key={item.id}
               to={item.path}
+              onClick={(event) => {
+                if (!ensureTelegramRegistration(authUser, navigate)) {
+                  event.preventDefault();
+                }
+              }}
               className="rounded-3xl border border-slate-700 bg-slate-950/80 p-5 transition hover:border-emerald-500"
             >
               <div className="flex items-center justify-between gap-4">

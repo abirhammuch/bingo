@@ -21,3 +21,20 @@ export const promptTelegramShareContact = () => {
     return false;
   }
 };
+
+export const ensureTelegramRegistration = (authUser, navigate) => {
+  if (!authUser) {
+    navigate("/login");
+    return false;
+  }
+
+  if (authUser.isRegistered === false) {
+    if (promptTelegramShareContact()) {
+      return false;
+    }
+    navigate("/login");
+    return false;
+  }
+
+  return true;
+};

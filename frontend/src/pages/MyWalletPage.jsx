@@ -28,6 +28,19 @@ const MyWalletPage = () => {
   }, [location.search]);
 
   useEffect(() => {
+    if (!authUser) {
+      navigate("/login");
+      return;
+    }
+
+    if (authUser.isRegistered === false) {
+      if (promptTelegramShareContact()) {
+        return;
+      }
+      navigate("/login");
+      return;
+    }
+
     if (!telegramId) {
       navigate("/login");
       return;
