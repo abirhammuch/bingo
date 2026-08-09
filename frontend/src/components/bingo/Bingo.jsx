@@ -4,7 +4,6 @@ import CurrentNumber from "./CurrentNumber";
 import CalledNumbers from "./CalledNumbers";
 import GameStatus from "./GameStatus";
 import Countdown from "./Countdown";
-import ClaimBingoButton from "./ClaimBingoButton";
 import WinnerModal from "./WinnerModal";
 import RoomInfo from "./RoomInfo";
 import {
@@ -43,7 +42,7 @@ const Bingo = ({ theme }) => {
   const accent = themeMap[theme] || themeMap.green;
   const [joined, setJoined] = useState(false);
   const [selectionNumbers, setSelectionNumbers] = useState([]);
-  const [selectionTimeLeft, setSelectionTimeLeft] = useState(20);
+  const [selectionTimeLeft, setSelectionTimeLeft] = useState(30);
   const [phase, setPhase] = useState("waiting");
   const [cards, setCards] = useState([]);
   const [drawTimeLeft, setDrawTimeLeft] = useState(7);
@@ -68,6 +67,15 @@ const Bingo = ({ theme }) => {
     () => selectionNumbers.join(", "),
     [selectionNumbers],
   );
+
+  const getActivePlayerCount = (players, selectedNumbers) => {
+    const selectedCount = Array.isArray(selectedNumbers)
+      ? selectedNumbers.length
+      : 0;
+    if (selectedCount > 0) return selectedCount;
+    if (Array.isArray(players)) return players.length;
+    return 0;
+  };
 
   const toggleLuckyNumber = (number) => {
     if (phase !== "selection") return;
@@ -102,12 +110,16 @@ const Bingo = ({ theme }) => {
     // optimistically lock locally until server confirms
     setMySelectedNumber(number);
     setSelectionNumbers([number]);
+    setParticipants((prev) =>
+      Math.max(prev, (selectedNumbersGlobal?.length || 0) + 1),
+    );
   };
 
   const lockSelections = () => {
     if (selectionNumbers.length < 1) return;
 
     setCards(selectionNumbers.map((number) => createBingoCard([number])));
+    setSelectionTimeLeft(0);
     setNumberPool(createNumberPool());
     setRemainingBalls(75);
     setCurrentNumber(null);
@@ -178,7 +190,12 @@ const Bingo = ({ theme }) => {
           setPhase("selection");
           setGameStatus("waiting");
           setSelectedNumbersGlobal(payload.selectedNumbers || []);
-          setParticipants((payload.players || []).length || 0);
+          setParticipants(
+            getActivePlayerCount(
+              payload.players || [],
+              payload.selectedNumbers || [],
+            ),
+          );
           // reset local picks
           setMySelectedNumber(null);
           setSelectionNumbers([]);
@@ -256,7 +273,10 @@ const Bingo = ({ theme }) => {
         state.selectedNumbers || state.game?.selectedNumbers || [],
       );
       setParticipants(
-        (state.players && state.players.length) ||
+        getActivePlayerCount(
+          state.players || [],
+          state.selectedNumbers || state.game?.selectedNumbers || [],
+        ) ||
           state.playerCount ||
           participants,
       );
@@ -296,8 +316,11 @@ const Bingo = ({ theme }) => {
         case "playerJoined":
           // emit participant change and selected numbers
           setParticipants(
-            payload.playerCount ||
-              (payload.players || []).length ||
+            getActivePlayerCount(
+              payload.players || [],
+              payload.selectedNumbers || [],
+            ) ||
+              payload.playerCount ||
               participants,
           );
           setSelectedNumbersGlobal(payload.selectedNumbers || []);
@@ -323,8 +346,12 @@ const Bingo = ({ theme }) => {
 
     const handleBingoParticipantCount = (data) => {
       if (!data) return;
-      setParticipants(data.count ?? data.players?.length ?? participants);
       if (data.selectedNumbers) setSelectedNumbersGlobal(data.selectedNumbers);
+      setParticipants(
+        getActivePlayerCount(data.players || [], data.selectedNumbers || []) ||
+          data.count ||
+          participants,
+      );
     };
 
     const handleNumberCalledUnified = (data) => {
@@ -340,14 +367,22 @@ const Bingo = ({ theme }) => {
       if (!data) return;
       // data may include { telegramId, luckyNumber, selectedNumbers, playerCount }
       if (data.selectedNumbers) setSelectedNumbersGlobal(data.selectedNumbers);
-      if (data.playerCount) setParticipants(data.playerCount);
+      setParticipants(
+        getActivePlayerCount([], data.selectedNumbers || []) ||
+          data.playerCount ||
+          participants,
+      );
     };
 
     const handleJoinedRoom = (data) => {
       if (!data) return;
       setJoined(true);
       setMySelectedNumber(selectionNumbers[0] || null);
-      setParticipants(data.currentPlayers || participants);
+      setParticipants(
+        getActivePlayerCount([], data.selectedNumbers || []) ||
+          data.currentPlayers ||
+          participants,
+      );
       if (data.card) setCards([data.card]);
       // If a selection was pending, emit join now (server provided gameId via room state)
       if (pendingSelection) {
@@ -428,6 +463,7 @@ const Bingo = ({ theme }) => {
     if (!socket.connected) socket.connect();
     socket.emit("createRoom", { roomId: "Main Room" });
     setPhase("selection");
+    setSelectionTimeLeft(30);
     setGameStatus("waiting");
     setWinner(null);
     setWinningLuckyNumber(null);
@@ -437,6 +473,29 @@ const Bingo = ({ theme }) => {
     setNumberPool(createNumberPool());
     setRemainingBalls(75);
   };
+
+  useEffect(() => {
+    if (phase !== "selection") return;
+
+    if (typeof countdownRemaining === "number") {
+      setSelectionTimeLeft(countdownRemaining);
+      if (countdownRemaining <= 0) {
+        lockSelections();
+      }
+      return;
+    }
+
+    if (selectionTimeLeft <= 0) {
+      lockSelections();
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setSelectionTimeLeft((prev) => prev - 1);
+    }, 1000);
+
+    return () => window.clearTimeout(timer);
+  }, [phase, countdownRemaining, selectionTimeLeft]);
 
   const statusText = phase === "selection" ? "Selection" : gameStatus;
   const currentStatus =
@@ -491,6 +550,12 @@ const Bingo = ({ theme }) => {
             <div className="flex items-center gap-3">
               <div className="rounded-3xl border border-slate-700 bg-slate-800/80 px-4 py-2 text-sm text-slate-100">
                 {participants} players
+              </div>
+              <div className="flex items-center gap-2 rounded-3xl border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-sm font-semibold text-amber-300">
+                <span>Auto-claim in</span>
+                <span>
+                  {phase === "selection" ? `${selectionTimeLeft}s` : "—"}
+                </span>
               </div>
               <button
                 onClick={handleJoin}
@@ -661,11 +726,6 @@ const Bingo = ({ theme }) => {
                 }
               />
             </div>
-            <ClaimBingoButton
-              accent={accent}
-              disabled={phase !== "selection" || selectionNumbers.length < 1}
-              onClaim={lockSelections}
-            />
           </div>
         </div>
 
