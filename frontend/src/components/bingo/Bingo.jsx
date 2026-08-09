@@ -54,7 +54,7 @@ const Bingo = ({ theme }) => {
   const [numberPool, setNumberPool] = useState(() => createNumberPool());
   const [winner, setWinner] = useState(null);
   const [winningLuckyNumber, setWinningLuckyNumber] = useState(null);
-  const [livePlayers] = useState(128);
+  // livePlayers replaced by `participants` which is updated from server
   const [prizePool] = useState(1250);
   const { user: authUser } = useAuth();
   const [gameId, setGameId] = useState(null);
@@ -438,7 +438,7 @@ const Bingo = ({ theme }) => {
             </div>
             <div className="flex items-center gap-3">
               <div className="rounded-3xl border border-slate-700 bg-slate-800/80 px-4 py-2 text-sm text-slate-100">
-                {participants || livePlayers} players
+                {participants} players
               </div>
               <button
                 onClick={handleJoin}
@@ -596,7 +596,11 @@ const Bingo = ({ theme }) => {
             <div className="rounded-3xl border border-slate-700 bg-slate-900/90 p-4">
               <Countdown
                 seconds={
-                  phase === "selection" ? selectionTimeLeft : drawTimeLeft
+                  phase === "selection"
+                    ? typeof countdownRemaining === "number"
+                      ? countdownRemaining
+                      : selectionTimeLeft
+                    : drawTimeLeft
                 }
                 label={
                   phase === "selection"
@@ -613,7 +617,7 @@ const Bingo = ({ theme }) => {
           </div>
         </div>
 
-        <RoomInfo room="Main Room" players={livePlayers} accent={accent} />
+        <RoomInfo room="Main Room" players={participants} accent={accent} />
         <WinnerModal
           open={Boolean(winner)}
           winner={winner || "You"}
