@@ -123,16 +123,15 @@ export const initBingoSocket = (io) => {
           selectedNumbers: result.game.selectedNumbers || [],
         });
 
-        // If the room is still waiting and we now have 2+ players, and
-        // there is no existing auto-start countdown, schedule a short
-        // auto-start so the game begins shortly without requiring a host.
+        // If the room is still waiting and we now have 2+ players,
+        // (re)schedule a short auto-start so the game begins shortly.
         const currentGame = await getGameState(result.game.gameId);
         if (
           currentGame.status === "waiting" &&
-          currentGame.players.length >= 2 &&
-          !startCountdowns.has(currentGame.gameId)
+          currentGame.players.length >= 2
         ) {
-          scheduleAutoStart(currentGame.gameId, currentGame.roomId, 5);
+          // force shorten to 5s (if a longer countdown exists it will be replaced)
+          scheduleAutoStart(currentGame.gameId, currentGame.roomId, 5, true);
         }
       } catch (error) {
         console.error("Join Room Error:", error.message);
@@ -159,7 +158,15 @@ export const initBingoSocket = (io) => {
 
         // If an auto-start countdown exists for this game, cancel it
         if (startCountdowns.has(gameId)) {
-          clearTimeout(startCountdowns.get(gameId));
+          const s = startCountdowns.get(gameId);
+          try {
+            clearInterval(s.intervalId);
+          } catch (e) {
+            // fallback if stored value was a timeout
+            try {
+              clearTimeout(s);
+            } catch (_) {}
+          }
           startCountdowns.delete(gameId);
         }
 
@@ -352,15 +359,33 @@ export const initBingoSocket = (io) => {
 };
 
 // =========================================================================
-// HELPER: SCHEDULE AUTO-START
+// HELPER: SCHEDULE AUTO-START (synchronized countdown)
 // =========================================================================
-const scheduleAutoStart = (gameId, roomId, seconds = 20) => {
-  // If already scheduled, do nothing
-  if (startCountdowns.has(gameId)) return;
+const scheduleAutoStart = (gameId, roomId, seconds = 20, force = false) => {
+  // If already scheduled and not forced, keep existing if it has less or equal remaining
+  if (startCountdowns.has(gameId) && !force) {
+    const existing = startCountdowns.get(gameId);
+    if (
+      existing &&
+      typeof existing.remaining === "number" &&
+      existing.remaining <= seconds
+    ) {
+      return;
+    }
+    // otherwise cancel existing and reschedule
+    try {
+      clearInterval(existing.intervalId);
+    } catch (e) {
+      try {
+        clearTimeout(existing);
+      } catch (_) {}
+    }
+    startCountdowns.delete(gameId);
+  }
 
   console.log(`⏳ Scheduling auto-start for game ${gameId} in ${seconds}s`);
 
-  // Notify room that a countdown has started
+  // Broadcast countdown started
   if (globalThis.io && typeof globalThis.io.to === "function") {
     globalThis.io.to(roomId).emit("gameUpdate", {
       type: "countdownStarted",
@@ -369,63 +394,57 @@ const scheduleAutoStart = (gameId, roomId, seconds = 20) => {
     });
   }
 
-  const timeout = setTimeout(async () => {
+  let remaining = seconds;
+  const intervalId = setInterval(async () => {
     try {
-      // Fetch game state
-      const game = await getGameState(gameId);
-      if (!game) {
-        startCountdowns.delete(gameId);
-        return;
+      // Broadcast remaining seconds each second so all clients stay synced
+      if (globalThis.io && typeof globalThis.io.to === "function") {
+        globalThis.io.to(roomId).emit("countdownTick", { remaining });
       }
 
-      // Only start if enough players (requirement: 2+ players)
-      if (game.players.length >= 2 && game.status === "waiting") {
-        const started = await startGame(gameId);
+      remaining -= 1;
 
-        // Notify players that game started
-        const message = `🚀 Game auto-started with ${game.players.length} players.`;
-        const ioNs = globalThis.io || null;
-        // Use passed io via room emits in callers; fallback to console emit
-        // Emit to the room using a stored reference via the server's io if available
-        if (ioNs && typeof ioNs.to === "function") {
-          ioNs.to(roomId).emit("gameUpdate", {
-            type: "gameStarted",
-            gameId: started.gameId,
-            message,
-            startTime: started.startTime,
-          });
-        }
+      if (remaining < 0) {
+        // finished countdown
+        clearInterval(intervalId);
+        startCountdowns.delete(gameId);
 
-        // If we don't have global io, emit via server side by requiring the
-        // callers to emit through existing references (we already emit above
-        // in the start sequence in the socket handlers).
+        const game = await getGameState(gameId);
+        if (!game) return;
 
-        // Start the number calling loop using the stored io via exported init
-        // (the normal startGame socket handler calls startNumberCalling too).
-        // Attempt to access the io instance if it was attached to globalThis
-        if (ioNs && typeof ioNs.to === "function") {
-          startNumberCalling(ioNs, started.gameId, started.roomId);
-        }
-      } else {
-        // Not enough players — notify the room and keep status as 'waiting'
-        console.log(`⏳ Auto-start aborted for ${gameId}: not enough players`);
-        if (globalThis.io && typeof globalThis.io.to === "function") {
-          globalThis.io.to(roomId).emit("gameUpdate", {
-            type: "notEnoughPlayers",
-            message:
-              "Not enough players to start the game — waiting for more players.",
-            playerCount: game.players.length,
-          });
+        if (game.players.length >= 2 && game.status === "waiting") {
+          const started = await startGame(gameId);
+          if (globalThis.io && typeof globalThis.io.to === "function") {
+            globalThis.io.to(roomId).emit("gameUpdate", {
+              type: "gameStarted",
+              gameId: started.gameId,
+              message: `🚀 Game auto-started with ${game.players.length} players.`,
+              startTime: started.startTime,
+            });
+          }
+          // start number calling
+          if (globalThis.io && typeof globalThis.io.to === "function") {
+            startNumberCalling(globalThis.io, started.gameId, started.roomId);
+          }
+        } else {
+          if (globalThis.io && typeof globalThis.io.to === "function") {
+            globalThis.io.to(roomId).emit("gameUpdate", {
+              type: "notEnoughPlayers",
+              message:
+                "Not enough players to start the game — waiting for more players.",
+              playerCount: game.players.length,
+            });
+          }
         }
       }
     } catch (err) {
-      console.error("Auto-start error:", err.message || err);
-    } finally {
+      console.error("Countdown tick error:", err.message || err);
+      clearInterval(intervalId);
       startCountdowns.delete(gameId);
     }
-  }, seconds * 1000);
+  }, 1000);
 
-  startCountdowns.set(gameId, timeout);
+  startCountdowns.set(gameId, { intervalId, remaining });
 };
 
 // =========================================================================

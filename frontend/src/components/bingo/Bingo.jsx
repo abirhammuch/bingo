@@ -13,6 +13,8 @@ import {
   hasBingo,
   markNumberOnCard,
 } from "./gameLogic";
+import socket from "../../socket/socket";
+import { useAuth } from "../../context/AuthContext";
 
 const Bingo = ({ theme }) => {
   const themeMap = {
@@ -54,6 +56,12 @@ const Bingo = ({ theme }) => {
   const [winningLuckyNumber, setWinningLuckyNumber] = useState(null);
   const [livePlayers] = useState(128);
   const [prizePool] = useState(1250);
+  const { user: authUser } = useAuth();
+  const [gameId, setGameId] = useState(null);
+  const [participants, setParticipants] = useState(0);
+  const [selectedNumbersGlobal, setSelectedNumbersGlobal] = useState([]);
+  const [mySelectedNumber, setMySelectedNumber] = useState(null);
+  const [countdownRemaining, setCountdownRemaining] = useState(null);
 
   const selectedNumbersLabel = useMemo(
     () => selectionNumbers.join(", "),
@@ -61,27 +69,27 @@ const Bingo = ({ theme }) => {
   );
 
   const toggleLuckyNumber = (number) => {
-    if (phase !== "selection") {
-      return;
-    }
+    if (phase !== "selection") return;
+    // Prevent multiple selections locally
+    if (mySelectedNumber) return;
 
-    setSelectionNumbers((prev) => {
-      if (prev.includes(number)) {
-        return prev.filter((value) => value !== number);
-      }
+    // Emit join with chosen lucky number (server will reserve and return card)
+    const telegramId = authUser?.telegramId;
+    if (!telegramId || !gameId) return;
 
-      if (prev.length >= 3) {
-        return prev;
-      }
-
-      return [...prev, number];
+    socket.emit("joinRoom", {
+      gameId,
+      telegramId,
+      betAmount: 1,
+      luckyNumber: number,
     });
+    // optimistically lock locally until server confirms
+    setMySelectedNumber(number);
+    setSelectionNumbers([number]);
   };
 
   const lockSelections = () => {
-    if (selectionNumbers.length < 1) {
-      return;
-    }
+    if (selectionNumbers.length < 1) return;
 
     setCards(selectionNumbers.map((number) => createBingoCard([number])));
     setNumberPool(createNumberPool());
@@ -142,50 +150,227 @@ const Bingo = ({ theme }) => {
     });
   };
 
+  // Server-driven selection countdown: handled via socket 'countdownTick' events
   useEffect(() => {
-    if (!joined || phase !== "selection") {
-      return undefined;
-    }
+    const handleGameUpdate = (payload) => {
+      const type = payload?.type;
+      if (!type) return;
 
-    const timer = window.setInterval(() => {
-      setSelectionTimeLeft((prev) => {
-        if (prev <= 1) {
-          window.clearInterval(timer);
-          lockSelections();
-          return 0;
-        }
+      switch (type) {
+        case "roomCreated":
+          setGameId(payload.gameId);
+          setPhase("waiting");
+          setGameStatus("waiting");
+          setSelectedNumbersGlobal(payload.selectedNumbers || []);
+          setParticipants((payload.players || []).length || 0);
+          // reset local picks
+          setMySelectedNumber(null);
+          setSelectionNumbers([]);
+          setCalledNumbers([]);
+          setWinner(null);
+          setCountdownRemaining(null);
+          break;
+        case "playerJoined":
+          setParticipants(payload.playerCount || 0);
+          setSelectedNumbersGlobal(payload.selectedNumbers || []);
+          break;
+        case "countdownStarted":
+          setCountdownRemaining(payload.seconds ?? null);
+          break;
+        case "gameStarted":
+          setPhase("live");
+          setGameStatus("live");
+          setCountdownRemaining(null);
+          break;
+        case "notEnoughPlayers":
+          // stay waiting
+          setPhase("waiting");
+          setGameStatus("waiting");
+          break;
+        case "bingo":
+          setWinner(payload.winner || null);
+          break;
+        case "gameEnded":
+          setGameStatus("finished");
+          break;
+        default:
+          break;
+      }
+    };
 
-        return prev - 1;
+    const handleCountdown = (data) => {
+      if (typeof data?.remaining === "number")
+        setCountdownRemaining(data.remaining);
+    };
+
+    const handleNumberCalled = (data) => {
+      if (!data) return;
+      setCurrentNumber(data.number);
+      setCalledNumbers(data.calledNumbers || ((prev) => prev));
+      setRemainingBalls(
+        data.remaining ?? 75 - (data.calledNumbers || []).length,
+      );
+    };
+
+    const handleJoinedRoom = (data) => {
+      if (!data) return;
+      setJoined(true);
+      setMySelectedNumber(selectionNumbers[0] || null);
+      setParticipants(data.currentPlayers || participants);
+      // server returns the player's card
+      if (data.card) {
+        setCards([data.card]);
+      }
+    };
+
+    // Ensure socket is connected
+    if (!socket.connected) socket.connect();
+
+    // STANDARDIZED handlers for bingo:* events (preferred)
+    const handleRoundState = (payload) => {
+      // payload expected to contain: gameId, status, selectedNumbers, players, calledNumbers, currentNumber
+      if (!payload) return;
+      const state = payload;
+      setGameId(state.gameId || state.game?.gameId || gameId);
+      const status = state.status || (state.game && state.game.status) || null;
+      if (status === "waiting") {
+        setPhase("selection");
+        setGameStatus("waiting");
+      } else if (status === "active" || status === "playing" || status === "live") {
+        setPhase("live");
+        setGameStatus("live");
+      } else if (status === "finished" || status === "ended") {
+        setPhase("finished");
+        setGameStatus("finished");
+      }
+      setSelectedNumbersGlobal(state.selectedNumbers || state.game?.selectedNumbers || []);
+      setParticipants((state.players && state.players.length) || state.playerCount || participants);
+      if (state.calledNumbers) setCalledNumbers(state.calledNumbers);
+      if (state.currentNumber) setCurrentNumber(state.currentNumber);
+    };
+
+    // Map backend's legacy/primary events to the standardized bingo:* handlers
+    const mapGameUpdateToRoundState = (payload) => {
+      if (!payload) return;
+      const type = payload.type;
+      switch (type) {
+        case "roomCreated":
+          handleRoundState({
+            gameId: payload.gameId,
+            status: payload.status || "waiting",
+            selectedNumbers: payload.selectedNumbers || [],
+            players: payload.players || [],
+          });
+          break;
+        case "playerJoined":
+          // emit participant change and selected numbers
+          setParticipants(payload.playerCount || (payload.players || []).length || participants);
+          setSelectedNumbersGlobal(payload.selectedNumbers || []);
+          break;
+        case "countdownStarted":
+          setCountdownRemaining(payload.seconds ?? null);
+          break;
+        case "gameStarted":
+          handleRoundState({ gameId: payload.gameId, status: "active" });
+          break;
+        case "notEnoughPlayers":
+          handleRoundState({ status: "waiting" });
+          break;
+        case "bingo":
+        case "gameEnded":
+          handleRoundState({ status: "finished" });
+          if (payload.winner) setWinner(payload.winner);
+          break;
+        default:
+          break;
+      }
+    };
+
+    const handleBingoParticipantCount = (data) => {
+      if (!data) return;
+      setParticipants(data.count ?? data.players?.length ?? participants);
+      if (data.selectedNumbers) setSelectedNumbersGlobal(data.selectedNumbers);
+    };
+
+    const handleNumberCalledUnified = (data) => {
+      if (!data) return;
+      setCurrentNumber(data.number ?? data.currentNumber);
+      setCalledNumbers(data.calledNumbers || data.called || []);
+      setRemainingBalls(data.remaining ?? (75 - (data.calledNumbers || []).length));
+    };
+
+    const handleNumberSelectedUnified = (data) => {
+      if (!data) return;
+      // data may include { telegramId, luckyNumber, selectedNumbers, playerCount }
+      if (data.selectedNumbers) setSelectedNumbersGlobal(data.selectedNumbers);
+      if (data.playerCount) setParticipants(data.playerCount);
+    };
+
+    const handleJoinedRoom = (data) => {
+      if (!data) return;
+      setJoined(true);
+      setMySelectedNumber(selectionNumbers[0] || null);
+      setParticipants(data.currentPlayers || participants);
+      if (data.card) setCards([data.card]);
+    };
+
+    // Listen to standardized bingo:* channels (if server emits them in future)
+    socket.on("bingo:roundState", handleRoundState);
+    socket.on("bingo:participantCount", handleBingoParticipantCount);
+    socket.on("bingo:numberSelected", handleNumberSelectedUnified);
+    socket.on("bingo:numberCalled", handleNumberCalledUnified);
+    socket.on("bingo:winner", (d) => d && setWinner(d.winner || d));
+    socket.on("bingo:roundFinished", (d) => {
+      setGameStatus("finished");
+      if (d?.winner) setWinner(d.winner);
+    });
+    socket.on("bingo:nextRound", (d) => {
+      // server announces a next round
+      handleRoundState({
+        gameId: d?.gameId || d?.newGameId,
+        status: "waiting",
+        selectedNumbers: d?.selectedNumbers || [],
+        players: d?.players || [],
       });
-    }, 1000);
+    });
 
-    return () => window.clearInterval(timer);
-  }, [joined, phase, selectionNumbers]);
+    // Also listen to the backend's current event names and map them
+    socket.on("gameUpdate", mapGameUpdateToRoundState);
+    socket.on("countdownTick", (data) => {
+      if (data && typeof data.remaining === "number") setCountdownRemaining(data.remaining);
+    });
+    socket.on("numberCalled", handleNumberCalledUnified);
+    socket.on("joinedRoom", handleJoinedRoom);
+    socket.on("playerCard", (d) => {
+      if (d?.card) setCards([d.card]);
+    });
 
-  useEffect(() => {
-    if (!joined || phase !== "live" || gameStatus !== "live" || winner) {
-      return undefined;
-    }
+    return () => {
+      // standardized
+      socket.off("bingo:roundState", handleRoundState);
+      socket.off("bingo:participantCount", handleBingoParticipantCount);
+      socket.off("bingo:numberSelected", handleNumberSelectedUnified);
+      socket.off("bingo:numberCalled", handleNumberCalledUnified);
+      socket.off("bingo:winner");
+      socket.off("bingo:roundFinished");
+      socket.off("bingo:nextRound");
+      // backend originals
+      socket.off("gameUpdate", mapGameUpdateToRoundState);
+      socket.off("countdownTick");
+      socket.off("numberCalled", handleNumberCalledUnified);
+      socket.off("joinedRoom", handleJoinedRoom);
+      socket.off("playerCard");
+    };
+    };
+  }, [participants, selectionNumbers, authUser, gameId]);
+  }, [participants, selectionNumbers, authUser, gameId]);
 
-    const timer = window.setInterval(() => {
-      setDrawTimeLeft((prev) => {
-        if (prev <= 1) {
-          window.clearInterval(timer);
-          drawNextNumber();
-          return 7;
-        }
-
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => window.clearInterval(timer);
-  }, [joined, phase, gameStatus, winner, numberPool]);
+  // Number calling is server driven; we update UI on 'numberCalled' events
 
   const handleJoin = () => {
-    setJoined(true);
-    setSelectionNumbers([]);
-    setSelectionTimeLeft(20);
+    // Request server to create or announce a room (server will emit roomCreated)
+    if (!socket.connected) socket.connect();
+    socket.emit("createRoom", { roomId: "Main Room" });
     setPhase("selection");
     setGameStatus("waiting");
     setWinner(null);
@@ -241,7 +426,7 @@ const Bingo = ({ theme }) => {
               <div className="text-xs uppercase tracking-[0.3em] text-slate-400">
                 Marshal · Bingo
               </div>
-              <div className="mt-2 text-sm text-slate-300">
+              <div className="text-sm text-slate-300">
                 {joined
                   ? "Choose your lucky numbers before the lock timer ends."
                   : "Join the room to enter the selection phase."}
@@ -249,7 +434,7 @@ const Bingo = ({ theme }) => {
             </div>
             <div className="flex items-center gap-3">
               <div className="rounded-3xl border border-slate-700 bg-slate-800/80 px-4 py-2 text-sm text-slate-100">
-                {livePlayers} players
+                {participants || livePlayers} players
               </div>
               <button
                 onClick={handleJoin}
@@ -276,15 +461,10 @@ const Bingo = ({ theme }) => {
                 </div>
               </div>
               <div className="flex flex-wrap gap-2">
-                {selectionNumbers.length > 0 ? (
-                  selectionNumbers.map((number) => (
-                    <span
-                      key={number}
-                      className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-sm font-semibold text-emerald-300"
-                    >
-                      {number}
-                    </span>
-                  ))
+                {mySelectedNumber ? (
+                  <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-sm font-semibold text-emerald-300">
+                    {mySelectedNumber}
+                  </span>
                 ) : (
                   <span className="text-sm text-slate-500">
                     No lucky numbers selected yet.
@@ -298,11 +478,21 @@ const Bingo = ({ theme }) => {
             <div className="grid grid-cols-5 gap-2 p-5 sm:grid-cols-8 lg:grid-cols-10 max-h-[360px] overflow-y-auto">
               {Array.from({ length: 75 }, (_, index) => index + 1).map(
                 (number) => {
-                  const isSelected = selectionNumbers.includes(number);
+                  const isSelected =
+                    selectedNumbersGlobal.includes(number) ||
+                    mySelectedNumber === number;
+                  const disabled =
+                    Boolean(
+                      selectedNumbersGlobal.includes(number) &&
+                      mySelectedNumber !== number,
+                    ) ||
+                    phase !== "selection" ||
+                    Boolean(mySelectedNumber);
                   return (
                     <button
                       key={number}
                       onClick={() => toggleLuckyNumber(number)}
+                      disabled={disabled}
                       className={`aspect-square rounded-2xl border text-sm font-semibold transition-all ${
                         isSelected
                           ? "border-emerald-400 bg-emerald-500/20 text-emerald-200"
