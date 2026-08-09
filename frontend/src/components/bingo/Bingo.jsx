@@ -110,9 +110,11 @@ const Bingo = ({ theme }) => {
     // optimistically lock locally until server confirms
     setMySelectedNumber(number);
     setSelectionNumbers([number]);
-    setParticipants((prev) =>
-      Math.max(prev, (selectedNumbersGlobal?.length || 0) + 1),
+    const nextSelectedCount = (selectedNumbersGlobal?.length || 0) + 1;
+    setSelectedNumbersGlobal((prev) =>
+      prev.includes(number) ? prev : [...prev, number],
     );
+    setParticipants(nextSelectedCount);
   };
 
   const lockSelections = () => {
@@ -129,6 +131,10 @@ const Bingo = ({ theme }) => {
     setGameStatus("live");
     setDrawTimeLeft(7);
     setPhase("live");
+
+    if (gameId && socket.connected) {
+      socket.emit("startGame", { gameId });
+    }
   };
 
   const drawNextNumber = () => {
@@ -201,11 +207,26 @@ const Bingo = ({ theme }) => {
           setSelectionNumbers([]);
           setCalledNumbers([]);
           setWinner(null);
-          setCountdownRemaining(null);
+          setCountdownRemaining(30);
+          setSelectionTimeLeft(30);
           break;
         case "playerJoined":
-          setParticipants(payload.playerCount || 0);
+          setParticipants(
+            getActivePlayerCount(
+              payload.players || [],
+              payload.selectedNumbers || [],
+            ) ||
+              payload.playerCount ||
+              0,
+          );
           setSelectedNumbersGlobal(payload.selectedNumbers || []);
+          if (
+            (payload.players || []).length >= 1 ||
+            (payload.selectedNumbers || []).length >= 1
+          ) {
+            setCountdownRemaining(30);
+            setSelectionTimeLeft(30);
+          }
           break;
         case "countdownStarted":
           setCountdownRemaining(payload.seconds ?? null);
@@ -383,6 +404,9 @@ const Bingo = ({ theme }) => {
           data.currentPlayers ||
           participants,
       );
+      if (data.gameId && socket.connected) {
+        socket.emit("getGameState", { gameId: data.gameId });
+      }
       if (data.card) setCards([data.card]);
       // If a selection was pending, emit join now (server provided gameId via room state)
       if (pendingSelection) {
@@ -433,6 +457,31 @@ const Bingo = ({ theme }) => {
         setCountdownRemaining(data.remaining);
     });
     socket.on("numberCalled", handleNumberCalledUnified);
+    socket.on("gameState", (data) => {
+      if (!data?.game) return;
+      const game = data.game;
+      if (Array.isArray(game.calledNumbers))
+        setCalledNumbers(game.calledNumbers);
+      if (game.currentNumber !== undefined && game.currentNumber !== null) {
+        setCurrentNumber(game.currentNumber);
+      }
+      if (game.status) {
+        if (
+          game.status === "active" ||
+          game.status === "playing" ||
+          game.status === "live"
+        ) {
+          setPhase("live");
+          setGameStatus("live");
+        } else if (game.status === "finished" || game.status === "ended") {
+          setPhase("finished");
+          setGameStatus("finished");
+        } else {
+          setPhase("selection");
+          setGameStatus("waiting");
+        }
+      }
+    });
     socket.on("joinedRoom", handleJoinedRoom);
     socket.on("playerCard", (d) => {
       if (d?.card) setCards([d.card]);
@@ -451,6 +500,7 @@ const Bingo = ({ theme }) => {
       socket.off("gameUpdate", mapGameUpdateToRoundState);
       socket.off("countdownTick");
       socket.off("numberCalled", handleNumberCalledUnified);
+      socket.off("gameState");
       socket.off("joinedRoom", handleJoinedRoom);
       socket.off("playerCard");
     };
@@ -464,6 +514,7 @@ const Bingo = ({ theme }) => {
     socket.emit("createRoom", { roomId: "Main Room" });
     setPhase("selection");
     setSelectionTimeLeft(30);
+    setCountdownRemaining(30);
     setGameStatus("waiting");
     setWinner(null);
     setWinningLuckyNumber(null);
