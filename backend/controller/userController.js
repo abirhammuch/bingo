@@ -1,7 +1,7 @@
 import User from "../models/User.js";
 import jwt from "jsonwebtoken";
-import UserModel from "../models/User.js";
 import { generateToken } from "../utils/generateToken.js";
+import { verifyTelegramInitData } from "../utils/telegramAuth.js";
 
 // ==========================================
 // 1. Register or Login User via Telegram
@@ -106,7 +106,102 @@ export const telegramLogin = async (req, res) => {
 };
 
 // ==========================================
-// 1b. Login User via Telegram Bot Code
+// 1b. Login User via Telegram WebApp initData
+// ==========================================
+export const telegramWebAppLogin = async (req, res) => {
+  try {
+    const { initData } = req.body;
+
+    if (!initData) {
+      return res.status(400).json({
+        success: false,
+        message: "Telegram initData is required",
+      });
+    }
+
+    const params = verifyTelegramInitData(initData);
+    const telegramId = params.id?.toString();
+    const firstName = params.first_name || "Player";
+    const lastName = params.last_name || "";
+    const username = params.username || "";
+    const profilePhoto = params.photo_url || "";
+
+    if (!telegramId) {
+      return res.status(400).json({
+        success: false,
+        message: "Telegram user id is required",
+      });
+    }
+
+    const authDate = Number(params.auth_date);
+    if (Number.isNaN(authDate) || authDate <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid auth_date in Telegram initData",
+      });
+    }
+
+    let user = await User.findOne({ telegramId });
+
+    if (!user) {
+      user = new User({
+        telegramId,
+        firstName,
+        lastName,
+        username,
+        profilePhoto,
+        balance: 100,
+        lastLogin: new Date(),
+      });
+      await user.save();
+    } else {
+      user.firstName = firstName || user.firstName;
+      user.lastName = lastName || user.lastName;
+      user.username = username || user.username;
+      user.profilePhoto = profilePhoto || user.profilePhoto;
+      user.lastLogin = new Date();
+      await user.save();
+    }
+
+    const token = generateToken({
+      id: user._id,
+      telegramId: user.telegramId,
+      username: user.username,
+      firstName: user.firstName,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Telegram WebApp login successful",
+      token,
+      user: {
+        id: user._id,
+        telegramId: user.telegramId,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        username: user.username,
+        balance: user.balance,
+        profilePhoto: user.profilePhoto,
+        gamesPlayed: user.gamesPlayed,
+        gamesWon: user.gamesWon,
+        bingoGames: user.bingoGames,
+        bingoWins: user.bingoWins,
+        createdAt: user.createdAt,
+        lastLogin: user.lastLogin,
+      },
+    });
+  } catch (error) {
+    console.error("Telegram WebApp Login Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to login with Telegram WebApp",
+      error: error.message,
+    });
+  }
+};
+
+// ==========================================
+// 1c. Login User via Telegram Bot Code
 // ==========================================
 export const telegramLoginWithCode = async (req, res) => {
   try {

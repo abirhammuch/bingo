@@ -13,6 +13,8 @@ export const telegramLogin = (payload) =>
   api.post(`/api/users/telegram-login`, payload);
 export const telegramLoginWithCode = (payload) =>
   api.post(`/api/users/telegram-login-code`, payload);
+export const telegramWebAppLogin = (payload) =>
+  api.post(`/api/users/telegram-webapp-login`, payload);
 
 export const adminAddCoins = (payload) =>
   api.post(`/api/users/admin/add-coins`, payload);

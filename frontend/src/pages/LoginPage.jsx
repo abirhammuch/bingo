@@ -1,13 +1,14 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
 const LoginPage = () => {
   const navigate = useNavigate();
-  const { login, loading } = useAuth();
+  const { login, loginWithTelegramInitData, loading } = useAuth();
   const [telegramId, setTelegramId] = useState("");
   const [loginCode, setLoginCode] = useState("");
   const [error, setError] = useState(null);
+  const [isTelegramWebApp, setIsTelegramWebApp] = useState(false);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -20,6 +21,30 @@ const LoginPage = () => {
       setError(err.message || "Failed to login");
     }
   };
+
+  useEffect(() => {
+    const telegram = window?.Telegram?.WebApp;
+    const initData =
+      telegram?.initData || telegram?.initDataUnsafe?.initData || null;
+
+    if (!telegram || !initData) {
+      return;
+    }
+
+    setIsTelegramWebApp(true);
+
+    const doWebAppLogin = async () => {
+      setError(null);
+      try {
+        await loginWithTelegramInitData({ initData });
+        navigate("/wallet");
+      } catch (err) {
+        setError(err.message || "Telegram WebApp login failed");
+      }
+    };
+
+    doWebAppLogin();
+  }, [loginWithTelegramInitData, navigate]);
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center px-4 py-10">

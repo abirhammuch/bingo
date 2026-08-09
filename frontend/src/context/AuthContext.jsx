@@ -6,7 +6,10 @@ import React, {
   useState,
 } from "react";
 import { useNavigate } from "react-router-dom";
-import { telegramLogin as apiTelegramLogin } from "../services/userService";
+import {
+  telegramLogin as apiTelegramLogin,
+  telegramWebAppLogin as apiTelegramWebAppLogin,
+} from "../services/userService";
 
 const AuthContext = createContext(null);
 
@@ -49,6 +52,23 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const loginWithTelegramInitData = async (payload) => {
+    setLoading(true);
+    try {
+      const data = await apiTelegramWebAppLogin(payload);
+      if (!data?.token || !data?.user) {
+        throw new Error("Invalid login response");
+      }
+      localStorage.setItem("authToken", data.token);
+      localStorage.setItem("authUser", JSON.stringify(data.user));
+      setToken(data.token);
+      setUser(data.user);
+      return data;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const logout = () => {
     localStorage.removeItem("authToken");
     localStorage.removeItem("authUser");
@@ -58,7 +78,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   const value = useMemo(
-    () => ({ user, token, login, logout, loading }),
+    () => ({ user, token, login, loginWithTelegramInitData, logout, loading }),
     [user, token, loading],
   );
 
