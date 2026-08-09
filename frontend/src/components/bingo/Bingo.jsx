@@ -83,12 +83,12 @@ const Bingo = ({ theme }) => {
       // create room / connect if needed
       if (!socket.connected) socket.connect();
       if (!gameId) socket.emit("createRoom", { roomId: "Main Room" });
-      return;
     }
 
     if (!telegramId) {
-      // queue until user authenticated (telegramId provided)
-      setPendingSelection(number);
+      // Allow the UI to reflect the choice even before auth details are available
+      setMySelectedNumber(number);
+      setSelectionNumbers([number]);
       return;
     }
 
@@ -175,7 +175,7 @@ const Bingo = ({ theme }) => {
       switch (type) {
         case "roomCreated":
           setGameId(payload.gameId);
-          setPhase("waiting");
+          setPhase("selection");
           setGameStatus("waiting");
           setSelectedNumbersGlobal(payload.selectedNumbers || []);
           setParticipants((payload.players || []).length || 0);
