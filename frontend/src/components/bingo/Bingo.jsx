@@ -236,15 +236,25 @@ const Bingo = ({ theme }) => {
       if (status === "waiting") {
         setPhase("selection");
         setGameStatus("waiting");
-      } else if (status === "active" || status === "playing" || status === "live") {
+      } else if (
+        status === "active" ||
+        status === "playing" ||
+        status === "live"
+      ) {
         setPhase("live");
         setGameStatus("live");
       } else if (status === "finished" || status === "ended") {
         setPhase("finished");
         setGameStatus("finished");
       }
-      setSelectedNumbersGlobal(state.selectedNumbers || state.game?.selectedNumbers || []);
-      setParticipants((state.players && state.players.length) || state.playerCount || participants);
+      setSelectedNumbersGlobal(
+        state.selectedNumbers || state.game?.selectedNumbers || [],
+      );
+      setParticipants(
+        (state.players && state.players.length) ||
+          state.playerCount ||
+          participants,
+      );
       if (state.calledNumbers) setCalledNumbers(state.calledNumbers);
       if (state.currentNumber) setCurrentNumber(state.currentNumber);
     };
@@ -264,7 +274,11 @@ const Bingo = ({ theme }) => {
           break;
         case "playerJoined":
           // emit participant change and selected numbers
-          setParticipants(payload.playerCount || (payload.players || []).length || participants);
+          setParticipants(
+            payload.playerCount ||
+              (payload.players || []).length ||
+              participants,
+          );
           setSelectedNumbersGlobal(payload.selectedNumbers || []);
           break;
         case "countdownStarted":
@@ -296,7 +310,9 @@ const Bingo = ({ theme }) => {
       if (!data) return;
       setCurrentNumber(data.number ?? data.currentNumber);
       setCalledNumbers(data.calledNumbers || data.called || []);
-      setRemainingBalls(data.remaining ?? (75 - (data.calledNumbers || []).length));
+      setRemainingBalls(
+        data.remaining ?? 75 - (data.calledNumbers || []).length,
+      );
     };
 
     const handleNumberSelectedUnified = (data) => {
@@ -337,7 +353,8 @@ const Bingo = ({ theme }) => {
     // Also listen to the backend's current event names and map them
     socket.on("gameUpdate", mapGameUpdateToRoundState);
     socket.on("countdownTick", (data) => {
-      if (data && typeof data.remaining === "number") setCountdownRemaining(data.remaining);
+      if (data && typeof data.remaining === "number")
+        setCountdownRemaining(data.remaining);
     });
     socket.on("numberCalled", handleNumberCalledUnified);
     socket.on("joinedRoom", handleJoinedRoom);
@@ -361,8 +378,6 @@ const Bingo = ({ theme }) => {
       socket.off("joinedRoom", handleJoinedRoom);
       socket.off("playerCard");
     };
-    };
-  }, [participants, selectionNumbers, authUser, gameId]);
   }, [participants, selectionNumbers, authUser, gameId]);
 
   // Number calling is server driven; we update UI on 'numberCalled' events
