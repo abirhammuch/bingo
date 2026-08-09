@@ -60,10 +60,9 @@ export const initBingoSocket = (io) => {
           selectedNumbers: game.selectedNumbers || [],
         });
 
-        // Schedule an automatic start countdown for this newly created room.
-        // After the countdown ends the server will attempt to start the game
-        // only if there are at least 2 players (per requirement B).
-        scheduleAutoStart(game.gameId, game.roomId, 20);
+        // Schedule a 30-second join window for this newly created room.
+        // When it ends, the server will auto-start the game for everyone in the room.
+        scheduleAutoStart(game.gameId, game.roomId, 30);
       } catch (error) {
         console.error("Create Room Error:", error.message);
         socket.emit("error", {
@@ -131,19 +130,14 @@ export const initBingoSocket = (io) => {
           countdownRemaining,
         });
 
-        // If the room is still waiting and we now have 2+ players,
-        // (re)schedule a short auto-start so the game begins shortly.
+        // Keep the shared 30-second join window active for the room.
         const currentGame = await getGameState(result.game.gameId);
-        if (
-          currentGame.status === "waiting" &&
-          currentGame.players.length >= 2
-        ) {
-          // If we have a countdownRemaining, emit it to the joining socket for immediate sync
+        if (currentGame.status === "waiting") {
           if (typeof countdownRemaining === "number") {
             socket.emit("countdownRemaining", countdownRemaining);
           }
-          // force shorten to 5s (if a longer countdown exists it will be replaced)
-          scheduleAutoStart(currentGame.gameId, currentGame.roomId, 5, true);
+          // Re-anchor the countdown to the full 30-second window for the room.
+          scheduleAutoStart(currentGame.gameId, currentGame.roomId, 30, true);
         }
       } catch (error) {
         console.error("Join Room Error:", error.message);
@@ -424,7 +418,7 @@ const scheduleAutoStart = (gameId, roomId, seconds = 20, force = false) => {
         const game = await getGameState(gameId);
         if (!game) return;
 
-        if (game.players.length >= 2 && game.status === "waiting") {
+        if (game.status === "waiting" && game.players.length >= 1) {
           const started = await startGame(gameId);
           if (globalThis.io && typeof globalThis.io.to === "function") {
             globalThis.io.to(roomId).emit("gameUpdate", {
@@ -432,6 +426,12 @@ const scheduleAutoStart = (gameId, roomId, seconds = 20, force = false) => {
               gameId: started.gameId,
               message: `🚀 Game auto-started with ${game.players.length} players.`,
               startTime: started.startTime,
+            });
+            globalThis.io.to(roomId).emit("bingo:roundState", {
+              gameId: started.gameId,
+              status: "active",
+              selectedNumbers: game.selectedNumbers || [],
+              players: game.players || [],
             });
           }
           // start number calling

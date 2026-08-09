@@ -512,6 +512,7 @@ const Bingo = ({ theme }) => {
     // Request server to create or announce a room (server will emit roomCreated)
     if (!socket.connected) socket.connect();
     socket.emit("createRoom", { roomId: "Main Room" });
+    setJoined(true);
     setPhase("selection");
     setSelectionTimeLeft(30);
     setCountdownRemaining(30);
@@ -612,7 +613,7 @@ const Bingo = ({ theme }) => {
                 onClick={handleJoin}
                 className="rounded-3xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-300"
               >
-                {joined ? "Restart session" : "Join game"}
+                {joined ? "Restart room" : "Join game"}
               </button>
             </div>
           </div>
