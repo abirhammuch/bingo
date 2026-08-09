@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import { FaRedo, FaEye, FaEyeSlash, FaShieldAlt } from "react-icons/fa";
 
 const SearchIcon = () => (
@@ -48,9 +49,10 @@ const Header = ({
   theme,
 }) => {
   const navigate = useNavigate();
+  const { user: authUser } = useAuth();
   const [hidden, setHidden] = useState(false);
   const [search, setSearch] = useState("");
-  const balance = "0.95 ETB";
+  const balance = authUser ? `${authUser.balance ?? 0} ETB` : "0.00 ETB";
 
   const themeMap = {
     green: {
@@ -163,13 +165,20 @@ const Header = ({
 
           <div className="flex items-center gap-3">
             <button
-              onClick={() => navigate("/wallet")}
+              onClick={() => navigate(authUser ? "/wallet" : "/login")}
               className={`bg-gradient-to-br ${accent.btnFrom} ${accent.btnTo} text-slate-900 font-semibold px-4 py-2 rounded-full`}
             >
               Deposit
             </button>
 
-           
+            {authUser && (
+              <button
+                onClick={() => navigate("/profile")}
+                className="rounded-full border border-slate-700 bg-slate-800/60 px-4 py-2 text-slate-100 hover:bg-slate-800/40"
+              >
+                Profile
+              </button>
+            )}
 
             <button
               className="p-2 rounded-md bg-slate-800/60 border border-slate-700"

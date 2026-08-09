@@ -1,14 +1,16 @@
 import React, { useEffect, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import BalanceInfo from "../components/BalanceInfo";
 import History from "../components/History";
 import PaymentMethod from "../components/PaymentMethod";
 import PaymentCheck from "../components/PaymentCheck";
 import Responsible from "../components/Responsible";
 import { getUserProfile } from "../services/userService";
+import { useAuth } from "../context/AuthContext";
 
 const MyWalletPage = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const searchParams = new URLSearchParams(location.search);
   const initialMode =
     searchParams.get("mode") === "withdraw" ? "withdraw" : "default";
@@ -16,7 +18,8 @@ const MyWalletPage = () => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const telegramId = localStorage.getItem("telegramId") || "1001";
+  const { user: authUser } = useAuth();
+  const telegramId = authUser?.telegramId;
 
   useEffect(() => {
     const mode = new URLSearchParams(location.search).get("mode");
@@ -24,6 +27,11 @@ const MyWalletPage = () => {
   }, [location.search]);
 
   useEffect(() => {
+    if (!telegramId) {
+      navigate("/login");
+      return;
+    }
+
     const loadUser = async () => {
       setLoading(true);
       setError(null);
@@ -40,7 +48,7 @@ const MyWalletPage = () => {
     };
 
     loadUser();
-  }, [telegramId]);
+  }, [navigate, telegramId]);
 
   const balance = user ? `ETB ${user.balance}` : "ETB 0.00";
 

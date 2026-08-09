@@ -1,6 +1,7 @@
 import User from "../models/User.js";
 import jwt from "jsonwebtoken";
 import UserModel from "../models/User.js";
+import { generateToken } from "../utils/generateToken.js";
 
 // ==========================================
 // 1. Register or Login User via Telegram
@@ -33,10 +34,18 @@ export const telegramLogin = async (req, res) => {
       });
       await user.save();
 
+      const token = generateToken({
+        id: user._id,
+        telegramId: user.telegramId,
+        username: user.username,
+        firstName: user.firstName,
+      });
+
       return res.status(201).json({
         success: true,
         message: "User registered successfully!",
         isNewUser: true,
+        token,
         user: {
           id: user._id,
           telegramId: user.telegramId,
@@ -58,10 +67,18 @@ export const telegramLogin = async (req, res) => {
     user.lastLogin = new Date();
     await user.save();
 
+    const token = generateToken({
+      id: user._id,
+      telegramId: user.telegramId,
+      username: user.username,
+      firstName: user.firstName,
+    });
+
     return res.status(200).json({
       success: true,
       message: "User logged in successfully!",
       isNewUser: false,
+      token,
       user: {
         id: user._id,
         telegramId: user.telegramId,

@@ -5,12 +5,16 @@ const defaultHeaders = {
   "Content-Type": "application/json",
 };
 
+const getAuthToken = () => localStorage.getItem("authToken");
+
 const buildUrl = (path) => `${API_BASE_URL}${path}`;
 
 const request = async (path, options = {}) => {
+  const token = getAuthToken();
   const response = await fetch(buildUrl(path), {
     headers: {
       ...defaultHeaders,
+      Authorization: token ? `Bearer ${token}` : undefined,
       ...(options.headers || {}),
     },
     ...options,

@@ -20,12 +20,15 @@ import HappyHour from "./pages/HappyHour";
 import FreeCashRain from "./pages/FreeCashRain";
 import AppearancePage from "./pages/AppearancePage";
 import SearchResults from "./pages/SearchResults";
+import LoginPage from "./pages/LoginPage";
+import LogoutPage from "./pages/LogoutPage";
 import AdminLayout from "./pages/admin/adminlayout.jsx";
 import { useAppContext } from "./context/AppContext.jsx";
 
 const App = () => {
   const location = useLocation();
   const isAdminPath = location.pathname.startsWith("/admin");
+  const isAuthPage = ["/login", "/logout"].includes(location.pathname);
   const {
     collapsed,
     setCollapsed,
@@ -81,7 +84,7 @@ const App = () => {
     <div
       className={`min-h-screen text-slate-100 ${themeBackgrounds[theme] || themeBackgrounds.green}`}
     >
-      {!isAdminPath ? (
+      {!isAdminPath && !isAuthPage ? (
         <>
           <Header
             onToggleSidebar={toggle}
@@ -124,6 +127,8 @@ const App = () => {
                   <Route path="/wallet" element={<MyWalletPage />} />
                   <Route path="/vip" element={<VIPRewardPage />} />
                   <Route path="/cashback" element={<CashbackPage />} />
+                  <Route path="/login" element={<LoginPage />} />
+                  <Route path="/logout" element={<LogoutPage />} />
                   <Route path="/happy-hour" element={<HappyHour />} />
                   <Route path="/free-cash-rain" element={<FreeCashRain />} />
                   <Route path="/appearance" element={<AppearancePage />} />
