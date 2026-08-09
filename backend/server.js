@@ -34,10 +34,6 @@ app.use("/api/users", userRouter);
 app.use("/api/bingo", bingoRouter);
 app.use("/api/rooms", roomRouter);
 
-app.get("/favicon.ico", (req, res) => {
-  res.sendStatus(204);
-});
-
 app.use((req, res) => {
   res.status(404).json({ error: "Not Found" });
 });
