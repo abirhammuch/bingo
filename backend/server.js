@@ -54,6 +54,7 @@ const startServer = async () => {
   try {
     await connectDB();
 
+    await setupCommands(bot);
     await bot.launch();
     console.log(
       "🤖 Telegram bot is running",

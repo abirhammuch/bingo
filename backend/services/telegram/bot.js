@@ -17,6 +17,116 @@ const playGameButton = () => {
   ]).resize();
 };
 
+const registrationKeyboard = () =>
+  Markup.keyboard([
+    [Markup.button.contactRequest("📱 Share Phone Number")],
+    ["🔑 Login"],
+  ])
+    .resize()
+    .oneTime();
+
+const sendLoginPrompt = async (ctx, user) => {
+  const keyboard =
+    playGameButton() ||
+    Markup.keyboard([["🎮 Play Game"], ["👤 My Profile", "💰 Wallet"]])
+      .resize()
+      .oneTime();
+
+  await ctx.reply(
+    user.isRegistered
+      ? "Welcome back! Use the button below to login to Marshal Game."
+      : "Your account is created but not fully registered yet. Please share your phone number or use Login once complete.",
+    keyboard,
+  );
+};
+
+bot.command("login", async (ctx) => {
+  try {
+    const telegramUser = ctx.from;
+    const telegramId = telegramUser.id.toString();
+    const user = await User.findOne({ telegramId });
+
+    if (!user || !user.isRegistered) {
+      await ctx.reply(
+        "Your account is not fully registered yet. Please share your phone number first.",
+        registrationKeyboard(),
+      );
+      return;
+    }
+
+    await sendLoginPrompt(ctx, user);
+  } catch (error) {
+    console.error("Telegram /login error:", error);
+    await ctx.reply("❌ Something went wrong. Please try again.");
+  }
+});
+
+bot.hears(/🔑 Login|Login/i, async (ctx) => {
+  await ctx.reply("Processing your login request...");
+  return bot.handleUpdate({
+    message: { text: "/login", chat: ctx.chat, from: ctx.from },
+  });
+});
+
+bot.hears("🎮 Play Game", async (ctx) => {
+  try {
+    if (!telegramWebAppUrl) {
+      return ctx.reply(
+        "Game is not configured yet. Please contact the admin or try again later.",
+      );
+    }
+
+    await ctx.reply("Opening Marshal Game...", playGameButton());
+  } catch (error) {
+    console.error("Play Game error:", error);
+    await ctx.reply("❌ Could not open the game. Please try again.");
+  }
+});
+
+bot.hears("👤 My Profile", async (ctx) => {
+  try {
+    const telegramId = ctx.from.id.toString();
+    const user = await User.findOne({ telegramId });
+
+    if (!user) {
+      return ctx.reply("Please start the bot first with /start.");
+    }
+
+    await ctx.reply(
+      `👤 Profile\n` +
+        `Name: ${user.firstName} ${user.lastName}\n` +
+        `Username: ${user.username ? `@${user.username}` : "(none)"}\n` +
+        `Phone: ${user.phoneNumber || "Not shared"}\n` +
+        `Balance: ${user.balance ?? 0}\n` +
+        `Registered: ${user.isRegistered ? "Yes" : "No"}`,
+    );
+  } catch (error) {
+    console.error("Profile error:", error);
+    await ctx.reply("❌ Could not load your profile. Please try again.");
+  }
+});
+
+bot.hears("💰 Wallet", async (ctx) => {
+  try {
+    const telegramId = ctx.from.id.toString();
+    const user = await User.findOne({ telegramId });
+
+    if (!user) {
+      return ctx.reply("Please start the bot first with /start.");
+    }
+
+    await ctx.reply(
+      `💰 Wallet\n` +
+        `Current balance: ${user.balance ?? 0} ETB\n` +
+        `Phone: ${user.phoneNumber || "Not shared"}\n` +
+        `Account registered: ${user.isRegistered ? "Yes" : "No"}`,
+    );
+  } catch (error) {
+    console.error("Wallet error:", error);
+    await ctx.reply("❌ Could not load your wallet. Please try again.");
+  }
+});
+
 // /start
 bot.start(async (ctx) => {
   try {
