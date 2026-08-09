@@ -13,6 +13,7 @@ import {
   FaCloudShowersHeavy,
   FaUser,
   FaChevronDown,
+  FaShieldAlt,
 } from "react-icons/fa";
 
 const Item = ({ icon, title, subtitle, active, accent }) => (
@@ -93,6 +94,7 @@ const Sidebar = ({ collapsed, mobileOpen, theme, setTheme, onClose }) => {
       title: "Free Cash Rain",
       to: "/free-cash-rain",
     },
+    { icon: <FaShieldAlt />, title: "Admin Panel", to: "/admin" },
   ];
 
   const location = useLocation();
@@ -114,7 +116,8 @@ const Sidebar = ({ collapsed, mobileOpen, theme, setTheme, onClose }) => {
             {items.map((it) => {
               const isActive =
                 location.pathname === it.to ||
-                (it.to === "/lobby" && location.pathname === "/");
+                (it.to === "/lobby" && location.pathname === "/") ||
+                (it.to === "/admin" && location.pathname.startsWith("/admin"));
               return (
                 <Link
                   key={it.title}
@@ -244,7 +247,9 @@ const Sidebar = ({ collapsed, mobileOpen, theme, setTheme, onClose }) => {
               {items.map((it) => {
                 const isActive =
                   location.pathname === it.to ||
-                  (it.to === "/lobby" && location.pathname === "/");
+                  (it.to === "/lobby" && location.pathname === "/") ||
+                  (it.to === "/admin" &&
+                    location.pathname.startsWith("/admin"));
                 return (
                   <Link key={it.title} to={it.to} onClick={onClose}>
                     <Item

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { FaRedo, FaEye, FaEyeSlash } from "react-icons/fa";
+import { useNavigate, Link } from "react-router-dom";
+import { FaRedo, FaEye, FaEyeSlash, FaShieldAlt } from "react-icons/fa";
 
 const SearchIcon = () => (
   <svg
@@ -168,6 +168,8 @@ const Header = ({
             >
               Deposit
             </button>
+
+           
 
             <button
               className="p-2 rounded-md bg-slate-800/60 border border-slate-700"

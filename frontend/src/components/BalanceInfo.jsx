@@ -7,6 +7,10 @@ const BalanceInfo = ({
   onDeposit,
   onHistory,
   onClose,
+  balance = "ETB 0.00",
+  withdrawableBalance = "ETB 0.00",
+  bonusBalance = "ETB 0.00",
+  lockedBalance = "ETB 0.00",
 }) => {
   return (
     <div className="space-y-6 px-4 py-4 sm:px-0">
@@ -17,7 +21,7 @@ const BalanceInfo = ({
           </h1>
         </div>
 
-        <div className="rounded-[2rem] border border-slate-700/80 bg-slate-900/90 p-6 shadow-sm shadow-slate-950/20 sm:p-8">
+        <div className="rounded-4xl border border-slate-700/80 bg-slate-900/90 p-6 shadow-sm shadow-slate-950/20 sm:p-8">
           <div className="grid gap-5 lg:grid-cols-[1.3fr_0.9fr] xl:grid-cols-[1.4fr_0.9fr]">
             <div className="rounded-3xl bg-slate-950/80 p-5 shadow-inner shadow-slate-950/10 sm:p-6">
               <div className="flex flex-col gap-3 text-xs uppercase tracking-[0.35em] text-slate-400 sm:flex-row sm:items-center sm:gap-3 sm:text-sm">
@@ -27,7 +31,7 @@ const BalanceInfo = ({
                 <span>Total Balance</span>
               </div>
               <div className="text-4xl font-bold text-emerald-400 sm:text-5xl">
-                ETB 0.70
+                {balance}
               </div>
             </div>
 
@@ -37,7 +41,7 @@ const BalanceInfo = ({
                   Withdrawable
                 </div>
                 <div className="mt-3 text-xl font-semibold text-emerald-400">
-                  ETB 0.00
+                  {withdrawableBalance}
                 </div>
               </div>
               <div className="rounded-3xl bg-slate-950/80 p-4 text-center border border-slate-800 sm:p-5">
@@ -45,7 +49,7 @@ const BalanceInfo = ({
                   Special Bonus
                 </div>
                 <div className="mt-3 text-xl font-semibold text-amber-300">
-                  ETB 0.00
+                  {bonusBalance}
                 </div>
               </div>
               <div className="rounded-3xl bg-slate-950/80 p-4 text-center border border-slate-800 sm:p-5">
@@ -53,7 +57,7 @@ const BalanceInfo = ({
                   Locked Balance
                 </div>
                 <div className="mt-3 text-xl font-semibold text-amber-300">
-                  ETB 0.70
+                  {lockedBalance}
                 </div>
               </div>
             </div>

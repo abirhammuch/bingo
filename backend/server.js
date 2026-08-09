@@ -21,6 +21,10 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+app.get("/favicon.ico", (req, res) => {
+  res.sendStatus(204);
+});
+
 app.get("/", (req, res) => {
   res.send("Marshal Game backend API is running!");
 });
