@@ -23,14 +23,11 @@ export const promptTelegramShareContact = () => {
 };
 
 export const ensureTelegramRegistration = (authUser) => {
-  if (!authUser) {
+  // If user is not present or not registered, prompt contact sharing
+  // but do not block navigation — allow the app to open pages.
+  if (!authUser || authUser.isRegistered === false) {
     promptTelegramShareContact();
-    return false;
-  }
-
-  if (authUser.isRegistered === false) {
-    promptTelegramShareContact();
-    return false;
+    return true;
   }
 
   return true;

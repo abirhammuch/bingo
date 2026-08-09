@@ -169,7 +169,6 @@ const Header = ({
               onClick={() => {
                 if (!authUser || authUser.isRegistered === false) {
                   promptTelegramShareContact();
-                  return;
                 }
                 navigate("/wallet");
               }}
@@ -181,9 +180,8 @@ const Header = ({
             {authUser && (
               <button
                 onClick={() => {
-                  if (authUser.isRegistered === false) {
+                  if (authUser && authUser.isRegistered === false) {
                     promptTelegramShareContact();
-                    return;
                   }
                   navigate("/profile");
                 }}
