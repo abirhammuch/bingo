@@ -62,6 +62,7 @@ const Bingo = ({ theme }) => {
   const [selectedNumbersGlobal, setSelectedNumbersGlobal] = useState([]);
   const [mySelectedNumber, setMySelectedNumber] = useState(null);
   const [countdownRemaining, setCountdownRemaining] = useState(null);
+  const [pendingSelection, setPendingSelection] = useState(null);
 
   const selectedNumbersLabel = useMemo(
     () => selectionNumbers.join(", "),
@@ -75,8 +76,23 @@ const Bingo = ({ theme }) => {
 
     // Emit join with chosen lucky number (server will reserve and return card)
     const telegramId = authUser?.telegramId;
-    if (!telegramId || !gameId) return;
 
+    // If missing gameId or socket not ready, queue the selection and ensure room is created
+    if (!gameId || !socket.connected) {
+      setPendingSelection(number);
+      // create room / connect if needed
+      if (!socket.connected) socket.connect();
+      if (!gameId) socket.emit("createRoom", { roomId: "Main Room" });
+      return;
+    }
+
+    if (!telegramId) {
+      // queue until user authenticated (telegramId provided)
+      setPendingSelection(number);
+      return;
+    }
+
+    // Emit join with chosen lucky number (server will reserve and return card)
     socket.emit("joinRoom", {
       gameId,
       telegramId,
@@ -246,6 +262,22 @@ const Bingo = ({ theme }) => {
       );
       if (state.calledNumbers) setCalledNumbers(state.calledNumbers);
       if (state.currentNumber) setCurrentNumber(state.currentNumber);
+      // If there is a pending selection and we now have a gameId, auto-join
+      if (pendingSelection && (state.gameId || state.game?.gameId)) {
+        const gid = state.gameId || state.game?.gameId;
+        const telegramId = authUser?.telegramId;
+        if (gid && telegramId) {
+          socket.emit("joinRoom", {
+            gameId: gid,
+            telegramId,
+            betAmount: 1,
+            luckyNumber: pendingSelection,
+          });
+          setMySelectedNumber(pendingSelection);
+          setSelectionNumbers([pendingSelection]);
+          setPendingSelection(null);
+        }
+      }
     };
 
     // Map backend's legacy/primary events to the standardized bingo:* handlers
@@ -317,6 +349,21 @@ const Bingo = ({ theme }) => {
       setMySelectedNumber(selectionNumbers[0] || null);
       setParticipants(data.currentPlayers || participants);
       if (data.card) setCards([data.card]);
+      // If a selection was pending, emit join now (server provided gameId via room state)
+      if (pendingSelection) {
+        const telegramId = authUser?.telegramId;
+        if (telegramId && data.gameId) {
+          socket.emit("joinRoom", {
+            gameId: data.gameId,
+            telegramId,
+            betAmount: 1,
+            luckyNumber: pendingSelection,
+          });
+          setMySelectedNumber(pendingSelection);
+          setSelectionNumbers([pendingSelection]);
+          setPendingSelection(null);
+        }
+      }
     };
 
     // Listen to standardized bingo:* channels (if server emits them in future)
@@ -345,6 +392,11 @@ const Bingo = ({ theme }) => {
       if (data && typeof data.remaining === "number")
         setCountdownRemaining(data.remaining);
     });
+    socket.on("countdownRemaining", (data) => {
+      if (typeof data === "number") setCountdownRemaining(data);
+      else if (data && typeof data.remaining === "number")
+        setCountdownRemaining(data.remaining);
+    });
     socket.on("numberCalled", handleNumberCalledUnified);
     socket.on("joinedRoom", handleJoinedRoom);
     socket.on("playerCard", (d) => {
@@ -367,7 +419,7 @@ const Bingo = ({ theme }) => {
       socket.off("joinedRoom", handleJoinedRoom);
       socket.off("playerCard");
     };
-  }, [participants, selectionNumbers, authUser, gameId]);
+  }, [participants, selectionNumbers, authUser, gameId, pendingSelection]);
 
   // Number calling is server driven; we update UI on 'numberCalled' events
 
@@ -596,11 +648,11 @@ const Bingo = ({ theme }) => {
             <div className="rounded-3xl border border-slate-700 bg-slate-900/90 p-4">
               <Countdown
                 seconds={
-                  phase === "selection"
-                    ? typeof countdownRemaining === "number"
-                      ? countdownRemaining
-                      : selectionTimeLeft
-                    : drawTimeLeft
+                  typeof countdownRemaining === "number"
+                    ? countdownRemaining
+                    : phase === "selection"
+                      ? selectionTimeLeft
+                      : drawTimeLeft
                 }
                 label={
                   phase === "selection"

@@ -112,6 +112,13 @@ export const initBingoSocket = (io) => {
         });
 
         // Notify ALL players in the room that someone joined
+        // Include any current countdown remaining if present so late joiners sync
+        const countdownRemaining = startCountdowns.has(result.game.gameId)
+          ? startCountdowns.get(result.game.gameId).remaining
+          : gameTimers.has(result.game.gameId)
+            ? gameTimers.get(result.game.gameId).remaining
+            : undefined;
+
         io.to(result.game.roomId).emit("gameUpdate", {
           type: "playerJoined",
           player: {
@@ -121,6 +128,7 @@ export const initBingoSocket = (io) => {
           playerCount: result.game.players.length,
           totalPlayers: result.game.maxPlayers,
           selectedNumbers: result.game.selectedNumbers || [],
+          countdownRemaining,
         });
 
         // If the room is still waiting and we now have 2+ players,
@@ -130,6 +138,10 @@ export const initBingoSocket = (io) => {
           currentGame.status === "waiting" &&
           currentGame.players.length >= 2
         ) {
+          // If we have a countdownRemaining, emit it to the joining socket for immediate sync
+          if (typeof countdownRemaining === "number") {
+            socket.emit("countdownRemaining", countdownRemaining);
+          }
           // force shorten to 5s (if a longer countdown exists it will be replaced)
           scheduleAutoStart(currentGame.gameId, currentGame.roomId, 5, true);
         }
@@ -456,13 +468,35 @@ const startNumberCalling = (io, gameId, roomId) => {
 
   console.log(`⏰ Starting number calling for game: ${gameId}`);
 
+  // We'll emit a per-second countdown so clients stay perfectly synchronized.
+  // After the countdown reaches 0 we call the next number and reset the countdown.
+  let remaining = 5; // seconds until next number
+
   const interval = setInterval(async () => {
     try {
-      // Call the next number via Service
+      // Emit per-second tick for this game/room
+      if (io && typeof io.to === "function") {
+        io.to(roomId).emit("countdownTick", { remaining });
+        // Also emit bingo:* style event for clients listening to standardized names
+        io.to(roomId).emit("bingo:countdownTick", { remaining });
+      }
+
+      // update stored remaining in gameTimers entry so join handlers can read it
+      if (gameTimers.has(gameId)) {
+        const entry = gameTimers.get(gameId);
+        if (entry && typeof entry === "object") entry.remaining = remaining;
+      }
+
+      if (remaining > 0) {
+        remaining -= 1;
+        return;
+      }
+
+      // Time to call the next number
       const result = await callNumber(gameId);
 
       if (!result) {
-        // If no more numbers available, end the game
+        // No more numbers: stop interval and finish the game
         clearInterval(interval);
         gameTimers.delete(gameId);
 
@@ -470,6 +504,7 @@ const startNumberCalling = (io, gameId, roomId) => {
           type: "gameEnded",
           message: "All numbers called! Game ended.",
         });
+
         // create a new waiting round after a short delay
         setTimeout(async () => {
           try {
@@ -488,6 +523,7 @@ const startNumberCalling = (io, gameId, roomId) => {
             console.error("Failed to create next round:", err.message || err);
           }
         }, 5000);
+
         return;
       }
 
@@ -497,6 +533,21 @@ const startNumberCalling = (io, gameId, roomId) => {
         calledNumbers: result.calledNumbers,
         remaining: 75 - result.calledNumbers.length,
       });
+      // Also emit bingo names for compatibility
+      io.to(roomId).emit("bingo:numberCalled", {
+        number: result.number,
+        calledNumbers: result.calledNumbers,
+        remaining: 75 - result.calledNumbers.length,
+      });
+
+      // reset countdown for next number
+      remaining = 5;
+
+      // update stored remaining in gameTimers entry if present
+      if (gameTimers.has(gameId)) {
+        const entry = gameTimers.get(gameId);
+        if (entry && typeof entry === "object") entry.remaining = remaining;
+      }
     } catch (error) {
       console.error("Number Calling Interval Error:", error.message);
       clearInterval(interval);
@@ -507,10 +558,10 @@ const startNumberCalling = (io, gameId, roomId) => {
         message: "Error calling numbers. Game stopping.",
       });
     }
-  }, 5000); // Call a number every 5 seconds
+  }, 1000); // tick every second for synchronized countdowns
 
-  // Store the interval so we can clear it later
-  gameTimers.set(gameId, interval);
+  // Store the interval and remaining so other handlers (join) can read the countdown
+  gameTimers.set(gameId, { intervalId: interval, remaining });
 };
 
 // =========================================================================
@@ -518,7 +569,15 @@ const startNumberCalling = (io, gameId, roomId) => {
 // =========================================================================
 const stopNumberCalling = (gameId) => {
   if (gameTimers.has(gameId)) {
-    clearInterval(gameTimers.get(gameId));
+    const entry = gameTimers.get(gameId);
+    try {
+      if (entry && entry.intervalId) clearInterval(entry.intervalId);
+      else clearInterval(entry);
+    } catch (e) {
+      try {
+        clearTimeout(entry.intervalId || entry);
+      } catch (_) {}
+    }
     gameTimers.delete(gameId);
     console.log(`⏹️ Stopped number calling for game: ${gameId}`);
   }
