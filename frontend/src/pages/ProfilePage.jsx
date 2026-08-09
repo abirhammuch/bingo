@@ -14,18 +14,14 @@ const ProfilePage = () => {
 
   useEffect(() => {
     if (!authUser) {
-      navigate("/login");
       return;
     }
 
     if (authUser.isRegistered === false) {
-      if (promptTelegramShareContact()) {
-        return;
-      }
-      navigate("/login");
+      promptTelegramShareContact();
       return;
     }
-  }, [authUser, navigate]);
+  }, [authUser]);
 
   return (
     <div className="space-y-8">

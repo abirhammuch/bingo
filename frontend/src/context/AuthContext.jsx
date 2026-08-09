@@ -74,7 +74,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem("authUser");
     setToken(null);
     setUser(null);
-    navigate("/login");
+    navigate("/");
   };
 
   const value = useMemo(

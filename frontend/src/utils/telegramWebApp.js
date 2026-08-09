@@ -22,17 +22,13 @@ export const promptTelegramShareContact = () => {
   }
 };
 
-export const ensureTelegramRegistration = (authUser, navigate) => {
+export const ensureTelegramRegistration = (authUser) => {
   if (!authUser) {
-    navigate("/login");
     return false;
   }
 
   if (authUser.isRegistered === false) {
-    if (promptTelegramShareContact()) {
-      return false;
-    }
-    navigate("/login");
+    promptTelegramShareContact();
     return false;
   }
 

@@ -29,20 +29,15 @@ const MyWalletPage = () => {
 
   useEffect(() => {
     if (!authUser) {
-      navigate("/login");
       return;
     }
 
     if (authUser.isRegistered === false) {
-      if (promptTelegramShareContact()) {
-        return;
-      }
-      navigate("/login");
+      promptTelegramShareContact();
       return;
     }
 
     if (!telegramId) {
-      navigate("/login");
       return;
     }
 
@@ -84,30 +79,21 @@ const MyWalletPage = () => {
         activeMode={activeMode}
         onWithdraw={() => {
           if (!authUser?.isRegistered) {
-            if (promptTelegramShareContact()) {
-              return;
-            }
-            navigate("/login");
+            promptTelegramShareContact();
             return;
           }
           setActiveMode("withdraw");
         }}
         onDeposit={() => {
           if (!authUser?.isRegistered) {
-            if (promptTelegramShareContact()) {
-              return;
-            }
-            navigate("/login");
+            promptTelegramShareContact();
             return;
           }
           setActiveMode("default");
         }}
         onHistory={() => {
           if (!authUser?.isRegistered) {
-            if (promptTelegramShareContact()) {
-              return;
-            }
-            navigate("/login");
+            promptTelegramShareContact();
             return;
           }
           setActiveMode("history");

@@ -10,17 +10,13 @@ const BingoPPage = () => {
 
   useEffect(() => {
     if (!authUser) {
-      navigate("/login");
       return;
     }
 
     if (authUser.isRegistered === false) {
-      if (promptTelegramShareContact()) {
-        return;
-      }
-      navigate("/login");
+      promptTelegramShareContact();
     }
-  }, [authUser, navigate]);
+  }, [authUser]);
 
   return (
     <div>

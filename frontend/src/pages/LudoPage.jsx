@@ -11,17 +11,13 @@ const LudoPage = ({ theme }) => {
 
   useEffect(() => {
     if (!authUser) {
-      navigate("/login");
       return;
     }
 
     if (authUser.isRegistered === false) {
-      if (promptTelegramShareContact()) {
-        return;
-      }
-      navigate("/login");
+      promptTelegramShareContact();
     }
-  }, [authUser, navigate]);
+  }, [authUser]);
 
   return (
     <div className="p-6 rounded-2xl bg-slate-800/40 border border-slate-700">

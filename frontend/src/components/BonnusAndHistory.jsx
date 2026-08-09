@@ -9,7 +9,7 @@ const BonnusAndHistory = () => {
   const { user: authUser } = useAuth();
 
   const handleWalletNavigation = (to) => {
-    if (!ensureTelegramRegistration(authUser, navigate)) {
+    if (!ensureTelegramRegistration(authUser)) {
       return;
     }
     navigateTo(to);

@@ -105,7 +105,7 @@ const Sidebar = ({ collapsed, mobileOpen, theme, setTheme, onClose }) => {
   const [appearanceOpen, setAppearanceOpen] = useState(false);
 
   const handleSidebarNavigation = (event, to) => {
-    if (!ensureTelegramRegistration(authUser, navigate)) {
+    if (!ensureTelegramRegistration(authUser)) {
       event.preventDefault();
       return;
     }
