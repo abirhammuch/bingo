@@ -1,6 +1,7 @@
 ﻿import express from "express";
 import {
   telegramLogin,
+  telegramLoginWithCode,
   getUserProfile,
   updateUserProfile,
   getUserBalance,
@@ -15,6 +16,7 @@ const userRouter = express.Router();
 
 // Public user routes
 userRouter.post("/telegram-login", telegramLogin);
+userRouter.post("/telegram-login-code", telegramLoginWithCode);
 userRouter.get("/profile/:telegramId", getUserProfile);
 userRouter.patch("/profile/:telegramId", updateUserProfile);
 userRouter.get("/balance/:telegramId", getUserBalance);

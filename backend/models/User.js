@@ -33,6 +33,18 @@ const userSchema = new mongoose.Schema(
       trim: true,
     },
 
+    loginCode: {
+      type: String,
+      default: null,
+      select: false,
+    },
+
+    loginCodeExpiresAt: {
+      type: Date,
+      default: null,
+      select: false,
+    },
+
     profilePhoto: {
       type: String,
       default: "",

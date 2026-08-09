@@ -106,6 +106,89 @@ export const telegramLogin = async (req, res) => {
 };
 
 // ==========================================
+// 1b. Login User via Telegram Bot Code
+// ==========================================
+export const telegramLoginWithCode = async (req, res) => {
+  try {
+    const { telegramId, loginCode } = req.body;
+
+    if (!telegramId || !loginCode) {
+      return res.status(400).json({
+        success: false,
+        message: "Telegram ID and login code are required",
+      });
+    }
+
+    const user = await User.findOne({
+      telegramId: telegramId.toString(),
+    }).select("+loginCode +loginCodeExpiresAt");
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message:
+          "User not found. Please register using the Telegram bot first.",
+      });
+    }
+
+    if (!user.loginCode || user.loginCode !== loginCode) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid login code",
+      });
+    }
+
+    if (!user.loginCodeExpiresAt || user.loginCodeExpiresAt < new Date()) {
+      return res.status(401).json({
+        success: false,
+        message:
+          "Login code has expired. Request a new code from the Telegram bot.",
+      });
+    }
+
+    user.loginCode = null;
+    user.loginCodeExpiresAt = null;
+    user.lastLogin = new Date();
+    await user.save();
+
+    const token = generateToken({
+      id: user._id,
+      telegramId: user.telegramId,
+      username: user.username,
+      firstName: user.firstName,
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "User logged in successfully!",
+      token,
+      user: {
+        id: user._id,
+        telegramId: user.telegramId,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        username: user.username,
+        balance: user.balance,
+        profilePhoto: user.profilePhoto,
+        gamesPlayed: user.gamesPlayed,
+        gamesWon: user.gamesWon,
+        bingoGames: user.bingoGames,
+        bingoWins: user.bingoWins,
+        createdAt: user.createdAt,
+        lastLogin: user.lastLogin,
+      },
+    });
+  } catch (error) {
+    console.error("Telegram Login With Code Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to login with Telegram code",
+      error: error.message,
+    });
+  }
+};
+
+// ==========================================
 // 2. Get User Profile
 // ==========================================
 export const getUserProfile = async (req, res) => {

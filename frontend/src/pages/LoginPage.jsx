@@ -6,10 +6,7 @@ const LoginPage = () => {
   const navigate = useNavigate();
   const { login, loading } = useAuth();
   const [telegramId, setTelegramId] = useState("");
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [username, setUsername] = useState("");
-  const [profilePhoto, setProfilePhoto] = useState("");
+  const [loginCode, setLoginCode] = useState("");
   const [error, setError] = useState(null);
 
   const handleSubmit = async (event) => {
@@ -17,7 +14,7 @@ const LoginPage = () => {
     setError(null);
 
     try {
-      await login({ telegramId, firstName, lastName, username, profilePhoto });
+      await login({ telegramId, loginCode });
       navigate("/wallet");
     } catch (err) {
       setError(err.message || "Failed to login");
@@ -31,7 +28,8 @@ const LoginPage = () => {
           Telegram Login
         </h1>
         <p className="text-sm text-slate-400 mb-6">
-          Sign in with your Telegram details to continue.
+          Use the Telegram bot to generate a login code, then enter your
+          Telegram ID and the code here.
         </p>
         {error && (
           <div className="mb-4 rounded-2xl border border-rose-600 bg-rose-950/80 px-4 py-3 text-rose-200">
@@ -51,45 +49,19 @@ const LoginPage = () => {
           </label>
 
           <label className="block">
-            <span className="text-slate-300 text-sm">First Name</span>
+            <span className="text-slate-300 text-sm">Login Code</span>
             <input
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
+              value={loginCode}
+              onChange={(e) => setLoginCode(e.target.value)}
               className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100 outline-none focus:border-emerald-500"
-              placeholder="Abirham"
+              placeholder="Enter code from Telegram bot"
               required
             />
           </label>
-
-          <label className="block">
-            <span className="text-slate-300 text-sm">Last Name</span>
-            <input
-              value={lastName}
-              onChange={(e) => setLastName(e.target.value)}
-              className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100 outline-none focus:border-emerald-500"
-              placeholder="Gebremariam"
-            />
-          </label>
-
-          <label className="block">
-            <span className="text-slate-300 text-sm">Username</span>
-            <input
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100 outline-none focus:border-emerald-500"
-              placeholder="@marshal"
-            />
-          </label>
-
-          <label className="block">
-            <span className="text-slate-300 text-sm">Profile Photo URL</span>
-            <input
-              value={profilePhoto}
-              onChange={(e) => setProfilePhoto(e.target.value)}
-              className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100 outline-none focus:border-emerald-500"
-              placeholder="https://..."
-            />
-          </label>
+          <div className="text-xs text-slate-500">
+            Run <strong>/login</strong> in the Telegram bot to get your one-time
+            code.
+          </div>
 
           <button
             type="submit"

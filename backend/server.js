@@ -53,8 +53,12 @@ const io = initSocketServer(server);
 const startServer = async () => {
   try {
     await connectDB();
-    //setupCommands();
-    console.log("🤖 Telegram bot is running", bot.name);
+
+    await bot.launch();
+    console.log(
+      "🤖 Telegram bot is running",
+      bot.botInfo?.username || "Telegram bot",
+    );
 
     server.once("error", (error) => {
       if (error.code === "EADDRINUSE") {
