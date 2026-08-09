@@ -10,6 +10,8 @@ import {
 
 // Store active game timers (intervals) to stop them when a game ends
 const gameTimers = new Map();
+// Store start countdown timers for games (before automatic start)
+const startCountdowns = new Map();
 
 /**
  * Initialize Bingo Socket Handlers
@@ -17,6 +19,12 @@ const gameTimers = new Map();
  */
 export const initBingoSocket = (io) => {
   console.log("🎮 Initializing Bingo Socket Handlers...");
+  // Expose io globally so helper functions outside this scope can emit events
+  try {
+    globalThis.io = io;
+  } catch (e) {
+    console.warn("Unable to set global io reference:", e.message || e);
+  }
 
   io.on("connection", (socket) => {
     console.log(`🎯 Bingo client connected: ${socket.id}`);
@@ -50,6 +58,11 @@ export const initBingoSocket = (io) => {
           status: game.status,
           maxPlayers: game.maxPlayers,
         });
+
+        // Schedule an automatic start countdown for this newly created room.
+        // After the countdown ends the server will attempt to start the game
+        // only if there are at least 2 players (per requirement B).
+        scheduleAutoStart(game.gameId, game.roomId, 20);
       } catch (error) {
         console.error("Create Room Error:", error.message);
         socket.emit("error", {
@@ -102,6 +115,18 @@ export const initBingoSocket = (io) => {
           playerCount: result.game.players.length,
           totalPlayers: result.game.maxPlayers,
         });
+
+        // If the room is still waiting and we now have 2+ players, and
+        // there is no existing auto-start countdown, schedule a short
+        // auto-start so the game begins shortly without requiring a host.
+        const currentGame = await getGameState(result.game.gameId);
+        if (
+          currentGame.status === "waiting" &&
+          currentGame.players.length >= 2 &&
+          !startCountdowns.has(currentGame.gameId)
+        ) {
+          scheduleAutoStart(currentGame.gameId, currentGame.roomId, 5);
+        }
       } catch (error) {
         console.error("Join Room Error:", error.message);
         socket.emit("error", {
@@ -284,6 +309,74 @@ export const initBingoSocket = (io) => {
       console.log(`🎯 Bingo client disconnected: ${socket.id}`);
     });
   });
+};
+
+// =========================================================================
+// HELPER: SCHEDULE AUTO-START
+// =========================================================================
+const scheduleAutoStart = (gameId, roomId, seconds = 20) => {
+  // If already scheduled, do nothing
+  if (startCountdowns.has(gameId)) return;
+
+  console.log(`⏳ Scheduling auto-start for game ${gameId} in ${seconds}s`);
+
+  const timeout = setTimeout(async () => {
+    try {
+      // Fetch game state
+      const game = await getGameState(gameId);
+      if (!game) {
+        startCountdowns.delete(gameId);
+        return;
+      }
+
+      // Only start if enough players (requirement: 2+ players)
+      if (game.players.length >= 2 && game.status === "waiting") {
+        const started = await startGame(gameId);
+
+        // Notify players that game started
+        const message = `🚀 Game auto-started with ${game.players.length} players.`;
+        const ioNs = globalThis.io || null;
+        // Use passed io via room emits in callers; fallback to console emit
+        // Emit to the room using a stored reference via the server's io if available
+        if (ioNs && typeof ioNs.to === "function") {
+          ioNs.to(roomId).emit("gameUpdate", {
+            type: "gameStarted",
+            gameId: started.gameId,
+            message,
+            startTime: started.startTime,
+          });
+        }
+
+        // If we don't have global io, emit via server side by requiring the
+        // callers to emit through existing references (we already emit above
+        // in the start sequence in the socket handlers).
+
+        // Start the number calling loop using the stored io via exported init
+        // (the normal startGame socket handler calls startNumberCalling too).
+        // Attempt to access the io instance if it was attached to globalThis
+        if (ioNs && typeof ioNs.to === "function") {
+          startNumberCalling(ioNs, started.gameId, started.roomId);
+        }
+      } else {
+        // Not enough players — notify the room and keep status as 'waiting'
+        console.log(`⏳ Auto-start aborted for ${gameId}: not enough players`);
+        if (globalThis.io && typeof globalThis.io.to === "function") {
+          globalThis.io.to(roomId).emit("gameUpdate", {
+            type: "notEnoughPlayers",
+            message:
+              "Not enough players to start the game — waiting for more players.",
+            playerCount: game.players.length,
+          });
+        }
+      }
+    } catch (err) {
+      console.error("Auto-start error:", err.message || err);
+    } finally {
+      startCountdowns.delete(gameId);
+    }
+  }, seconds * 1000);
+
+  startCountdowns.set(gameId, timeout);
 };
 
 // =========================================================================
