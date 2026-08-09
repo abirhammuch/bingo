@@ -25,6 +25,10 @@ const registrationKeyboard = () =>
     .resize()
     .oneTime();
 
+const needsPhoneRegistration = (user) => {
+  return !user?.phoneNumber || !user?.isRegistered;
+};
+
 const sendLoginPrompt = async (ctx, user) => {
   const keyboard =
     playGameButton() ||
@@ -33,9 +37,9 @@ const sendLoginPrompt = async (ctx, user) => {
       .oneTime();
 
   await ctx.reply(
-    user.isRegistered
-      ? "Welcome back! Use the button below to login to Marshal Game."
-      : "Your account is created but not fully registered yet. Please share your phone number or use Login once complete.",
+    user && needsPhoneRegistration(user)
+      ? "Your account is created but not fully registered yet. Please share your phone number or use Login once complete."
+      : "Welcome back! Use the button below to login to Marshal Game.",
     keyboard,
   );
 };
@@ -46,7 +50,15 @@ bot.command("login", async (ctx) => {
     const telegramId = telegramUser.id.toString();
     const user = await User.findOne({ telegramId });
 
-    if (!user || !user.isRegistered) {
+    if (!user) {
+      await ctx.reply(
+        "No Telegram account found. Please start the bot with /start.",
+        registrationKeyboard(),
+      );
+      return;
+    }
+
+    if (needsPhoneRegistration(user)) {
       await ctx.reply(
         "Your account is not fully registered yet. Please share your phone number first.",
         registrationKeyboard(),
@@ -70,6 +82,20 @@ bot.hears(/🔑 Login|Login/i, async (ctx) => {
 
 bot.hears("🎮 Play Game", async (ctx) => {
   try {
+    const telegramId = ctx.from.id.toString();
+    const user = await User.findOne({ telegramId });
+
+    if (!user) {
+      return ctx.reply("Please start the bot first with /start.");
+    }
+
+    if (needsPhoneRegistration(user)) {
+      return ctx.reply(
+        "Please share your phone number to complete registration before playing.",
+        registrationKeyboard(),
+      );
+    }
+
     if (!telegramWebAppUrl) {
       return ctx.reply(
         "Game is not configured yet. Please contact the admin or try again later.",
@@ -90,6 +116,13 @@ bot.hears("👤 My Profile", async (ctx) => {
 
     if (!user) {
       return ctx.reply("Please start the bot first with /start.");
+    }
+
+    if (needsPhoneRegistration(user)) {
+      return ctx.reply(
+        "Please share your phone number to complete registration before viewing your profile.",
+        registrationKeyboard(),
+      );
     }
 
     await ctx.reply(
@@ -113,6 +146,13 @@ bot.hears("💰 Wallet", async (ctx) => {
 
     if (!user) {
       return ctx.reply("Please start the bot first with /start.");
+    }
+
+    if (needsPhoneRegistration(user)) {
+      return ctx.reply(
+        "Please share your phone number to complete registration before viewing your wallet.",
+        registrationKeyboard(),
+      );
     }
 
     await ctx.reply(
