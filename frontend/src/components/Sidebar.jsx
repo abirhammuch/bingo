@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import { promptTelegramShareContact } from "../utils/telegramWebApp";
 import {
   FaGamepad,
   FaTrophy,
@@ -99,7 +101,21 @@ const Sidebar = ({ collapsed, mobileOpen, theme, setTheme, onClose }) => {
 
   const location = useLocation();
   const navigate = useNavigate();
+  const { user: authUser } = useAuth();
   const [appearanceOpen, setAppearanceOpen] = useState(false);
+
+  const handleSidebarNavigation = (event, to) => {
+    if (authUser && authUser.isRegistered === false) {
+      event.preventDefault();
+      if (promptTelegramShareContact()) {
+        return;
+      }
+      navigate("/login");
+      return;
+    }
+    navigate(to);
+    onClose();
+  };
 
   const appearanceOptions = [
     { label: "Green", value: "green", dot: "bg-emerald-400" },
@@ -251,7 +267,11 @@ const Sidebar = ({ collapsed, mobileOpen, theme, setTheme, onClose }) => {
                   (it.to === "/admin" &&
                     location.pathname.startsWith("/admin"));
                 return (
-                  <Link key={it.title} to={it.to} onClick={onClose}>
+                  <Link
+                    key={it.title}
+                    to={it.to}
+                    onClick={(event) => handleSidebarNavigation(event, it.to)}
+                  >
                     <Item
                       icon={it.icon}
                       title={it.title}

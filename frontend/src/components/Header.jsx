@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { promptTelegramShareContact } from "../utils/telegramWebApp";
 import { FaRedo, FaEye, FaEyeSlash, FaShieldAlt } from "react-icons/fa";
 
 const SearchIcon = () => (
@@ -165,7 +166,12 @@ const Header = ({
 
           <div className="flex items-center gap-3">
             <button
-              onClick={() => navigate(authUser ? "/wallet" : "/login")}
+              onClick={() => {
+                if (authUser && authUser.isRegistered === false) {
+                  if (promptTelegramShareContact()) return;
+                }
+                navigate(authUser ? "/wallet" : "/login");
+              }}
               className={`bg-gradient-to-br ${accent.btnFrom} ${accent.btnTo} text-slate-900 font-semibold px-4 py-2 rounded-full`}
             >
               Deposit
@@ -173,7 +179,12 @@ const Header = ({
 
             {authUser && (
               <button
-                onClick={() => navigate("/profile")}
+                onClick={() => {
+                  if (authUser.isRegistered === false) {
+                    if (promptTelegramShareContact()) return;
+                  }
+                  navigate("/profile");
+                }}
                 className="rounded-full border border-slate-700 bg-slate-800/60 px-4 py-2 text-slate-100 hover:bg-slate-800/40"
               >
                 Profile

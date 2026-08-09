@@ -6,6 +6,7 @@ import PaymentMethod from "../components/PaymentMethod";
 import PaymentCheck from "../components/PaymentCheck";
 import Responsible from "../components/Responsible";
 import { getUserProfile } from "../services/userService";
+import { promptTelegramShareContact } from "../utils/telegramWebApp";
 import { useAuth } from "../context/AuthContext";
 
 const MyWalletPage = () => {
@@ -68,11 +69,36 @@ const MyWalletPage = () => {
 
       <BalanceInfo
         activeMode={activeMode}
-        onWithdraw={() => setActiveMode("withdraw")}
-        onDeposit={() => setActiveMode("default")}
-        onHistory={() => setActiveMode("history")}
-        onClose={() => setActiveMode("default")}
-        balance={balance}
+        onWithdraw={() => {
+          if (!authUser?.isRegistered) {
+            if (promptTelegramShareContact()) {
+              return;
+            }
+            navigate("/login");
+            return;
+          }
+          setActiveMode("withdraw");
+        }}
+        onDeposit={() => {
+          if (!authUser?.isRegistered) {
+            if (promptTelegramShareContact()) {
+              return;
+            }
+            navigate("/login");
+            return;
+          }
+          setActiveMode("default");
+        }}
+        onHistory={() => {
+          if (!authUser?.isRegistered) {
+            if (promptTelegramShareContact()) {
+              return;
+            }
+            navigate("/login");
+            return;
+          }
+          setActiveMode("history");
+        }}
         withdrawableBalance={balance}
         bonusBalance="ETB 0.00"
         lockedBalance="ETB 0.00"
