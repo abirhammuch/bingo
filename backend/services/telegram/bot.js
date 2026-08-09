@@ -6,20 +6,14 @@ dotenv.config();
 
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 const telegramWebAppUrl = process.env.TELEGRAM_WEBAPP_URL || "";
-const telegramWebAppLoginUrl = telegramWebAppUrl
-  ? telegramWebAppUrl.endsWith("/login")
-    ? telegramWebAppUrl
-    : `${telegramWebAppUrl.replace(/\/$/, "")}/login`
-  : "";
 
 const playGameButton = () => {
-  const url = telegramWebAppLoginUrl || telegramWebAppUrl;
-  if (!url) {
+  if (!telegramWebAppUrl) {
     return null;
   }
 
   return Markup.inlineKeyboard([
-    [Markup.button.webApp("🎮 Play Game", url)],
+    [Markup.button.webApp("🎮 Play Game", telegramWebAppUrl)],
   ]).resize();
 };
 
