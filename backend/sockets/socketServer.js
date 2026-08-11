@@ -2,6 +2,9 @@ import { Server } from "socket.io";
 import { initBingoSocket } from "./bingoSocket.js";
 //import { initLudoSocket } from "./ludoSocket.js";
 
+// ✅ 1. Create a global variable to store the Socket.IO instance
+let ioInstance = null;
+
 /**
  * Main Socket.IO Server Initializer
  * @param {http.Server} server - The HTTP server instance from Express
@@ -14,21 +17,21 @@ export const initSocketServer = (server) => {
       origin: "*", // In production, restrict this to your frontend domain
       methods: ["GET", "POST"],
     },
-    // Optional: Add connection timeout settings
     connectTimeout: 45000,
     pingTimeout: 30000,
     pingInterval: 25000,
   });
 
-  // 2. Middleware: Authenticate socket connections (Optional but recommended)
+  // ✅ 2. Store the instance in the global variable so other files can access it
+  ioInstance = io;
+
+  // 3. Middleware: Authenticate socket connections (Optional but recommended)
   io.use((socket, next) => {
-    // You can extract token from socket.handshake.auth.token
-    // For now, we allow all connections
     console.log(`🔌 New connection attempt from ${socket.id}`);
     next();
   });
 
-  // 3. Log connection events globally
+  // 4. Log connection events globally
   io.on("connection", (socket) => {
     console.log(`✅ Client connected: ${socket.id}`);
 
@@ -43,14 +46,23 @@ export const initSocketServer = (server) => {
     });
   });
 
-  // 4. Initialize specific game sockets (Bingo and Ludo)
-  // Pass 'io' and specific namespaces if you want to separate rooms by game type
+  // 5. Initialize specific game sockets (Bingo and Ludo)
   console.log("🎮 Initializing Bingo Socket...");
   initBingoSocket(io);
 
   // console.log("🎲 Initializing Ludo Socket...");
   // initLudoSocket(io);
 
-  // 5. Return the main instance for external use
+  // 6. Return the main instance for external use
   return io;
+};
+
+// ✅ 7. EXPORT THIS FUNCTION so controllers can access the Socket.IO instance
+export const getIO = () => {
+  if (!ioInstance) {
+    throw new Error(
+      "Socket.IO has not been initialized yet! Did you call initSocketServer() first?",
+    );
+  }
+  return ioInstance;
 };

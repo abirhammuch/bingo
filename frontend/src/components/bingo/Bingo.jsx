@@ -53,7 +53,6 @@ const Bingo = ({ theme }) => {
   const [numberPool, setNumberPool] = useState(() => createNumberPool());
   const [winner, setWinner] = useState(null);
   const [winningLuckyNumber, setWinningLuckyNumber] = useState(null);
-  // livePlayers replaced by `participants` which is updated from server
   const [prizePool] = useState(1250);
   const { user: authUser } = useAuth();
   const [gameId, setGameId] = useState(null);
@@ -64,58 +63,73 @@ const Bingo = ({ theme }) => {
   const [countdownRemaining, setCountdownRemaining] = useState(null);
   const [pendingSelection, setPendingSelection] = useState(null);
 
+  const maxSelectionCount = 3;
   const selectedNumbersLabel = useMemo(
     () => selectionNumbers.join(", "),
     [selectionNumbers],
   );
+  const reservedCount = selectedNumbersGlobal.length;
+  const canSelectMore = mySelections.length < maxSelectionCount;
 
+  // ============================================================
+  // ✅ FIX 1: Updated helper to TRUST server playerCount first
+  // ============================================================
   const getActivePlayerCount = (players, selectedNumbers, fallback = 0) => {
+    // If the server sent a specific playerCount, trust it immediately
+    if (typeof fallback === "number" && fallback > 0) {
+      return fallback;
+    }
     if (Array.isArray(players) && players.length > 0) {
       return players.length;
     }
-
     const selectedCount = Array.isArray(selectedNumbers)
       ? selectedNumbers.length
       : 0;
-    if (selectedCount > 0) return selectedCount;
-    return fallback;
+    return selectedCount > 0 ? selectedCount : 0;
   };
 
   const toggleLuckyNumber = (number) => {
     if (phase !== "selection") return;
     if (!joined) return;
-    if (mySelections.length >= 3) return;
+    if (!canSelectMore) return;
     if (mySelections.includes(number)) return;
 
-    // Emit join with chosen lucky number (server will reserve and return card)
     const telegramId = authUser?.telegramId;
+    if (
+      selectedNumbersGlobal.includes(number) &&
+      !mySelections.includes(number)
+    ) {
+      return;
+    }
 
-    // If missing gameId or socket not ready, queue the selection and ensure room is created
-    if (!gameId || !socket.connected) {
+    if (!socket.connected) {
+      socket.connect();
+    }
+
+    if (!gameId) {
       setPendingSelection(number);
-      // create room / connect if needed
-      if (!socket.connected) socket.connect();
-      if (!gameId) socket.emit("createRoom", { roomId: "Main Room" });
+      socket.emit("createRoom", { roomId: "Main Room" });
+      return;
     }
 
     if (!telegramId) {
-      // Allow the UI to reflect the choice even before auth details are available
       setMySelections((prev) => [...prev, number]);
       setMySelectedNumber(number);
       setSelectionNumbers((prev) =>
         prev.includes(number) ? prev : [...prev, number],
       );
+      setSelectedNumbersGlobal((prev) =>
+        prev.includes(number) ? prev : [...prev, number],
+      );
       return;
     }
 
-    // Emit join with chosen lucky number (server will reserve and return card)
     socket.emit("joinRoom", {
       gameId,
       telegramId,
       betAmount: 1,
       luckyNumber: number,
     });
-    // optimistically lock locally until server confirms
     setMySelections((prev) => [...prev, number]);
     setMySelectedNumber(number);
     setSelectionNumbers((prev) =>
@@ -164,7 +178,6 @@ const Bingo = ({ theme }) => {
         if (history.includes(nextNumber)) {
           return history;
         }
-
         return [nextNumber, ...history].slice(0, 12);
       });
       setRemainingBalls(rest.length);
@@ -174,26 +187,24 @@ const Bingo = ({ theme }) => {
         if (!currentCards?.length) {
           return currentCards;
         }
-
         const nextCards = currentCards.map((currentCard) =>
           markNumberOnCard(currentCard, nextNumber),
         );
-
         const winningIndex = nextCards.findIndex((card) => hasBingo(card));
         if (winningIndex >= 0) {
           setWinner("You");
           setWinningLuckyNumber(selectionNumbers[winningIndex]);
           setGameStatus("finished");
         }
-
         return nextCards;
       });
-
       return rest;
     });
   };
 
-  // Server-driven selection countdown: handled via socket 'countdownTick' events
+  // ============================================================
+  // Socket Listeners
+  // ============================================================
   useEffect(() => {
     const handleGameUpdate = (payload) => {
       const type = payload?.type;
@@ -205,13 +216,15 @@ const Bingo = ({ theme }) => {
           setPhase("selection");
           setGameStatus("waiting");
           setSelectedNumbersGlobal(payload.selectedNumbers || []);
+          // ✅ Use server playerCount directly
           setParticipants(
-            getActivePlayerCount(
-              payload.players || [],
-              payload.selectedNumbers || [],
-            ),
+            typeof payload.playerCount === "number"
+              ? payload.playerCount
+              : getActivePlayerCount(
+                  payload.players || [],
+                  payload.selectedNumbers || [],
+                ),
           );
-          // reset local picks
           setMySelectedNumber(null);
           setMySelections([]);
           setSelectionNumbers([]);
@@ -220,13 +233,17 @@ const Bingo = ({ theme }) => {
           setCountdownRemaining(30);
           setSelectionTimeLeft(30);
           break;
+
         case "playerJoined":
+          // ✅ FIX: Trust the server's playerCount first
           setParticipants(
-            getActivePlayerCount(
-              payload.players || [],
-              payload.selectedNumbers || [],
-              payload.playerCount || 0,
-            ),
+            typeof payload.playerCount === "number"
+              ? payload.playerCount
+              : getActivePlayerCount(
+                  payload.players || [],
+                  payload.selectedNumbers || [],
+                  payload.playerCount || 0,
+                ),
           );
           setSelectedNumbersGlobal(payload.selectedNumbers || []);
           if (
@@ -237,25 +254,30 @@ const Bingo = ({ theme }) => {
             setSelectionTimeLeft(30);
           }
           break;
+
         case "countdownStarted":
           setCountdownRemaining(payload.seconds ?? null);
           break;
+
         case "gameStarted":
           setPhase("live");
           setGameStatus("live");
           setCountdownRemaining(null);
           break;
+
         case "notEnoughPlayers":
-          // stay waiting
           setPhase("waiting");
           setGameStatus("waiting");
           break;
+
         case "bingo":
           setWinner(payload.winner || null);
           break;
+
         case "gameEnded":
           setGameStatus("finished");
           break;
+
         default:
           break;
       }
@@ -264,6 +286,10 @@ const Bingo = ({ theme }) => {
     const handleCountdown = (data) => {
       if (typeof data?.remaining === "number")
         setCountdownRemaining(data.remaining);
+      // ✅ NEW: Update player count if provided by server during countdown
+      if (typeof data?.playerCount === "number") {
+        setParticipants(data.playerCount);
+      }
     };
 
     const handleNumberCalled = (data) => {
@@ -275,12 +301,12 @@ const Bingo = ({ theme }) => {
       );
     };
 
-    // Ensure socket is connected
     if (!socket.connected) socket.connect();
 
-    // STANDARDIZED handlers for bingo:* events (preferred)
+    // ============================================================
+    // ✅ FIX 2: Handle bingo:* events with direct playerCount trust
+    // ============================================================
     const handleRoundState = (payload) => {
-      // payload expected to contain: gameId, status, selectedNumbers, players, calledNumbers, currentNumber
       if (!payload) return;
       const state = payload;
       setGameId(state.gameId || state.game?.gameId || gameId);
@@ -302,16 +328,23 @@ const Bingo = ({ theme }) => {
       setSelectedNumbersGlobal(
         state.selectedNumbers || state.game?.selectedNumbers || [],
       );
-      setParticipants(
-        getActivePlayerCount(
-          state.players || state.game?.players || [],
-          state.selectedNumbers || state.game?.selectedNumbers || [],
-          state.playerCount || state.game?.playerCount || 0,
-        ),
-      );
+
+      // ✅ Set participants directly from playerCount
+      const playerCount = state.playerCount || state.game?.playerCount || 0;
+      if (typeof playerCount === "number" && playerCount > 0) {
+        setParticipants(playerCount);
+      } else {
+        setParticipants(
+          getActivePlayerCount(
+            state.players || state.game?.players || [],
+            state.selectedNumbers || state.game?.selectedNumbers || [],
+          ),
+        );
+      }
+
       if (state.calledNumbers) setCalledNumbers(state.calledNumbers);
       if (state.currentNumber) setCurrentNumber(state.currentNumber);
-      // If there is a pending selection and we now have a gameId, auto-join
+
       if (pendingSelection && (state.gameId || state.game?.gameId)) {
         const gid = state.gameId || state.game?.gameId;
         const telegramId = authUser?.telegramId;
@@ -334,7 +367,6 @@ const Bingo = ({ theme }) => {
       }
     };
 
-    // Map backend's legacy/primary events to the standardized bingo:* handlers
     const mapGameUpdateToRoundState = (payload) => {
       if (!payload) return;
       const type = payload.type;
@@ -348,13 +380,14 @@ const Bingo = ({ theme }) => {
           });
           break;
         case "playerJoined":
-          // emit participant change and selected numbers
           setParticipants(
-            getActivePlayerCount(
-              payload.players || [],
-              payload.selectedNumbers || [],
-              payload.playerCount || participants,
-            ),
+            typeof payload.playerCount === "number"
+              ? payload.playerCount
+              : getActivePlayerCount(
+                  payload.players || [],
+                  payload.selectedNumbers || [],
+                  payload.playerCount || participants,
+                ),
           );
           setSelectedNumbersGlobal(payload.selectedNumbers || []);
           break;
@@ -377,16 +410,25 @@ const Bingo = ({ theme }) => {
       }
     };
 
+    // ============================================================
+    // ✅ FIX 3: Directly set participants from server playerCount
+    // ============================================================
     const handleBingoParticipantCount = (data) => {
       if (!data) return;
       if (data.selectedNumbers) setSelectedNumbersGlobal(data.selectedNumbers);
-      setParticipants(
-        getActivePlayerCount(
-          data.players || [],
-          data.selectedNumbers || [],
-          data.count || data.playerCount || 0,
-        ),
-      );
+      if (typeof data.playerCount === "number") {
+        setParticipants(data.playerCount);
+      } else if (typeof data.count === "number") {
+        setParticipants(data.count);
+      } else {
+        setParticipants(
+          getActivePlayerCount(
+            data.players || [],
+            data.selectedNumbers || [],
+            0,
+          ),
+        );
+      }
     };
 
     const handleNumberCalledUnified = (data) => {
@@ -400,17 +442,21 @@ const Bingo = ({ theme }) => {
 
     const handleNumberSelectedUnified = (data) => {
       if (!data) return;
-      // data may include { telegramId, luckyNumber, selectedNumbers, playerCount }
       if (data.selectedNumbers) setSelectedNumbersGlobal(data.selectedNumbers);
       setParticipants(
-        getActivePlayerCount(
-          data.players || [],
-          data.selectedNumbers || [],
-          data.playerCount || participants,
-        ),
+        typeof data.playerCount === "number"
+          ? data.playerCount
+          : getActivePlayerCount(
+              data.players || [],
+              data.selectedNumbers || [],
+              data.playerCount || participants,
+            ),
       );
     };
 
+    // ============================================================
+    // ✅ FIX 4: joinedRoom should trust server playerCount directly
+    // ============================================================
     const handleJoinedRoom = (data) => {
       if (!data) return;
       setJoined(true);
@@ -418,18 +464,24 @@ const Bingo = ({ theme }) => {
       if (mySelections.length === 0 && selectionNumbers.length > 0) {
         setMySelections(selectionNumbers);
       }
+
       setParticipants(
-        getActivePlayerCount(
-          data.players || [],
-          data.selectedNumbers || [],
-          data.playerCount || data.currentPlayers || participants,
-        ),
+        typeof data.playerCount === "number"
+          ? data.playerCount
+          : typeof data.currentPlayers === "number"
+            ? data.currentPlayers
+            : getActivePlayerCount(
+                data.players || [],
+                data.selectedNumbers || [],
+                0,
+              ),
       );
+
       if (data.gameId && socket.connected) {
         socket.emit("getGameState", { gameId: data.gameId });
       }
       if (data.card) setCards([data.card]);
-      // If a selection was pending, emit join now (server provided gameId via room state)
+
       if (pendingSelection) {
         const telegramId = authUser?.telegramId;
         if (telegramId && data.gameId) {
@@ -451,7 +503,9 @@ const Bingo = ({ theme }) => {
       }
     };
 
-    // Listen to standardized bingo:* channels (if server emits them in future)
+    // ============================================================
+    // Register all Socket Listeners
+    // ============================================================
     socket.on("bingo:roundState", handleRoundState);
     socket.on("bingo:participantCount", handleBingoParticipantCount);
     socket.on("bingo:numberSelected", handleNumberSelectedUnified);
@@ -462,7 +516,6 @@ const Bingo = ({ theme }) => {
       if (d?.winner) setWinner(d.winner);
     });
     socket.on("bingo:nextRound", (d) => {
-      // server announces a next round
       handleRoundState({
         gameId: d?.gameId || d?.newGameId,
         status: "waiting",
@@ -471,18 +524,26 @@ const Bingo = ({ theme }) => {
       });
     });
 
-    // Also listen to the backend's current event names and map them
     socket.on("gameUpdate", mapGameUpdateToRoundState);
+
+    // ✅ UPDATED: countdownTick now also updates playerCount
     socket.on("countdownTick", (data) => {
-      if (data && typeof data.remaining === "number")
+      if (data && typeof data.remaining === "number") {
         setCountdownRemaining(data.remaining);
+      }
+      if (data && typeof data.playerCount === "number") {
+        setParticipants(data.playerCount);
+      }
     });
+
     socket.on("countdownRemaining", (data) => {
       if (typeof data === "number") setCountdownRemaining(data);
       else if (data && typeof data.remaining === "number")
         setCountdownRemaining(data.remaining);
     });
+
     socket.on("numberCalled", handleNumberCalledUnified);
+
     socket.on("gameState", (data) => {
       if (!data?.game) return;
       const game = data.game;
@@ -490,6 +551,12 @@ const Bingo = ({ theme }) => {
         setCalledNumbers(game.calledNumbers);
       if (game.currentNumber !== undefined && game.currentNumber !== null) {
         setCurrentNumber(game.currentNumber);
+      }
+      // ✅ Also update participants from gameState if available
+      if (typeof game.playerCount === "number") {
+        setParticipants(game.playerCount);
+      } else if (Array.isArray(game.players)) {
+        setParticipants(game.players.length);
       }
       if (game.status) {
         if (
@@ -508,13 +575,16 @@ const Bingo = ({ theme }) => {
         }
       }
     });
+
     socket.on("joinedRoom", handleJoinedRoom);
     socket.on("playerCard", (d) => {
       if (d?.card) setCards([d.card]);
     });
 
+    // ============================================================
+    // Cleanup on unmount
+    // ============================================================
     return () => {
-      // standardized
       socket.off("bingo:roundState", handleRoundState);
       socket.off("bingo:participantCount", handleBingoParticipantCount);
       socket.off("bingo:numberSelected", handleNumberSelectedUnified);
@@ -522,7 +592,6 @@ const Bingo = ({ theme }) => {
       socket.off("bingo:winner");
       socket.off("bingo:roundFinished");
       socket.off("bingo:nextRound");
-      // backend originals
       socket.off("gameUpdate", mapGameUpdateToRoundState);
       socket.off("countdownTick");
       socket.off("numberCalled", handleNumberCalledUnified);
@@ -532,10 +601,10 @@ const Bingo = ({ theme }) => {
     };
   }, [participants, selectionNumbers, authUser, gameId, pendingSelection]);
 
-  // Number calling is server driven; we update UI on 'numberCalled' events
-
+  // ============================================================
+  // Selection Timer
+  // ============================================================
   const handleJoin = () => {
-    // Request server to create or announce a room (server will emit roomCreated)
     if (!socket.connected) socket.connect();
     socket.emit("createRoom", { roomId: "Main Room" });
     setJoined(true);
@@ -550,6 +619,10 @@ const Bingo = ({ theme }) => {
     setCards([]);
     setNumberPool(createNumberPool());
     setRemainingBalls(75);
+    setSelectionNumbers([]);
+    setMySelections([]);
+    setSelectedNumbersGlobal([]);
+    setMySelectedNumber(null);
   };
 
   useEffect(() => {
@@ -583,6 +656,9 @@ const Bingo = ({ theme }) => {
         ? "finished"
         : "running";
 
+  // ============================================================
+  // Render UI
+  // ============================================================
   return (
     <div className="grid grid-cols-1 xl:grid-cols-[1.55fr_0.95fr] gap-6">
       <div className="space-y-6">
@@ -652,11 +728,11 @@ const Bingo = ({ theme }) => {
                     Lucky numbers
                   </div>
                   <div className="text-sm text-slate-400">
-                    Pick 1–3 numbers from 1–75.
+                    Pick up to {maxSelectionCount} numbers from 1–75.
                   </div>
                 </div>
                 <div className="rounded-full border border-slate-700 bg-slate-950/70 px-3 py-1 text-sm text-slate-300">
-                  {selectionNumbers.length}/3 selected
+                  {selectionNumbers.length}/{maxSelectionCount} selected
                 </div>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -686,14 +762,15 @@ const Bingo = ({ theme }) => {
                 (number) => {
                   const isSelected =
                     selectedNumbersGlobal.includes(number) ||
-                    mySelectedNumber === number;
+                    mySelections.includes(number);
+                  const isReservedByOther =
+                    selectedNumbersGlobal.includes(number) &&
+                    !mySelections.includes(number);
                   const disabled =
-                    Boolean(
-                      selectedNumbersGlobal.includes(number) &&
-                      !mySelections.includes(number),
-                    ) ||
                     phase !== "selection" ||
-                    mySelections.length >= 3;
+                    isReservedByOther ||
+                    (!mySelections.includes(number) && !canSelectMore);
+
                   return (
                     <button
                       key={number}
@@ -703,6 +780,8 @@ const Bingo = ({ theme }) => {
                         isSelected
                           ? "border-emerald-400 bg-emerald-500/20 text-emerald-200"
                           : "border-slate-700 bg-slate-950 text-slate-100 hover:border-slate-500"
+                      } ${
+                        isReservedByOther ? "opacity-50 cursor-not-allowed" : ""
                       }`}
                     >
                       {number}

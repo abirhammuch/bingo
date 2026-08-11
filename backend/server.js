@@ -49,35 +49,41 @@ const server = http.createServer(app);
 // 2. Initialize the Socket Server (this triggers Bingo)
 const io = initSocketServer(server);
 
-// Start the server
+// 3. Start listening immediately so frontend socket clients can connect
+server.once("error", (error) => {
+  if (error.code === "EADDRINUSE") {
+    console.error(
+      `Port ${PORT} is already in use. Please stop the existing server and try again.`,
+    );
+  } else {
+    console.error("Server error:", error.message);
+  }
+  process.exit(1);
+});
+
+server.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`🔌 Socket.IO is ready for Bingo!`);
+});
+
 const startServer = async () => {
   try {
     await connectDB();
 
     await setupCommands(bot);
-    await bot.launch();
-    console.log(
-      "🤖 Telegram bot is running",
-      bot.botInfo?.username || "Telegram bot",
-    );
-
-    server.once("error", (error) => {
-      if (error.code === "EADDRINUSE") {
-        console.error(
-          `Port ${PORT} is already in use. Please stop the existing server and try again.`,
+    bot
+      .launch()
+      .then(() => {
+        console.log(
+          "🤖 Telegram bot is running",
+          bot.botInfo?.username || "Telegram bot",
         );
-      } else {
-        console.error("Server error:", error.message);
-      }
-      process.exit(1);
-    });
-
-    server.listen(PORT, () => {
-      console.log(`🚀 Server running on port ${PORT}`);
-      console.log(`🔌 Socket.IO is ready for Bingo!`);
-    });
+      })
+      .catch((error) => {
+        console.error("Telegram bot failed to launch:", error.message);
+      });
   } catch (error) {
-    console.error("Failed to start server:", error.message);
+    console.error("Failed to start services:", error.message);
     process.exit(1);
   }
 };

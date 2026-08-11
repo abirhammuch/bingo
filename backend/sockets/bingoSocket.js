@@ -464,7 +464,7 @@ const scheduleAutoStart = (gameId, roomId, seconds = 20, force = false) => {
         const game = await getGameState(gameId);
         if (!game) return;
 
-        if (game.status === "waiting" && game.players.length >= 1) {
+        if (game.status === "waiting" && game.players.length >= 3) {
           const started = await startGame(gameId);
           if (globalThis.io && typeof globalThis.io.to === "function") {
             const autoStartedState = {

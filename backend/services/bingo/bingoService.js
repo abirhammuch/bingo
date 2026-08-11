@@ -470,8 +470,8 @@ export const startGame = async (gameId) => {
     throw new Error("Game not found");
   }
 
-  if (game.players.length < 1) {
-    throw new Error("Need at least 1 player to start");
+  if (game.players.length < 3) {
+    throw new Error("Need at least 3 players to start");
   }
 
   game.status = "active";
