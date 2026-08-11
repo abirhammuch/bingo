@@ -75,17 +75,14 @@ const Bingo = ({ theme }) => {
   // ✅ FIX 1: Updated helper to TRUST server playerCount first
   // ============================================================
   const getActivePlayerCount = (players, selectedNumbers, fallback = 0) => {
-    // If the server sent a specific playerCount, trust it immediately
-    if (typeof fallback === "number" && fallback > 0) {
-      return fallback;
-    }
-    if (Array.isArray(players) && players.length > 0) {
-      return players.length;
-    }
+    const playerCount = Array.isArray(players) ? players.length : 0;
     const selectedCount = Array.isArray(selectedNumbers)
       ? selectedNumbers.length
       : 0;
-    return selectedCount > 0 ? selectedCount : 0;
+    const fallbackCount =
+      typeof fallback === "number" && fallback > 0 ? fallback : 0;
+
+    return Math.max(playerCount, selectedCount, fallbackCount);
   };
 
   const toggleLuckyNumber = (number) => {
