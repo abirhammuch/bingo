@@ -1,14 +1,21 @@
 import { io } from "socket.io-client";
 
+const normalizeUrl = (rawUrl) =>
+  rawUrl
+    .replace(/(^['"]|['"]$)/g, "")
+    .replace(/\/+$/g, "")
+    .trim();
+
 const rawUrl = import.meta.env.VITE_API_URL;
-const URL = rawUrl ? rawUrl.replace(/\/+$|\s+/g, "") : "http://localhost:5000";
+const URL = rawUrl ? normalizeUrl(rawUrl) : "http://localhost:5000";
 
 const socket = io(URL, {
   autoConnect: false, // Connect only after login or joining a game
-  transports: ["websocket", "polling"],
+  transports: ["polling", "websocket"],
   reconnection: true,
   reconnectionAttempts: 5,
   reconnectionDelay: 1000,
+  path: "/socket.io",
 });
 
 socket.on("connect", () => {
