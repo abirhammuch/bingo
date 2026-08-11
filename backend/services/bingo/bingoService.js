@@ -470,8 +470,13 @@ export const startGame = async (gameId) => {
     throw new Error("Game not found");
   }
 
-  if (game.players.length < 3) {
-    throw new Error("Need at least 3 players to start");
+  const selectedCount = Array.isArray(game.selectedNumbers)
+    ? game.selectedNumbers.length
+    : 0;
+  const participantCount = Math.max(game.players.length, selectedCount);
+
+  if (participantCount < 3) {
+    throw new Error("Need at least 3 selected cards to start");
   }
 
   game.status = "active";

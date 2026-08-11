@@ -464,7 +464,12 @@ const scheduleAutoStart = (gameId, roomId, seconds = 20, force = false) => {
         const game = await getGameState(gameId);
         if (!game) return;
 
-        if (game.status === "waiting" && game.players.length >= 3) {
+        const selectedCount = Array.isArray(game.selectedNumbers)
+          ? game.selectedNumbers.length
+          : 0;
+        const participantCount = Math.max(game.players.length, selectedCount);
+
+        if (game.status === "waiting" && participantCount >= 3) {
           const started = await startGame(gameId);
           if (globalThis.io && typeof globalThis.io.to === "function") {
             const autoStartedState = {
