@@ -345,7 +345,10 @@ const Bingo = ({ theme }) => {
       if (state.calledNumbers) setCalledNumbers(state.calledNumbers);
       if (state.currentNumber) setCurrentNumber(state.currentNumber);
 
-      if (pendingSelections.length > 0 && (state.gameId || state.game?.gameId)) {
+      if (
+        pendingSelections.length > 0 &&
+        (state.gameId || state.game?.gameId)
+      ) {
         const gid = state.gameId || state.game?.gameId;
         const telegramId = authUser?.telegramId;
         if (gid && telegramId) {
@@ -607,7 +610,7 @@ const Bingo = ({ theme }) => {
       socket.off("joinedRoom", handleJoinedRoom);
       socket.off("playerCard");
     };
-    [participants, selectionNumbers, authUser, gameId, pendingSelections]);
+  }, [participants, selectionNumbers, authUser, gameId, pendingSelections]);
 
   // ============================================================
   // Selection Timer
