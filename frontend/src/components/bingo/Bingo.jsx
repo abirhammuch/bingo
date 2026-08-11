@@ -88,6 +88,19 @@ const Bingo = ({ theme }) => {
     return Math.max(playerCount, selectedCount, fallbackCount);
   };
 
+  const emitStartGame = () => {
+    if (!gameId) return;
+    if (!socket.connected) {
+      socket.connect();
+      socket.once("connect", () => {
+        socket.emit("startGame", { gameId });
+      });
+      return;
+    }
+
+    socket.emit("startGame", { gameId });
+  };
+
   const flushPendingSelections = async (
     emitStart = false,
     explicitGameId = null,
@@ -136,8 +149,8 @@ const Bingo = ({ theme }) => {
 
     setPendingSelections([]);
 
-    if (emitStart && gameId && socket.connected) {
-      socket.emit("startGame", { gameId });
+    if (emitStart && gameId) {
+      emitStartGame();
     }
   };
 
@@ -245,9 +258,7 @@ const Bingo = ({ theme }) => {
     setDrawTimeLeft(7);
     setPhase("live");
 
-    if (socket.connected) {
-      socket.emit("startGame", { gameId });
-    }
+    emitStartGame();
   };
 
   const drawNextNumber = () => {
@@ -647,6 +658,19 @@ const Bingo = ({ theme }) => {
     flushPendingSelections(true);
     setPendingStart(false);
   }, [pendingStart, gameId, pendingSelections]);
+
+  useEffect(() => {
+    if (phase !== "selection") return;
+    if (!gameId) return;
+    if (selectionNumbers.length < 3) return;
+
+    if (pendingSelections.length > 0) {
+      flushPendingSelections(true);
+      return;
+    }
+
+    lockSelections();
+  }, [phase, selectionNumbers.length, pendingSelections.length, gameId]);
 
   const statusText = phase === "selection" ? "Selection" : gameStatus;
   const currentStatus =

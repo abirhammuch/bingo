@@ -7,7 +7,11 @@ const normalizeUrl = (rawUrl) =>
     .trim();
 
 const rawUrl = import.meta.env.VITE_API_URL;
-const URL = rawUrl ? normalizeUrl(rawUrl) : "http://localhost:5000";
+const URL = rawUrl
+  ? normalizeUrl(rawUrl)
+  : typeof window !== "undefined"
+    ? window.location.origin
+    : "http://localhost:5000";
 
 const socket = io(URL, {
   autoConnect: false, // Connect only after login or joining a game
@@ -15,7 +19,6 @@ const socket = io(URL, {
   reconnection: true,
   reconnectionAttempts: 5,
   reconnectionDelay: 1000,
-  path: "/socket.io",
 });
 
 socket.on("connect", () => {
