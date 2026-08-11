@@ -87,17 +87,19 @@ export const initBingoSocket = (io) => {
     // ------------------------------------------------------------------
     // 2. JOIN ROOM
     // ------------------------------------------------------------------
-    socket.on("joinRoom", async (data) => {
+    socket.on("joinRoom", async (data, callback) => {
       try {
         const { gameId, telegramId, betAmount, luckyNumber = null } = data;
 
         // Validate inputs
         if (!gameId || !telegramId || !betAmount || betAmount < 1) {
-          return socket.emit("error", {
+          const response = {
             success: false,
             message:
               "Invalid data. GameId, TelegramId, and a valid bet are required.",
-          });
+          };
+          if (typeof callback === "function") return callback(response);
+          return socket.emit("error", response);
         }
 
         // Join the game logic (deducts balance, creates ticket, generates card)
@@ -163,6 +165,16 @@ export const initBingoSocket = (io) => {
           status: "waiting",
         });
 
+        if (typeof callback === "function") {
+          callback({
+            success: true,
+            gameId: result.game.gameId,
+            roomId: result.game.roomId,
+            selectedNumbers: result.game.selectedNumbers || [],
+            playerCount: result.game.players.length,
+          });
+        }
+
         // Keep the shared 30-second join window active for the room.
         const currentGame = await getGameState(result.game.gameId);
         if (currentGame.status === "waiting") {
@@ -174,10 +186,12 @@ export const initBingoSocket = (io) => {
         }
       } catch (error) {
         console.error("Join Room Error:", error.message);
-        socket.emit("error", {
+        const response = {
           success: false,
           message: error.message || "Failed to join room",
-        });
+        };
+        if (typeof callback === "function") return callback(response);
+        socket.emit("error", response);
       }
     });
 

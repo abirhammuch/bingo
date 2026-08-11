@@ -62,6 +62,8 @@ const Bingo = ({ theme }) => {
   const [mySelections, setMySelections] = useState([]);
   const [countdownRemaining, setCountdownRemaining] = useState(null);
   const [pendingSelections, setPendingSelections] = useState([]);
+  const [roomCreating, setRoomCreating] = useState(false);
+  const [pendingStart, setPendingStart] = useState(false);
 
   const maxSelectionCount = 3;
   const selectedNumbersLabel = useMemo(
@@ -86,6 +88,59 @@ const Bingo = ({ theme }) => {
     return Math.max(playerCount, selectedCount, fallbackCount);
   };
 
+  const flushPendingSelections = async (
+    emitStart = false,
+    explicitGameId = null,
+  ) => {
+    const telegramId = authUser?.telegramId;
+    const targetGameId = explicitGameId || gameId;
+    if (!targetGameId || !telegramId || pendingSelections.length === 0) {
+      return;
+    }
+
+    if (!socket.connected) {
+      socket.connect();
+    }
+
+    const joinPromises = pendingSelections.map(
+      (pendingNumber) =>
+        new Promise((resolve) => {
+          socket.emit(
+            "joinRoom",
+            {
+              gameId: targetGameId,
+              telegramId,
+              betAmount: 1,
+              luckyNumber: pendingNumber,
+            },
+            (response) => {
+              resolve({ pendingNumber, response });
+            },
+          );
+        }),
+    );
+
+    const results = await Promise.all(joinPromises);
+    const successful = results.filter((r) => r.response?.success);
+
+    const uniquePending = successful
+      .map((r) => r.pendingNumber)
+      .filter((n) => !mySelections.includes(n));
+
+    if (uniquePending.length > 0) {
+      setMySelections((prev) => [...prev, ...uniquePending]);
+      setSelectionNumbers((prev) => [...prev, ...uniquePending]);
+      setSelectedNumbersGlobal((prev) => [...prev, ...uniquePending]);
+      setMySelectedNumber(uniquePending[0] || null);
+    }
+
+    setPendingSelections([]);
+
+    if (emitStart && gameId && socket.connected) {
+      socket.emit("startGame", { gameId });
+    }
+  };
+
   const toggleLuckyNumber = (number) => {
     if (phase !== "selection") return;
     if (!joined) return;
@@ -104,11 +159,35 @@ const Bingo = ({ theme }) => {
       socket.connect();
     }
 
-    if (!gameId) {
+    if (!gameId && !roomCreating) {
+      setRoomCreating(true);
       setPendingSelections((prev) =>
         prev.includes(number) ? prev : [...prev, number],
       );
+      setMySelections((prev) => [...prev, number]);
+      setMySelectedNumber(number);
+      setSelectionNumbers((prev) =>
+        prev.includes(number) ? prev : [...prev, number],
+      );
+      setSelectedNumbersGlobal((prev) =>
+        prev.includes(number) ? prev : [...prev, number],
+      );
       socket.emit("createRoom", { roomId: "Main Room" });
+      return;
+    }
+
+    if (!gameId && roomCreating) {
+      setPendingSelections((prev) =>
+        prev.includes(number) ? prev : [...prev, number],
+      );
+      setMySelections((prev) => [...prev, number]);
+      setMySelectedNumber(number);
+      setSelectionNumbers((prev) =>
+        prev.includes(number) ? prev : [...prev, number],
+      );
+      setSelectedNumbersGlobal((prev) =>
+        prev.includes(number) ? prev : [...prev, number],
+      );
       return;
     }
 
@@ -141,7 +220,18 @@ const Bingo = ({ theme }) => {
   };
 
   const lockSelections = () => {
-    if (selectionNumbers.length < 1) return;
+    if (selectionNumbers.length < 1 && pendingSelections.length < 1) return;
+
+    if (pendingSelections.length > 0) {
+      if (!gameId) {
+        setPendingStart(true);
+        return;
+      }
+      flushPendingSelections(true);
+      return;
+    }
+
+    if (!gameId) return;
 
     setCards(selectionNumbers.map((number) => createBingoCard([number])));
     setSelectionTimeLeft(0);
@@ -155,7 +245,7 @@ const Bingo = ({ theme }) => {
     setDrawTimeLeft(7);
     setPhase("live");
 
-    if (gameId && socket.connected) {
+    if (socket.connected) {
       socket.emit("startGame", { gameId });
     }
   };
@@ -325,6 +415,12 @@ const Bingo = ({ theme }) => {
         setPhase("finished");
         setGameStatus("finished");
       }
+      const eventGameId = state.gameId || state.game?.gameId || gameId;
+      if (eventGameId) {
+        setGameId(eventGameId);
+        setRoomCreating(false);
+      }
+
       setSelectedNumbersGlobal(
         state.selectedNumbers || state.game?.selectedNumbers || [],
       );
@@ -345,31 +441,11 @@ const Bingo = ({ theme }) => {
       if (state.calledNumbers) setCalledNumbers(state.calledNumbers);
       if (state.currentNumber) setCurrentNumber(state.currentNumber);
 
-      if (
-        pendingSelections.length > 0 &&
-        (state.gameId || state.game?.gameId)
-      ) {
-        const gid = state.gameId || state.game?.gameId;
-        const telegramId = authUser?.telegramId;
-        if (gid && telegramId) {
-          pendingSelections.forEach((pendingNumber) => {
-            socket.emit("joinRoom", {
-              gameId: gid,
-              telegramId,
-              betAmount: 1,
-              luckyNumber: pendingNumber,
-            });
-          });
-          setMySelections((prev) => [
-            ...prev,
-            ...pendingSelections.filter((n) => !prev.includes(n)),
-          ]);
-          setSelectionNumbers((prev) => [
-            ...prev,
-            ...pendingSelections.filter((n) => !prev.includes(n)),
-          ]);
-          setMySelectedNumber(pendingSelections[0] || null);
-          setPendingSelections([]);
+      if (pendingSelections.length > 0 && eventGameId) {
+        if (pendingStart) {
+          flushPendingSelections(true);
+        } else {
+          flushPendingSelections(false);
         }
       }
     };
@@ -467,6 +543,10 @@ const Bingo = ({ theme }) => {
     const handleJoinedRoom = (data) => {
       if (!data) return;
       setJoined(true);
+      if (data.gameId) {
+        setGameId(data.gameId);
+        setRoomCreating(false);
+      }
       setMySelectedNumber(selectionNumbers[0] || null);
       if (mySelections.length === 0 && selectionNumbers.length > 0) {
         setMySelections(selectionNumbers);
@@ -490,27 +570,7 @@ const Bingo = ({ theme }) => {
       if (data.card) setCards([data.card]);
 
       if (pendingSelections.length > 0) {
-        const telegramId = authUser?.telegramId;
-        if (telegramId && data.gameId) {
-          pendingSelections.forEach((pendingNumber) => {
-            socket.emit("joinRoom", {
-              gameId: data.gameId,
-              telegramId,
-              betAmount: 1,
-              luckyNumber: pendingNumber,
-            });
-          });
-          setMySelections((prev) => [
-            ...prev,
-            ...pendingSelections.filter((n) => !prev.includes(n)),
-          ]);
-          setSelectionNumbers((prev) => [
-            ...prev,
-            ...pendingSelections.filter((n) => !prev.includes(n)),
-          ]);
-          setMySelectedNumber(pendingSelections[0] || null);
-          setPendingSelections([]);
-        }
+        flushPendingSelections(false);
       }
     };
 
@@ -586,37 +646,15 @@ const Bingo = ({ theme }) => {
         }
       }
     });
-
-    socket.on("joinedRoom", handleJoinedRoom);
-    socket.on("playerCard", (d) => {
-      if (d?.card) setCards([d.card]);
+    socket.on("error", (data) => {
+      if (data?.message) {
+        console.error("Bingo socket error:", data.message);
+      }
     });
-
-    // ============================================================
-    // Cleanup on unmount
-    // ============================================================
-    return () => {
-      socket.off("bingo:roundState", handleRoundState);
-      socket.off("bingo:participantCount", handleBingoParticipantCount);
-      socket.off("bingo:numberSelected", handleNumberSelectedUnified);
-      socket.off("bingo:numberCalled", handleNumberCalledUnified);
-      socket.off("bingo:winner");
-      socket.off("bingo:roundFinished");
-      socket.off("bingo:nextRound");
-      socket.off("gameUpdate", mapGameUpdateToRoundState);
-      socket.off("countdownTick");
-      socket.off("numberCalled", handleNumberCalledUnified);
-      socket.off("gameState");
-      socket.off("joinedRoom", handleJoinedRoom);
-      socket.off("playerCard");
-    };
   }, [participants, selectionNumbers, authUser, gameId, pendingSelections]);
 
-  // ============================================================
-  // Selection Timer
-  // ============================================================
   const handleJoin = () => {
-    if (!socket.connected) socket.connect();
+    setRoomCreating(true);
     socket.emit("createRoom", { roomId: "Main Room" });
     setJoined(true);
     setPhase("selection");
@@ -635,6 +673,7 @@ const Bingo = ({ theme }) => {
     setSelectedNumbersGlobal([]);
     setMySelectedNumber(null);
     setPendingSelections([]);
+    setPendingStart(false);
   };
 
   useEffect(() => {
@@ -659,6 +698,14 @@ const Bingo = ({ theme }) => {
 
     return () => window.clearTimeout(timer);
   }, [phase, countdownRemaining, selectionTimeLeft]);
+
+  useEffect(() => {
+    if (!pendingStart || !gameId) return;
+    if (pendingSelections.length === 0) return;
+
+    flushPendingSelections(true);
+    setPendingStart(false);
+  }, [pendingStart, gameId, pendingSelections]);
 
   const statusText = phase === "selection" ? "Selection" : gameStatus;
   const currentStatus =
