@@ -61,7 +61,7 @@ const Bingo = ({ theme }) => {
   const [mySelectedNumber, setMySelectedNumber] = useState(null);
   const [mySelections, setMySelections] = useState([]);
   const [countdownRemaining, setCountdownRemaining] = useState(null);
-  const [pendingSelection, setPendingSelection] = useState(null);
+  const [pendingSelections, setPendingSelections] = useState([]);
 
   const maxSelectionCount = 3;
   const selectedNumbersLabel = useMemo(
@@ -70,6 +70,7 @@ const Bingo = ({ theme }) => {
   );
   const reservedCount = selectedNumbersGlobal.length;
   const canSelectMore = mySelections.length < maxSelectionCount;
+  const displayedPlayerCount = Math.max(participants, selectionNumbers.length);
 
   // ============================================================
   // ✅ FIX 1: Updated helper to TRUST server playerCount first
@@ -104,7 +105,9 @@ const Bingo = ({ theme }) => {
     }
 
     if (!gameId) {
-      setPendingSelection(number);
+      setPendingSelections((prev) =>
+        prev.includes(number) ? prev : [...prev, number],
+      );
       socket.emit("createRoom", { roomId: "Main Room" });
       return;
     }
@@ -342,24 +345,28 @@ const Bingo = ({ theme }) => {
       if (state.calledNumbers) setCalledNumbers(state.calledNumbers);
       if (state.currentNumber) setCurrentNumber(state.currentNumber);
 
-      if (pendingSelection && (state.gameId || state.game?.gameId)) {
+      if (pendingSelections.length > 0 && (state.gameId || state.game?.gameId)) {
         const gid = state.gameId || state.game?.gameId;
         const telegramId = authUser?.telegramId;
         if (gid && telegramId) {
-          socket.emit("joinRoom", {
-            gameId: gid,
-            telegramId,
-            betAmount: 1,
-            luckyNumber: pendingSelection,
+          pendingSelections.forEach((pendingNumber) => {
+            socket.emit("joinRoom", {
+              gameId: gid,
+              telegramId,
+              betAmount: 1,
+              luckyNumber: pendingNumber,
+            });
           });
-          setMySelections((prev) => [...prev, pendingSelection]);
-          setMySelectedNumber(pendingSelection);
-          setSelectionNumbers((prev) =>
-            prev.includes(pendingSelection)
-              ? prev
-              : [...prev, pendingSelection],
-          );
-          setPendingSelection(null);
+          setMySelections((prev) => [
+            ...prev,
+            ...pendingSelections.filter((n) => !prev.includes(n)),
+          ]);
+          setSelectionNumbers((prev) => [
+            ...prev,
+            ...pendingSelections.filter((n) => !prev.includes(n)),
+          ]);
+          setMySelectedNumber(pendingSelections[0] || null);
+          setPendingSelections([]);
         }
       }
     };
@@ -479,23 +486,27 @@ const Bingo = ({ theme }) => {
       }
       if (data.card) setCards([data.card]);
 
-      if (pendingSelection) {
+      if (pendingSelections.length > 0) {
         const telegramId = authUser?.telegramId;
         if (telegramId && data.gameId) {
-          socket.emit("joinRoom", {
-            gameId: data.gameId,
-            telegramId,
-            betAmount: 1,
-            luckyNumber: pendingSelection,
+          pendingSelections.forEach((pendingNumber) => {
+            socket.emit("joinRoom", {
+              gameId: data.gameId,
+              telegramId,
+              betAmount: 1,
+              luckyNumber: pendingNumber,
+            });
           });
-          setMySelections((prev) => [...prev, pendingSelection]);
-          setMySelectedNumber(pendingSelection);
-          setSelectionNumbers((prev) =>
-            prev.includes(pendingSelection)
-              ? prev
-              : [...prev, pendingSelection],
-          );
-          setPendingSelection(null);
+          setMySelections((prev) => [
+            ...prev,
+            ...pendingSelections.filter((n) => !prev.includes(n)),
+          ]);
+          setSelectionNumbers((prev) => [
+            ...prev,
+            ...pendingSelections.filter((n) => !prev.includes(n)),
+          ]);
+          setMySelectedNumber(pendingSelections[0] || null);
+          setPendingSelections([]);
         }
       }
     };
@@ -596,7 +607,7 @@ const Bingo = ({ theme }) => {
       socket.off("joinedRoom", handleJoinedRoom);
       socket.off("playerCard");
     };
-  }, [participants, selectionNumbers, authUser, gameId, pendingSelection]);
+    [participants, selectionNumbers, authUser, gameId, pendingSelections]);
 
   // ============================================================
   // Selection Timer
@@ -620,6 +631,7 @@ const Bingo = ({ theme }) => {
     setMySelections([]);
     setSelectedNumbersGlobal([]);
     setMySelectedNumber(null);
+    setPendingSelections([]);
   };
 
   useEffect(() => {
@@ -700,7 +712,7 @@ const Bingo = ({ theme }) => {
             </div>
             <div className="flex items-center gap-3">
               <div className="rounded-3xl border border-slate-700 bg-slate-800/80 px-4 py-2 text-sm text-slate-100">
-                {participants} players
+                {displayedPlayerCount} players
               </div>
               <div className="flex items-center gap-2 rounded-3xl border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-sm font-semibold text-amber-300">
                 <span>Auto-claim in</span>
