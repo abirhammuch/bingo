@@ -101,7 +101,6 @@ const Bingo = ({ theme }) => {
     if (!socket.connected) {
       socket.connect();
     }
-    
 
     const joinPromises = pendingSelections.map(
       (pendingNumber) =>
@@ -297,83 +296,6 @@ const Bingo = ({ theme }) => {
   // Socket Listeners
   // ============================================================
   useEffect(() => {
-    const handleGameUpdate = (payload) => {
-      const type = payload?.type;
-      if (!type) return;
-
-      switch (type) {
-        case "roomCreated":
-          setGameId(payload.gameId);
-          setPhase("selection");
-          setGameStatus("waiting");
-          setSelectedNumbersGlobal(payload.selectedNumbers || []);
-          // ✅ Use server playerCount directly
-          setParticipants(
-            typeof payload.playerCount === "number"
-              ? payload.playerCount
-              : getActivePlayerCount(
-                  payload.players || [],
-                  payload.selectedNumbers || [],
-                ),
-          );
-          setMySelectedNumber(null);
-          setMySelections([]);
-          setSelectionNumbers([]);
-          setCalledNumbers([]);
-          setWinner(null);
-          setCountdownRemaining(30);
-          setSelectionTimeLeft(30);
-          break;
-
-        case "playerJoined":
-          // ✅ FIX: Trust the server's playerCount first
-          setParticipants(
-            typeof payload.playerCount === "number"
-              ? payload.playerCount
-              : getActivePlayerCount(
-                  payload.players || [],
-                  payload.selectedNumbers || [],
-                  payload.playerCount || 0,
-                ),
-          );
-          setSelectedNumbersGlobal(payload.selectedNumbers || []);
-          if (
-            (payload.players || []).length >= 1 ||
-            (payload.selectedNumbers || []).length >= 1
-          ) {
-            setCountdownRemaining(30);
-            setSelectionTimeLeft(30);
-          }
-          break;
-
-        case "countdownStarted":
-          setCountdownRemaining(payload.seconds ?? null);
-          break;
-
-        case "gameStarted":
-          setPhase("live");
-          setGameStatus("live");
-          setCountdownRemaining(null);
-          break;
-
-        case "notEnoughPlayers":
-          setPhase("waiting");
-          setGameStatus("waiting");
-          break;
-
-        case "bingo":
-          setWinner(payload.winner || null);
-          break;
-
-        case "gameEnded":
-          setGameStatus("finished");
-          break;
-
-        default:
-          break;
-      }
-    };
-
     const handleCountdown = (data) => {
       if (typeof data?.remaining === "number")
         setCountdownRemaining(data.remaining);
@@ -596,6 +518,7 @@ const Bingo = ({ theme }) => {
       });
     });
 
+    socket.on("joinedRoom", handleJoinedRoom);
     socket.on("gameUpdate", mapGameUpdateToRoundState);
 
     // ✅ UPDATED: countdownTick now also updates playerCount
@@ -652,6 +575,23 @@ const Bingo = ({ theme }) => {
         console.error("Bingo socket error:", data.message);
       }
     });
+
+    return () => {
+      socket.off("bingo:roundState", handleRoundState);
+      socket.off("bingo:participantCount", handleBingoParticipantCount);
+      socket.off("bingo:numberSelected", handleNumberSelectedUnified);
+      socket.off("bingo:numberCalled", handleNumberCalledUnified);
+      socket.off("bingo:winner", (d) => d && setWinner(d.winner || d));
+      socket.off("bingo:roundFinished");
+      socket.off("bingo:nextRound");
+      socket.off("joinedRoom", handleJoinedRoom);
+      socket.off("gameUpdate", mapGameUpdateToRoundState);
+      socket.off("countdownTick");
+      socket.off("countdownRemaining");
+      socket.off("numberCalled", handleNumberCalledUnified);
+      socket.off("gameState");
+      socket.off("error");
+    };
   }, [participants, selectionNumbers, authUser, gameId, pendingSelections]);
 
   const handleJoin = () => {
