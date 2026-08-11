@@ -101,6 +101,7 @@ const Bingo = ({ theme }) => {
     if (!socket.connected) {
       socket.connect();
     }
+    
 
     const joinPromises = pendingSelections.map(
       (pendingNumber) =>
