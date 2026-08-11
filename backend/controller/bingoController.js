@@ -10,7 +10,7 @@
 
 export const createGame = async (req, res) => {
   try {
-    const { roomId, maxPlayers = 10, minBet = 1, maxBet = 100 } = req.body;
+    const { roomId, maxPlayers = 100, minBet = 1, maxBet = 100 } = req.body;
 
     if (!roomId) {
       return res.status(400).json({
