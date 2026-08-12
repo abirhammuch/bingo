@@ -135,6 +135,7 @@ const Bingo = ({ theme }) => {
 
     const results = await Promise.all(joinPromises);
     const successful = results.filter((r) => r.response?.success);
+    const originalPendingCount = pendingSelections.length;
 
     const uniquePending = successful
       .map((r) => r.pendingNumber)
@@ -149,8 +150,22 @@ const Bingo = ({ theme }) => {
 
     setPendingSelections([]);
 
-    if (emitStart && gameId) {
+    // Only start the game if all selections were successful
+    if (
+      emitStart &&
+      gameId &&
+      successful.length === originalPendingCount &&
+      successful.length >= 3
+    ) {
       emitStartGame();
+    } else if (emitStart && successful.length < 3) {
+      console.warn(
+        `Failed to join enough games. Successful: ${successful.length}, Required: 3`,
+      );
+      socket.emit("error", {
+        success: false,
+        message: `Need at least 3 successful card selections. Got ${successful.length}.`,
+      });
     }
   };
 
