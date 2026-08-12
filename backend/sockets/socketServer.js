@@ -15,10 +15,10 @@ export const initSocketServer = (server) => {
   const io = new Server(server, {
     cors: {
       origin: [
-        "https://bingo-zeta-livid.vercel.app",
+        "https://bingo-e9bw.onrender.com",
         "http://localhost:5173",
         "http://localhost:3000",
-        "http://localhost:5000"
+        "http://localhost:5000",
       ],
       methods: ["GET", "POST"],
       credentials: true,
