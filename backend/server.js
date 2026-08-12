@@ -18,8 +18,9 @@ const app = express();
 const PORT = process.env.PORT || 4000;
 
 // Frontend URL (used to redirect SPA routes on refresh)
+// Default to the Render frontend URL per deployment request
 const FRONTEND_URL =
-  process.env.FRONTEND_URL || "https://bingo-zeta-livid.vercel.app";
+  process.env.FRONTEND_URL || "https://bingo-e9bw.onrender.com";
 
 // Configure CORS for Express
 const corsOptions = {
@@ -66,13 +67,10 @@ app.use((req, res, next) => {
     return next();
   }
 
-  if (req.accepts("html")) {
-    // Preserve the path so frontend router can handle nested routes
-    const target = `${FRONTEND_URL}${req.originalUrl}`;
-    return res.redirect(target);
-  }
-
-  return next();
+  // Preserve the path so frontend router can handle nested routes
+  const target = `${FRONTEND_URL}${req.originalUrl}`;
+  console.log(`Redirecting ${req.originalUrl} -> ${target}`);
+  return res.redirect(302, target);
 });
 
 // Generic 404 for anything that fell through
