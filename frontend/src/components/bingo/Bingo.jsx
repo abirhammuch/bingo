@@ -927,6 +927,7 @@ const Bingo = ({ theme }) => {
                     ? "Selection closes in"
                     : "Next number in"
                 }
+                selectedCardsCount={selectedNumbersGlobal.length}
               />
             </div>
           </div>
