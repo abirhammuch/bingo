@@ -144,7 +144,6 @@ const Bingo = ({ theme }) => {
     if (uniquePending.length > 0) {
       setMySelections((prev) => [...prev, ...uniquePending]);
       setSelectionNumbers((prev) => [...prev, ...uniquePending]);
-      setSelectedNumbersGlobal((prev) => [...prev, ...uniquePending]);
       setMySelectedNumber(uniquePending[0] || null);
     }
 
@@ -197,9 +196,6 @@ const Bingo = ({ theme }) => {
       setSelectionNumbers((prev) =>
         prev.includes(number) ? prev : [...prev, number],
       );
-      setSelectedNumbersGlobal((prev) =>
-        prev.includes(number) ? prev : [...prev, number],
-      );
       socket.emit("createRoom", { roomId: "Main Room" });
       return;
     }
@@ -213,9 +209,6 @@ const Bingo = ({ theme }) => {
       setSelectionNumbers((prev) =>
         prev.includes(number) ? prev : [...prev, number],
       );
-      setSelectedNumbersGlobal((prev) =>
-        prev.includes(number) ? prev : [...prev, number],
-      );
       return;
     }
 
@@ -223,9 +216,6 @@ const Bingo = ({ theme }) => {
       setMySelections((prev) => [...prev, number]);
       setMySelectedNumber(number);
       setSelectionNumbers((prev) =>
-        prev.includes(number) ? prev : [...prev, number],
-      );
-      setSelectedNumbersGlobal((prev) =>
         prev.includes(number) ? prev : [...prev, number],
       );
       return;
@@ -240,9 +230,6 @@ const Bingo = ({ theme }) => {
     setMySelections((prev) => [...prev, number]);
     setMySelectedNumber(number);
     setSelectionNumbers((prev) =>
-      prev.includes(number) ? prev : [...prev, number],
-    );
-    setSelectedNumbersGlobal((prev) =>
       prev.includes(number) ? prev : [...prev, number],
     );
   };

@@ -26,14 +26,15 @@ const Countdown = ({
 
   return (
     <div className="flex items-center justify-between gap-4 rounded-lg border border-slate-700 bg-slate-900 p-3">
-      {/* Selected Cards Counter on the left */}
+      {/* Total Selected Cards Counter on the left - GLOBAL from all devices */}
       <div className="flex flex-col items-center justify-center min-w-fit">
         <p className="text-xs text-slate-500 uppercase tracking-wide">
-          Selected Cards
+          Total Selected
         </p>
         <div className="text-2xl font-bold text-blue-400 mt-1">
           {selectedCardsCount}
         </div>
+        <p className="text-xs text-slate-600 mt-0.5">cards in round</p>
       </div>
 
       {/* Countdown timer in the center */}
