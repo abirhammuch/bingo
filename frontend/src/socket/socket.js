@@ -15,10 +15,16 @@ const URL = rawUrl
 
 const socket = io(URL, {
   autoConnect: false, // Connect only after login or joining a game
-  transports: ["polling", "websocket"],
+  transports: ["websocket", "polling"],
   reconnection: true,
-  reconnectionAttempts: 5,
+  reconnectionAttempts: 10,
   reconnectionDelay: 1000,
+  reconnectionDelayMax: 5000,
+  credentials: true,
+  withCredentials: true,
+  extraHeaders: {
+    "Content-Type": "application/json",
+  },
 });
 
 socket.on("connect", () => {

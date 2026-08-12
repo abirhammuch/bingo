@@ -14,12 +14,20 @@ export const initSocketServer = (server) => {
   // 1. Create the main Socket.IO instance
   const io = new Server(server, {
     cors: {
-      origin: "*", // In production, restrict this to your frontend domain
+      origin: [
+        "https://bingo-zeta-livid.vercel.app",
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "http://localhost:5000"
+      ],
       methods: ["GET", "POST"],
+      credentials: true,
+      allowEIO3: true,
     },
     connectTimeout: 45000,
     pingTimeout: 30000,
     pingInterval: 25000,
+    transports: ["websocket", "polling"],
   });
 
   // ✅ 2. Store the instance in the global variable so other files can access it
