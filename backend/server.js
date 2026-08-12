@@ -17,10 +17,16 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 4000;
 
+// Frontend URL (used to redirect SPA routes on refresh)
+const FRONTEND_URL =
+  process.env.FRONTEND_URL || "https://bingo-zeta-livid.vercel.app";
+
 // Configure CORS for Express
 const corsOptions = {
   origin: [
     "https://bingo-zeta-livid.vercel.app",
+    "https://bingo-e9bw.onrender.com",
+    "https://marshal-bingo.onrender.com",
     "http://localhost:5173",
     "http://localhost:3000",
     "http://localhost:5000",
@@ -47,6 +53,29 @@ app.use("/api/users", userRouter);
 app.use("/api/bingo", bingoRouter);
 app.use("/api/rooms", roomRouter);
 
+// Handle client-side SPA routes and direct-refreshes.
+// Use `app.use` so the router doesn't try to parse '*' as a path param.
+app.use((req, res, next) => {
+  const path = req.path || "";
+  // Ignore API and socket endpoints
+  if (
+    path.startsWith("/api") ||
+    path.startsWith("/socket.io") ||
+    path.startsWith("/favicon.ico")
+  ) {
+    return next();
+  }
+
+  if (req.accepts("html")) {
+    // Preserve the path so frontend router can handle nested routes
+    const target = `${FRONTEND_URL}${req.originalUrl}`;
+    return res.redirect(target);
+  }
+
+  return next();
+});
+
+// Generic 404 for anything that fell through
 app.use((req, res) => {
   res.status(404).json({ error: "Not Found" });
 });
