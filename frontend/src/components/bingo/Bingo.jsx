@@ -5,7 +5,6 @@ import CalledNumbers from "./CalledNumbers";
 import GameStatus from "./GameStatus";
 import Countdown from "./Countdown";
 import WinnerModal from "./WinnerModal";
-import RoomInfo from "./RoomInfo";
 import {
   createBingoCard,
   createNumberPool,
@@ -61,6 +60,8 @@ const Bingo = ({ theme }) => {
   const [mySelectedNumber, setMySelectedNumber] = useState(null);
   const [mySelections, setMySelections] = useState([]);
   const [countdownRemaining, setCountdownRemaining] = useState(null);
+  const [selectionCountdown, setSelectionCountdown] = useState(30);
+  const [liveCountdown, setLiveCountdown] = useState(null);
   const [pendingSelections, setPendingSelections] = useState([]);
   const [roomCreating, setRoomCreating] = useState(false);
   const [pendingStart, setPendingStart] = useState(false);
@@ -87,31 +88,7 @@ const Bingo = ({ theme }) => {
   };
 
   // ============================================================
-  // ✅ NEW: RESET UI FOR A NEW ROUND
-  // ============================================================
-  const resetForNewRound = () => {
-    console.log("🔄 [RESETTING UI] Preparing for new round...");
-    setCards([]);
-    setSelectionNumbers([]);
-    setMySelections([]);
-    setMySelectedNumber(null);
-    setSelectedNumbersGlobal([]);
-    setPhase("selection");
-    setGameStatus("waiting");
-    setWinner(null);
-    setWinningLuckyNumber(null);
-    setCurrentNumber(null);
-    setCalledNumbers([]);
-    setRemainingBalls(75);
-    setCountdownRemaining(30); // New round starts with 30s countdown
-    setPendingSelections([]);
-    setPendingStart(false);
-    setRoomCreating(false);
-    setJoined(false); // Reset joined flag so they can re-join the new game
-  };
-
-  // ============================================================
-  // joinCurrentGame
+  // joinCurrentGame (Removed callback, now relies on 'joinedRoom' event)
   // ============================================================
   const joinCurrentGame = (targetGameId = gameId) => {
     const telegramId = authUser?.telegramId;
@@ -152,9 +129,6 @@ const Bingo = ({ theme }) => {
     }
 
     joinedGamesRef.current.add(targetGameId);
-
-    // ✅ NEW: Reset the joined flag to true so the button changes correctly
-    setJoined(true);
 
     const emitPayload = {
       gameId: targetGameId,
@@ -252,19 +226,8 @@ const Bingo = ({ theme }) => {
     }
   };
 
-  // ============================================================
-  // toggleLuckyNumber (Updated with guard)
-  // ============================================================
   const toggleLuckyNumber = (number) => {
-    // ✅ NEW: Block selection if the round is finished
-    if (gameStatus === "finished") {
-      console.warn("❌ Cannot select numbers. Wait for next round.");
-      return;
-    }
-
     if (phase !== "selection") return;
-    if (!joined) return;
-    if (!canSelectMore) return;
     if (mySelections.includes(number)) return;
 
     const telegramId = authUser?.telegramId;
@@ -334,13 +297,13 @@ const Bingo = ({ theme }) => {
       betAmount: 1,
       luckyNumber: number,
     });
+
     setMySelections((prev) => [...prev, number]);
     setMySelectedNumber(number);
     setSelectionNumbers((prev) =>
       prev.includes(number) ? prev : [...prev, number],
     );
   };
-
   const lockSelections = () => {
     if (selectionNumbers.length < 1 && pendingSelections.length < 1) return;
 
@@ -423,6 +386,8 @@ const Bingo = ({ theme }) => {
         setParticipants(data.playerCount);
       }
     };
+
+    
 
     const handleNumberCalled = (data) => {
       if (!data) return;
@@ -518,6 +483,27 @@ const Bingo = ({ theme }) => {
               : null,
           });
 
+          setJoined(false);
+          setCards([]);
+          setSelectionNumbers([]);
+          setMySelections([]);
+          setMySelectedNumber(null);
+          setSelectedNumbersGlobal([]);
+          setWinner(null);
+          setWinningLuckyNumber(null);
+          setCurrentNumber(null);
+          setCalledNumbers([]);
+          setRemainingBalls(75);
+          setPhase("selection");
+          setGameStatus("waiting");
+          setSelectionTimeLeft(30);
+          setCountdownRemaining(30);
+          setSelectionCountdown(30);
+          setLiveCountdown(null);
+          setNumberPool(createNumberPool());
+          setPendingSelections([]);
+          setPendingStart(false);
+
           handleRoundState({
             gameId: payload.gameId,
             status: payload.status || "waiting",
@@ -525,16 +511,13 @@ const Bingo = ({ theme }) => {
             players: payload.players || [],
           });
 
-          if (payload.gameId && authUser?.telegramId) {
-            console.log("✅ [Calling joinCurrentGame from roomCreated]");
-            joinCurrentGame(payload.gameId);
-          } else {
-            console.warn("⚠️ [Cannot join - missing data]", {
-              hasGameId: !!payload.gameId,
-              hasAuthUser: !!authUser,
-              hasTelegramId: !!authUser?.telegramId,
-            });
-          }
+          console.log(
+            "🎮 [Room created - waiting for player to select numbers]",
+            {
+              gameId: payload.gameId,
+              selectedNumbers: payload.selectedNumbers || [],
+            },
+          );
           break;
         }
         case "playerJoined":
@@ -549,9 +532,14 @@ const Bingo = ({ theme }) => {
           );
           setSelectedNumbersGlobal(payload.selectedNumbers || []);
           break;
-        case "countdownStarted":
-          setCountdownRemaining(payload.seconds ?? null);
+        case "countdownStarted": {
+          const nextSeconds = payload.seconds ?? 30;
+          setCountdownRemaining(nextSeconds);
+          setSelectionCountdown(nextSeconds);
+          setSelectionTimeLeft(nextSeconds);
+          setLiveCountdown(null);
           break;
+        }
         case "gameStarted":
           handleRoundState({ gameId: payload.gameId, status: "active" });
           break;
@@ -582,11 +570,34 @@ const Bingo = ({ theme }) => {
 
     const handleNumberCalledUnified = (data) => {
       if (!data) return;
-      setCurrentNumber(data.number ?? data.currentNumber);
-      setCalledNumbers(data.calledNumbers || data.called || []);
-      setRemainingBalls(
-        data.remaining ?? 75 - (data.calledNumbers || []).length,
-      );
+      const number = data.number ?? data.currentNumber;
+      const nextCalled = data.calledNumbers || data.called || [];
+
+      setCurrentNumber(number);
+      setCalledNumbers(nextCalled);
+      setRemainingBalls(data.remaining ?? Math.max(0, 75 - nextCalled.length));
+
+      if (number == null) return;
+
+      setCards((currentCards) => {
+        if (!Array.isArray(currentCards) || currentCards.length === 0) {
+          return currentCards;
+        }
+
+        const nextCards = currentCards.map((card) =>
+          markNumberOnCard(card, Number(number)),
+        );
+
+        const winningIndex = nextCards.findIndex((card) => hasBingo(card));
+        if (winningIndex >= 0) {
+          setWinner("You");
+          setWinningLuckyNumber(selectionNumbers[winningIndex] ?? number);
+          setGameStatus("finished");
+          setPhase("finished");
+        }
+
+        return nextCards;
+      });
     };
 
     const handleNumberSelectedUnified = (data) => {
@@ -635,25 +646,60 @@ const Bingo = ({ theme }) => {
       }
     };
 
-    // ============================================================
-    // Register all Socket Listeners
-    // ============================================================
     socket.on("bingo:roundState", handleRoundState);
     socket.on("bingo:participantCount", handleBingoParticipantCount);
     socket.on("bingo:numberSelected", handleNumberSelectedUnified);
     socket.on("bingo:numberCalled", handleNumberCalledUnified);
-    socket.on("bingo:winner", (d) => d && setWinner(d.winner || d));
+    socket.on("bingo:winner", (d) => {
+      if (!d) return;
+
+      // Handle new format with multiple winners array
+      if (d.winners && Array.isArray(d.winners)) {
+        setWinner(d.winners);
+        setGameStatus("finished");
+        setPhase("finished");
+      } else if (d.winner) {
+        // Fallback for old single winner format
+        setWinner(d.winner);
+        setGameStatus("finished");
+        setPhase("finished");
+      } else {
+        // Fallback for direct string
+        setWinner(d);
+        setGameStatus("finished");
+        setPhase("finished");
+      }
+    });
     socket.on("bingo:roundFinished", (d) => {
       setGameStatus("finished");
       if (d?.winner) setWinner(d.winner);
     });
     socket.on("bingo:nextRound", (d) => {
-      handleRoundState({
-        gameId: d?.gameId || d?.newGameId,
-        status: "waiting",
-        selectedNumbers: d?.selectedNumbers || [],
-        players: d?.players || [],
-      });
+      // Fully reset the UI for the new round
+      setJoined(false);
+      setCards([]);
+      setSelectionNumbers([]);
+      setMySelections([]);
+      setMySelectedNumber(null);
+      setSelectedNumbersGlobal(d?.selectedNumbers || []);
+      setWinner(null);
+      setWinningLuckyNumber(null);
+      setCurrentNumber(null);
+      setCalledNumbers([]);
+      setRemainingBalls(75);
+      setPhase("selection");
+      setGameStatus("waiting");
+      setSelectionTimeLeft(30);
+      setCountdownRemaining(30);
+      setSelectionCountdown(30);
+      setLiveCountdown(null);
+      setNumberPool(createNumberPool());
+      setPendingSelections([]);
+      setPendingStart(false);
+      setDrawTimeLeft(7);
+      setGameId(d?.gameId || d?.newGameId);
+      setParticipants((d?.players || []).length);
+      setRoomCreating(false);
     });
 
     socket.on("joinedRoom", handleJoinedRoom);
@@ -661,7 +707,14 @@ const Bingo = ({ theme }) => {
 
     socket.on("countdownTick", (data) => {
       if (data && typeof data.remaining === "number") {
-        setCountdownRemaining(data.remaining);
+        const nextValue = data.remaining;
+        setCountdownRemaining(nextValue);
+        if (phase === "selection") {
+          setSelectionCountdown(nextValue);
+          setSelectionTimeLeft(nextValue);
+        } else {
+          setLiveCountdown(nextValue);
+        }
       }
       if (data && typeof data.playerCount === "number") {
         setParticipants(data.playerCount);
@@ -669,9 +722,23 @@ const Bingo = ({ theme }) => {
     });
 
     socket.on("countdownRemaining", (data) => {
-      if (typeof data === "number") setCountdownRemaining(data);
-      else if (data && typeof data.remaining === "number")
+      if (typeof data === "number") {
+        setCountdownRemaining(data);
+        if (phase === "selection") {
+          setSelectionCountdown(data);
+          setSelectionTimeLeft(data);
+        } else {
+          setLiveCountdown(data);
+        }
+      } else if (data && typeof data.remaining === "number") {
         setCountdownRemaining(data.remaining);
+        if (phase === "selection") {
+          setSelectionCountdown(data.remaining);
+          setSelectionTimeLeft(data.remaining);
+        } else {
+          setLiveCountdown(data.remaining);
+        }
+      }
     });
 
     socket.on("numberCalled", handleNumberCalledUnified);
@@ -706,32 +773,6 @@ const Bingo = ({ theme }) => {
         }
       }
     });
-
-    socket.on("numberMarked", (data) => {
-      if (data.success) {
-        // Update the card visually
-        setCards((prevCards) => {
-          return prevCards.map((card) => {
-            return card.map((row) =>
-              row.map((cell) => {
-                if (cell.value === data.number) {
-                  return { ...cell, marked: true };
-                }
-                return cell;
-              })
-            );
-          });
-        });
-
-        // If Bingo was detected, show the winner modal
-        if (data.bingo) {
-          setWinner("You");
-          setWinningLuckyNumber(data.bingoResult);
-          setGameStatus("finished");
-        }
-      }
-    });
-
     socket.on("error", (data) => {
       if (data?.message) {
         console.error("Bingo socket error:", data.message);
@@ -743,7 +784,7 @@ const Bingo = ({ theme }) => {
       socket.off("bingo:participantCount", handleBingoParticipantCount);
       socket.off("bingo:numberSelected", handleNumberSelectedUnified);
       socket.off("bingo:numberCalled", handleNumberCalledUnified);
-      socket.off("bingo:winner", (d) => d && setWinner(d.winner || d));
+      socket.off("bingo:winner");
       socket.off("bingo:roundFinished");
       socket.off("bingo:nextRound");
       socket.off("joinedRoom", handleJoinedRoom);
@@ -752,43 +793,39 @@ const Bingo = ({ theme }) => {
       socket.off("countdownRemaining");
       socket.off("numberCalled", handleNumberCalledUnified);
       socket.off("gameState");
-      socket.off("numberMarked");
       socket.off("error");
     };
-  }, [participants, selectionNumbers, authUser, gameId, pendingSelections]);
+  }, [
+    participants,
+    selectionNumbers,
+    authUser,
+    gameId,
+    pendingSelections,
+    phase,
+  ]);
 
   // ============================================================
-  // Re-run join if gameId changes but joined is false
+  // Don't auto-join with luckyNumber: null
+  // User joins when they select a number via toggleLuckyNumber
   // ============================================================
   useEffect(() => {
     if (gameId && !joined) {
-      console.log("🔄 [gameId changed but not joined, trying to re-join]");
-      joinCurrentGame(gameId);
+      console.log(
+        "🎮 [gameId changed - user must click 'Join game' button to proceed]",
+        {
+          gameId,
+        },
+      );
     }
   }, [gameId, joined]);
 
-  // ============================================================
-  // handleJoin (Updated)
-  // ============================================================
-  const handleJoin = () => {
-    // If the game is already finished, reset the UI first
-    if (gameStatus === "finished") {
-      resetForNewRound();
-      setJoined(false);
-    }
-
-    setRoomCreating(true);
-
-    if (gameId) {
-      joinCurrentGame(gameId);
-    } else {
-      socket.emit("createRoom", { roomId: "Main Room" });
-    }
-
-    setJoined(true);
+  const resetRoundState = (keepJoined = true) => {
+    setJoined(keepJoined);
     setPhase("selection");
     setSelectionTimeLeft(30);
     setCountdownRemaining(30);
+    setSelectionCountdown(30);
+    setLiveCountdown(null);
     setGameStatus("waiting");
     setWinner(null);
     setWinningLuckyNumber(null);
@@ -803,14 +840,69 @@ const Bingo = ({ theme }) => {
     setMySelectedNumber(null);
     setPendingSelections([]);
     setPendingStart(false);
+    setDrawTimeLeft(7);
   };
+
+  const handleJoin = () => {
+    // Only allow joining during selection phase with time remaining
+    if (
+      phase === "live" ||
+      gameStatus === "live" ||
+      gameStatus === "finished" ||
+      (phase === "selection" && selectionTimeLeft <= 0)
+    ) {
+      console.log(
+        "⏳ [Cannot join] Round is locked or in progress. Waiting for next round.",
+        {
+          phase,
+          gameStatus,
+          selectionTimeLeft,
+        },
+      );
+      return;
+    }
+
+    // Ensure socket is connected
+    if (!socket.connected) {
+      socket.connect();
+    }
+
+    // Create room if it doesn't exist yet
+    if (!gameId) {
+      console.log("🏗️ [Creating room for first joiner]");
+      socket.emit("createRoom", { roomId: "Main Room" });
+    } else {
+      console.log("📍 [User joining existing game]", {
+        gameId,
+        selectionTimeLeft,
+      });
+    }
+
+    setRoomCreating(false);
+  };
+
+  // When phase transitions from selection to live, clear selection countdown
+  // and initialize live countdown so timers don't bleed between phases
+  useEffect(() => {
+    if (phase === "live") {
+      setSelectionCountdown(null);
+      setSelectionTimeLeft(0);
+      setLiveCountdown(5); // Start live draw countdown at 5 seconds
+    } else if (phase === "selection") {
+      setLiveCountdown(null);
+      setSelectionCountdown(30);
+    } else if (phase === "finished") {
+      setSelectionCountdown(null);
+      setLiveCountdown(null);
+    }
+  }, [phase]);
 
   useEffect(() => {
     if (phase !== "selection") return;
 
-    if (typeof countdownRemaining === "number") {
-      setSelectionTimeLeft(countdownRemaining);
-      if (countdownRemaining <= 0) {
+    if (typeof selectionCountdown === "number") {
+      setSelectionTimeLeft(selectionCountdown);
+      if (selectionCountdown <= 0) {
         lockSelections();
       }
       return;
@@ -820,34 +912,31 @@ const Bingo = ({ theme }) => {
       lockSelections();
       return;
     }
-
-    const timer = window.setTimeout(() => {
-      setSelectionTimeLeft((prev) => prev - 1);
-    }, 1000);
-
-    return () => window.clearTimeout(timer);
-  }, [phase, countdownRemaining, selectionTimeLeft]);
+  }, [phase, selectionCountdown, selectionTimeLeft]);
 
   useEffect(() => {
     if (!pendingStart || !gameId) return;
     if (pendingSelections.length === 0) return;
 
-    flushPendingSelections(true);
+    flushPendingSelections(false);
     setPendingStart(false);
   }, [pendingStart, gameId, pendingSelections]);
 
-  useEffect(() => {
-    if (phase !== "selection") return;
-    if (!gameId) return;
-    if (selectionNumbers.length < 2) return;
+  const joinButtonDisabled =
+    phase === "live" ||
+    gameStatus === "live" ||
+    gameStatus === "finished" ||
+    phase === "finished" ||
+    (phase === "selection" && selectionTimeLeft <= 0);
 
-    if (pendingSelections.length > 0) {
-      flushPendingSelections(true);
-      return;
-    }
-
-    lockSelections();
-  }, [phase, selectionNumbers.length, pendingSelections.length, gameId]);
+  const joinButtonLabel =
+    phase === "live" || gameStatus === "live"
+      ? "Game in progress"
+      : gameStatus === "finished" ||
+          phase === "finished" ||
+          (phase === "selection" && selectionTimeLeft <= 0)
+        ? "Wait for next round"
+        : "Join game";
 
   const statusText = phase === "selection" ? "Selection" : gameStatus;
   const currentStatus =
@@ -856,6 +945,13 @@ const Bingo = ({ theme }) => {
       : gameStatus === "finished"
         ? "finished"
         : "running";
+  const showSelectionPanel = phase === "selection";
+  const showLivePanel = phase === "live" && gameStatus === "live";
+  const showLiveNumberCountdown = showLivePanel;
+  const currentCountdownValue =
+    phase === "live"
+      ? (liveCountdown ?? countdownRemaining ?? drawTimeLeft)
+      : (selectionCountdown ?? countdownRemaining ?? selectionTimeLeft);
 
   // ============================================================
   // Render UI
@@ -863,33 +959,6 @@ const Bingo = ({ theme }) => {
   return (
     <div className="grid grid-cols-1 xl:grid-cols-[1.55fr_0.95fr] gap-6">
       <div className="space-y-6">
-        <div className="flex flex-nowrap gap-3 sm:gap-4">
-          <div className="flex-1 min-w-0 rounded-3xl border border-slate-700 bg-slate-950/80 p-3 shadow-xl shadow-slate-950/20 sm:p-5">
-            <div className="mb-2 text-[10px] uppercase tracking-[0.3em] text-slate-400 sm:mb-3 sm:text-xs">
-              Room
-            </div>
-            <div className="text-lg font-semibold text-slate-100 sm:text-2xl md:text-3xl">
-              Main Room
-            </div>
-          </div>
-          <div className="flex-1 min-w-0 rounded-3xl border border-slate-700 bg-slate-950/80 p-3 shadow-xl shadow-slate-950/20 sm:p-5">
-            <div className="mb-2 text-[10px] uppercase tracking-[0.3em] text-slate-400 sm:mb-3 sm:text-xs">
-              Prize pool
-            </div>
-            <div className="text-lg font-semibold text-slate-100 sm:text-2xl md:text-3xl">
-              ${prizePool}
-            </div>
-          </div>
-          <div className="flex-1 min-w-0 rounded-3xl border border-slate-700 bg-slate-950/80 p-3 shadow-xl shadow-slate-950/20 sm:p-5">
-            <div className="mb-2 text-[10px] uppercase tracking-[0.3em] text-slate-400 sm:mb-3 sm:text-xs">
-              Remaining balls
-            </div>
-            <div className="text-lg font-semibold text-slate-100 sm:text-2xl md:text-3xl">
-              {remainingBalls}
-            </div>
-          </div>
-        </div>
-
         <div className="rounded-3xl border border-slate-700 bg-emerald-950/10 shadow-xl shadow-slate-950/20 overflow-hidden">
           <div className="flex flex-col gap-4 border-b border-slate-700 bg-slate-950/90 p-5 md:flex-row md:items-center md:justify-between">
             <div>
@@ -906,33 +975,26 @@ const Bingo = ({ theme }) => {
               <div className="rounded-3xl border border-slate-700 bg-slate-800/80 px-4 py-2 text-sm text-slate-100">
                 {displayedPlayerCount} players
               </div>
-              <div className="flex items-center gap-2 rounded-3xl border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-sm font-semibold text-amber-300">
-                <span>Auto-claim in</span>
-                <span>
-                  {phase === "selection" ? `${selectionTimeLeft}s` : "—"}
-                </span>
-              </div>
+              {showLivePanel && showLiveNumberCountdown && (
+                <div className="rounded-3xl border border-slate-700 bg-slate-800/80 px-3 py-2 text-sm font-semibold text-amber-300">
+                  {`${currentCountdownValue}s`}
+                </div>
+              )}
               <button
                 onClick={handleJoin}
-                disabled={phase === "live" || gameStatus === "finished"}
-                className={`rounded-3xl border px-4 py-2 text-sm font-semibold transition-all ${
-                  phase === "live" || gameStatus === "finished"
-                    ? "border-slate-600 bg-slate-700/50 text-slate-400 cursor-not-allowed"
-                    : "border-emerald-500/20 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20"
+                disabled={joinButtonDisabled}
+                className={`rounded-3xl border px-4 py-2 text-sm font-semibold transition ${
+                  joinButtonDisabled
+                    ? "border-slate-700 bg-slate-800 text-slate-400 cursor-not-allowed"
+                    : "border-emerald-500/20 bg-emerald-500/10 text-emerald-300"
                 }`}
               >
-                {gameStatus === "finished"
-                  ? "⏳ Wait for next round"
-                  : phase === "live"
-                    ? "🎯 Game in progress"
-                    : joined
-                      ? "Restart room"
-                      : "🎮 Join game"}
+                {joinButtonLabel}
               </button>
             </div>
           </div>
 
-          {phase === "selection" && (
+          {showSelectionPanel && (
             <div className="border-b border-slate-700 bg-slate-900/70 p-5">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
                 <div>
@@ -968,7 +1030,7 @@ const Bingo = ({ theme }) => {
             </div>
           )}
 
-          {phase === "selection" && (
+          {showSelectionPanel && (
             <div className="grid grid-cols-5 gap-2 p-5 sm:grid-cols-8 lg:grid-cols-10 max-h-[360px] overflow-y-auto">
               {Array.from({ length: 75 }, (_, index) => index + 1).map(
                 (number) => {
@@ -979,7 +1041,7 @@ const Bingo = ({ theme }) => {
                     selectedNumbersGlobal.includes(number) &&
                     !mySelections.includes(number);
                   const disabled =
-                    phase !== "selection" ||
+                    !showSelectionPanel ||
                     isReservedByOther ||
                     (!mySelections.includes(number) && !canSelectMore);
 
@@ -1063,57 +1125,19 @@ const Bingo = ({ theme }) => {
       </div>
 
       <aside className="space-y-6">
-        <div className="rounded-3xl border border-slate-700 bg-slate-950/90 p-6 shadow-xl shadow-slate-950/20">
-          <div className="mb-6 flex items-center justify-between gap-4">
-            <div>
-              <div className="text-xs uppercase tracking-[0.3em] text-slate-400">
-                Current number
-              </div>
-              <div className="mt-2 text-4xl font-semibold text-slate-100">
-                {currentNumber ?? "—"}
-              </div>
-            </div>
-            <div
-              className={`rounded-3xl px-4 py-2 text-sm font-semibold ${accent.accentText} border ${accent.accentBg} border-emerald-500/20`}
-            >
-              {statusText}
-            </div>
-          </div>
-          <div className="space-y-4">
-            <div className="rounded-3xl border border-slate-700 bg-slate-900/90 p-4">
-              <CurrentNumber number={currentNumber ?? "—"} accent={accent} />
-            </div>
-            <div className="rounded-3xl border border-slate-700 bg-slate-900/90 p-4">
-              <GameStatus status={currentStatus} accent={accent} />
-            </div>
-            <div className="rounded-3xl border border-slate-700 bg-slate-900/90 p-4">
-              <Countdown
-                seconds={
-                  typeof countdownRemaining === "number"
-                    ? countdownRemaining
-                    : phase === "selection"
-                      ? selectionTimeLeft
-                      : drawTimeLeft
-                }
-                label={
-                  phase === "selection"
-                    ? "Selection closes in"
-                    : "Next number in"
-                }
-                selectedCardsCount={selectedNumbersGlobal.length}
-              />
-            </div>
-          </div>
-        </div>
-
-        <RoomInfo room="Main Room" players={participants} accent={accent} />
         <WinnerModal
           open={Boolean(winner)}
-          winner={winner || "You"}
+          winner={winner || "Unknown Player"}
           luckyNumber={winningLuckyNumber}
+          isCurrentUserWinner={
+            winner === "You" ||
+            (Array.isArray(winner) &&
+              winner.some((w) => w?.telegramId === user?.id))
+          }
           onClose={() => {
             setWinner(null);
             setWinningLuckyNumber(null);
+            resetRoundState(true);
           }}
           accent={accent}
         />
