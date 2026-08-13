@@ -689,7 +689,32 @@ const startNumberCalling = (io, gameId, roomId) => {
         return;
       }
 
-      // Broadcast the new number to everyone in the room
+      // Check if winners detected (multiple or single)
+      if (result.gameEnded && result.winners.length > 0) {
+        clearInterval(interval);
+        gameTimers.delete(gameId);
+
+        // Broadcast winners to everyone
+        io.to(roomId).emit("bingo:winner", {
+          winners: result.winners,
+          finalNumber: result.number,
+          calledNumbers: result.calledNumbers,
+        });
+
+        // Stop number calling and wait 30 seconds before starting next round
+        setTimeout(async () => {
+          await startNextRoundCountdown(roomId, {
+            roomId,
+            maxPlayers: 10,
+            minBet: 1,
+            maxBet: 100,
+          });
+        }, 30000);
+
+        return;
+      }
+
+      // Broadcast the new number to everyone in the room (no winner yet)
       io.to(roomId).emit("numberCalled", {
         number: result.number,
         calledNumbers: result.calledNumbers,

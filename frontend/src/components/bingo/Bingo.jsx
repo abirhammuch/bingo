@@ -648,7 +648,26 @@ const Bingo = ({ theme }) => {
     socket.on("bingo:participantCount", handleBingoParticipantCount);
     socket.on("bingo:numberSelected", handleNumberSelectedUnified);
     socket.on("bingo:numberCalled", handleNumberCalledUnified);
-    socket.on("bingo:winner", (d) => d && setWinner(d.winner || d));
+    socket.on("bingo:winner", (d) => {
+      if (!d) return;
+
+      // Handle new format with multiple winners array
+      if (d.winners && Array.isArray(d.winners)) {
+        setWinner(d.winners);
+        setGameStatus("finished");
+        setPhase("finished");
+      } else if (d.winner) {
+        // Fallback for old single winner format
+        setWinner(d.winner);
+        setGameStatus("finished");
+        setPhase("finished");
+      } else {
+        // Fallback for direct string
+        setWinner(d);
+        setGameStatus("finished");
+        setPhase("finished");
+      }
+    });
     socket.on("bingo:roundFinished", (d) => {
       setGameStatus("finished");
       if (d?.winner) setWinner(d.winner);
@@ -763,7 +782,7 @@ const Bingo = ({ theme }) => {
       socket.off("bingo:participantCount", handleBingoParticipantCount);
       socket.off("bingo:numberSelected", handleNumberSelectedUnified);
       socket.off("bingo:numberCalled", handleNumberCalledUnified);
-      socket.off("bingo:winner", (d) => d && setWinner(d.winner || d));
+      socket.off("bingo:winner");
       socket.off("bingo:roundFinished");
       socket.off("bingo:nextRound");
       socket.off("joinedRoom", handleJoinedRoom);
@@ -1108,7 +1127,11 @@ const Bingo = ({ theme }) => {
           open={Boolean(winner)}
           winner={winner || "Unknown Player"}
           luckyNumber={winningLuckyNumber}
-          isCurrentUserWinner={winner === "You"}
+          isCurrentUserWinner={
+            winner === "You" ||
+            (Array.isArray(winner) &&
+              winner.some((w) => w?.telegramId === user?.id))
+          }
           onClose={() => {
             setWinner(null);
             setWinningLuckyNumber(null);

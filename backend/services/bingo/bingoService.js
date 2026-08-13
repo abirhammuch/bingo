@@ -457,9 +457,105 @@ export const callNumber = async (gameId) => {
   game.roundSummary.calledNumbersCount = game.calledNumbers.length;
   game.roundSummary.selectedNumbersCount = game.selectedNumbers.length;
 
+  // Check ALL players for bingo after calling the number
+  const winners = [];
+  for (let playerIndex = 0; playerIndex < game.players.length; playerIndex++) {
+    const player = game.players[playerIndex];
+    // Check if this number is on the card
+    const numberOnCard = checkNumberOnCard(player.card, number).found;
+    if (numberOnCard) {
+      // Automatically mark this number for the player
+      if (!player.markedNumbers.includes(number)) {
+        player.markedNumbers.push(number);
+      }
+      // Check for bingo
+      const bingoResult = checkBingo(player.card, player.markedNumbers);
+      if (bingoResult.bingo && !player.hasBingo) {
+        player.hasBingo = true;
+        player.bingoTime = new Date();
+        winners.push({
+          playerIndex,
+          player,
+          bingoResult,
+        });
+      }
+    }
+  }
+
   await game.save();
 
-  return { number, calledNumbers: game.calledNumbers };
+  // If winners detected, game ends immediately
+  if (winners.length > 0) {
+    game.status = "completed";
+    game.roundEndedAt = new Date();
+    game.endTime = new Date();
+    game.playerCount = game.players.length;
+    game.roundSummary.playerCount = game.players.length;
+    game.roundSummary.calledNumbersCount = game.calledNumbers.length;
+    game.roundSummary.selectedNumbersCount = game.selectedNumbers.length;
+    game.roundSummary.endedReason = "bingo";
+
+    // Store first winner for backwards compatibility
+    const firstWinner = winners[0].player;
+    const winAmount = Number(firstWinner.betAmount || 0) * 5;
+    game.winner = {
+      telegramId: firstWinner.telegramId,
+      username: firstWinner.username,
+      winAmount,
+    };
+    game.roundSummary.winnerTelegramId = game.winner.telegramId;
+    game.roundSummary.winnerUsername = game.winner.username;
+    game.roundSummary.winnerAmount = game.winner.winAmount;
+
+    // Update user balances for all winners
+    for (const winnerData of winners) {
+      const player = winnerData.player;
+      const user = await User.findOne({
+        telegramId: normalizeTelegramId(player.telegramId),
+      });
+      if (user) {
+        const winAmount = Number(player.betAmount || 0) * 5;
+        user.balance += winAmount;
+        user.bingoGames += 1;
+        user.bingoWins += 1;
+        user.gamesPlayed += 1;
+        user.gamesWon += 1;
+        await user.save();
+      }
+
+      // Update ticket
+      const ticket = await BingoTicket.findOne({
+        gameId,
+        telegramId: normalizeTelegramId(player.telegramId),
+      });
+      if (ticket) {
+        ticket.isWinner = true;
+        ticket.winAmount = Number(player.betAmount || 0) * 5;
+        await ticket.save();
+      }
+    }
+
+    await game.save();
+
+    return {
+      number,
+      calledNumbers: game.calledNumbers,
+      winners: winners.map((w) => ({
+        telegramId: w.player.telegramId,
+        username: w.player.username,
+        winAmount: Number(w.player.betAmount || 0) * 5,
+        bingoResult: w.bingoResult,
+      })),
+      gameEnded: true,
+    };
+  }
+
+  return {
+    number,
+    calledNumbers: game.calledNumbers,
+    winners: [],
+    gameEnded: false,
+  };
 };
 
 // Mark a number on player's card
