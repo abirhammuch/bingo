@@ -1,7 +1,8 @@
 import React from "react";
 
 const BingoCell = ({ number, marked = false, accent = {} }) => {
-  const isFree = number === "FREE";
+  // ✅ FIX: Handle 0 (from backend) OR "FREE" (from frontend)
+  const isFree = number === 0 || number === "FREE";
 
   return (
     <div
@@ -13,7 +14,8 @@ const BingoCell = ({ number, marked = false, accent = {} }) => {
             : "bg-slate-950 border-slate-700 text-slate-100 hover:bg-slate-900 hover:border-slate-500"
       }`}
     >
-      {number}
+      {/* ✅ FIX: Show "⭐" for FREE, otherwise show the number */}
+      {isFree ? "⭐" : number}
     </div>
   );
 };
