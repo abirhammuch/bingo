@@ -575,22 +575,14 @@ export const startGame = async (gameId) => {
     throw new Error("Game not found");
   }
 
-  // Require at least 1 player, or 3+ selected numbers (cards)
-  if (game.players.length < 1) {
-    throw new Error(
-      `Need at least 1 player to start the game.`,
-    );
-  }
-
-  // Check if enough "participants" (players or selected cards)
+  // Only require more than 1 selected card (2+), regardless of players
   const selectedCount = Array.isArray(game.selectedNumbers)
     ? game.selectedNumbers.length
     : 0;
-  const participantCount = Math.max(game.players.length, selectedCount);
-  
-  if (participantCount < 3) {
+
+  if (selectedCount <= 1) {
     throw new Error(
-      `Need at least 3 participants to start. Currently have ${participantCount} (${game.players.length} player(s), ${selectedCount} card(s)).`,
+      `Need more than 1 selected card to start. Currently have ${selectedCount} card(s).`,
     );
   }
 
