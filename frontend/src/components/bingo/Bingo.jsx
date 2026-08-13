@@ -862,7 +862,12 @@ const Bingo = ({ theme }) => {
     gameStatus === "finished" ||
     (phase === "selection" && selectionTimeLeft <= 0);
 
-  const joinButtonLabel = joinButtonDisabled ? "Wait next round" : "Join game";
+  const joinButtonLabel =
+    phase === "selection" && selectionTimeLeft > 0
+      ? `Auto-claim in ${selectionTimeLeft}s`
+      : joinButtonDisabled
+        ? "Wait next round"
+        : "Join game";
 
   const statusText = phase === "selection" ? "Selection" : gameStatus;
   const currentStatus =
@@ -871,7 +876,9 @@ const Bingo = ({ theme }) => {
       : gameStatus === "finished"
         ? "finished"
         : "running";
-  const showLiveNumberCountdown = phase === "live" && gameStatus === "live";
+  const showSelectionPanel = phase === "selection";
+  const showLivePanel = phase === "live" && gameStatus === "live";
+  const showLiveNumberCountdown = showLivePanel;
 
   // ============================================================
   // Render UI
@@ -922,12 +929,6 @@ const Bingo = ({ theme }) => {
               <div className="rounded-3xl border border-slate-700 bg-slate-800/80 px-4 py-2 text-sm text-slate-100">
                 {displayedPlayerCount} players
               </div>
-              <div className="flex items-center gap-2 rounded-3xl border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-sm font-semibold text-amber-300">
-                <span>Auto-claim in</span>
-                <span>
-                  {phase === "selection" ? `${selectionTimeLeft}s` : "—"}
-                </span>
-              </div>
               <button
                 onClick={handleJoin}
                 disabled={joinButtonDisabled}
@@ -942,7 +943,7 @@ const Bingo = ({ theme }) => {
             </div>
           </div>
 
-          {phase === "selection" && (
+          {showSelectionPanel && (
             <div className="border-b border-slate-700 bg-slate-900/70 p-5">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
                 <div>
@@ -978,7 +979,7 @@ const Bingo = ({ theme }) => {
             </div>
           )}
 
-          {phase === "selection" && (
+          {showSelectionPanel && (
             <div className="grid grid-cols-5 gap-2 p-5 sm:grid-cols-8 lg:grid-cols-10 max-h-[360px] overflow-y-auto">
               {Array.from({ length: 75 }, (_, index) => index + 1).map(
                 (number) => {
@@ -989,7 +990,7 @@ const Bingo = ({ theme }) => {
                     selectedNumbersGlobal.includes(number) &&
                     !mySelections.includes(number);
                   const disabled =
-                    phase !== "selection" ||
+                    !showSelectionPanel ||
                     isReservedByOther ||
                     (!mySelections.includes(number) && !canSelectMore);
 
@@ -1073,44 +1074,46 @@ const Bingo = ({ theme }) => {
       </div>
 
       <aside className="space-y-6">
-        <div className="rounded-3xl border border-slate-700 bg-slate-950/90 p-6 shadow-xl shadow-slate-950/20">
-          <div className="mb-6 flex items-center justify-between gap-4">
-            <div>
-              <div className="text-xs uppercase tracking-[0.3em] text-slate-400">
-                Current number
+        {showLivePanel && (
+          <div className="rounded-3xl border border-slate-700 bg-slate-950/90 p-6 shadow-xl shadow-slate-950/20">
+            <div className="mb-6 flex items-center justify-between gap-4">
+              <div>
+                <div className="text-xs uppercase tracking-[0.3em] text-slate-400">
+                  Current number
+                </div>
+                <div className="mt-2 text-4xl font-semibold text-slate-100">
+                  {currentNumber ?? "—"}
+                </div>
               </div>
-              <div className="mt-2 text-4xl font-semibold text-slate-100">
-                {currentNumber ?? "—"}
+              <div
+                className={`rounded-3xl px-4 py-2 text-sm font-semibold ${accent.accentText} border ${accent.accentBg} border-emerald-500/20`}
+              >
+                {statusText}
               </div>
             </div>
-            <div
-              className={`rounded-3xl px-4 py-2 text-sm font-semibold ${accent.accentText} border ${accent.accentBg} border-emerald-500/20`}
-            >
-              {statusText}
-            </div>
-          </div>
-          <div className="space-y-4">
-            <div className="rounded-3xl border border-slate-700 bg-slate-900/90 p-4">
-              <CurrentNumber number={currentNumber ?? "—"} accent={accent} />
-            </div>
-            <div className="rounded-3xl border border-slate-700 bg-slate-900/90 p-4">
-              <GameStatus status={currentStatus} accent={accent} />
-            </div>
-            {showLiveNumberCountdown && (
+            <div className="space-y-4">
               <div className="rounded-3xl border border-slate-700 bg-slate-900/90 p-4">
-                <Countdown
-                  seconds={
-                    typeof countdownRemaining === "number"
-                      ? countdownRemaining
-                      : drawTimeLeft
-                  }
-                  label="Next number in"
-                  selectedCardsCount={selectedNumbersGlobal.length}
-                />
+                <CurrentNumber number={currentNumber ?? "—"} accent={accent} />
               </div>
-            )}
+              <div className="rounded-3xl border border-slate-700 bg-slate-900/90 p-4">
+                <GameStatus status={currentStatus} accent={accent} />
+              </div>
+              {showLiveNumberCountdown && (
+                <div className="rounded-3xl border border-slate-700 bg-slate-900/90 p-4">
+                  <Countdown
+                    seconds={
+                      typeof countdownRemaining === "number"
+                        ? countdownRemaining
+                        : drawTimeLeft
+                    }
+                    label="Next number in"
+                    selectedCardsCount={selectedNumbersGlobal.length}
+                  />
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         <RoomInfo room="Main Room" players={participants} accent={accent} />
         <WinnerModal
