@@ -86,6 +86,9 @@ const Bingo = ({ theme }) => {
     return Math.max(playerCount, fallbackCount);
   };
 
+  // ============================================================
+  // ✅ FIXED: joinCurrentGame (Removed callback, now relies on 'joinedRoom' event)
+  // ============================================================
   const joinCurrentGame = (targetGameId = gameId) => {
     const telegramId = authUser?.telegramId;
     console.log("📞 [joinCurrentGame called]", {
@@ -137,31 +140,10 @@ const Bingo = ({ theme }) => {
       payload: emitPayload,
       socketId: socket.id,
       socketConnected: socket.connected,
-      socketReadyState: socket.connected ? "CONNECTED" : "DISCONNECTED",
     });
 
-    socket.emit("joinRoom", emitPayload, (response) => {
-      console.log("📥 [joinRoom callback response]", {
-        success: response?.success,
-        message: response?.message,
-        playerCount: response?.playerCount,
-      });
-      if (response?.success) {
-        setJoined(true);
-        setParticipants(
-          typeof response.playerCount === "number"
-            ? response.playerCount
-            : participants,
-        );
-        return;
-      }
-
-      console.warn("❌ [Join room failed]", {
-        message: response?.message || "Unknown error",
-        response,
-      });
-      joinedGamesRef.current.delete(targetGameId);
-    });
+    // ✅ FIX: Just emit. Do NOT use a callback. The 'joinedRoom' event will handle success.
+    socket.emit("joinRoom", emitPayload);
   };
 
   const emitStartGame = () => {
@@ -425,7 +407,7 @@ const Bingo = ({ theme }) => {
     });
 
     // ============================================================
-    // ✅ FIX 2: Handle bingo:* events with direct playerCount trust
+    // Handle bingo:* events with direct playerCount trust
     // ============================================================
     const handleRoundState = (payload) => {
       if (!payload) return;
@@ -456,7 +438,7 @@ const Bingo = ({ theme }) => {
         state.selectedNumbers || state.game?.selectedNumbers || [],
       );
 
-      // ✅ Set participants directly from playerCount
+      // Set participants directly from playerCount
       const playerCount =
         typeof state.playerCount === "number"
           ? state.playerCount
@@ -556,9 +538,6 @@ const Bingo = ({ theme }) => {
       }
     };
 
-    // ============================================================
-    // ✅ FIX 3: Directly set participants from server playerCount
-    // ============================================================
     const handleBingoParticipantCount = (data) => {
       if (!data) return;
       if (data.selectedNumbers) setSelectedNumbersGlobal(data.selectedNumbers);
@@ -594,9 +573,7 @@ const Bingo = ({ theme }) => {
       );
     };
 
-    // ============================================================
-    // ✅ FIX 4: joinedRoom should trust server playerCount directly
-    // ============================================================
+    // joinedRoom should trust server playerCount directly
     const handleJoinedRoom = (data) => {
       if (!data) return;
       setJoined(true);
@@ -629,9 +606,7 @@ const Bingo = ({ theme }) => {
       }
     };
 
-    // ============================================================
     // Register all Socket Listeners
-    // ============================================================
     socket.on("bingo:roundState", handleRoundState);
     socket.on("bingo:participantCount", handleBingoParticipantCount);
     socket.on("bingo:numberSelected", handleNumberSelectedUnified);
@@ -653,7 +628,6 @@ const Bingo = ({ theme }) => {
     socket.on("joinedRoom", handleJoinedRoom);
     socket.on("gameUpdate", mapGameUpdateToRoundState);
 
-    // ✅ UPDATED: countdownTick now also updates playerCount
     socket.on("countdownTick", (data) => {
       if (data && typeof data.remaining === "number") {
         setCountdownRemaining(data.remaining);
@@ -679,7 +653,6 @@ const Bingo = ({ theme }) => {
       if (game.currentNumber !== undefined && game.currentNumber !== null) {
         setCurrentNumber(game.currentNumber);
       }
-      // ✅ Also update participants from gameState if available
       if (typeof game.playerCount === "number") {
         setParticipants(game.playerCount);
       } else if (Array.isArray(game.players)) {
@@ -725,6 +698,16 @@ const Bingo = ({ theme }) => {
       socket.off("error");
     };
   }, [participants, selectionNumbers, authUser, gameId, pendingSelections]);
+
+  // ============================================================
+  // ✅ NEW: Re-run join if gameId changes but joined is false
+  // ============================================================
+  useEffect(() => {
+    if (gameId && !joined) {
+      console.log("🔄 [gameId changed but not joined, trying to re-join]");
+      joinCurrentGame(gameId);
+    }
+  }, [gameId, joined]);
 
   const handleJoin = () => {
     setRoomCreating(true);
