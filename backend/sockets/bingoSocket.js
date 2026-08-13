@@ -62,22 +62,13 @@ export const initBingoSocket = (io) => {
           selectedNumbers: game.selectedNumbers || [],
         };
 
-        io.to(roomId).emit("gameUpdate", {
-          type: "roomCreated",
-          ...waitingState,
-        });
-        io.to(roomId).emit("bingo:roundState", {
-          ...waitingState,
-          status: "waiting",
-        });
+        io.to(roomId).emit("gameUpdate", { type: "roomCreated", ...waitingState });
+        io.to(roomId).emit("bingo:roundState", { ...waitingState, status: "waiting" });
 
         scheduleAutoStart(game.gameId, game.roomId, 30);
       } catch (error) {
         console.error("Create Room Error:", error.message);
-        socket.emit("error", {
-          success: false,
-          message: error.message || "Failed to create room",
-        });
+        socket.emit("error", { success: false, message: error.message || "Failed to create room" });
       }
     });
 
@@ -99,27 +90,13 @@ export const initBingoSocket = (io) => {
         const { gameId, telegramId, betAmount, luckyNumber = null } = data;
 
         if (!gameId || !telegramId || !betAmount || betAmount < 1) {
-          const response = {
-            success: false,
-            message:
-              "Invalid data. GameId, TelegramId, and a valid bet are required.",
-          };
+          const response = { success: false, message: "Invalid data. GameId, TelegramId, and a valid bet are required." };
           if (typeof callback === "function") return callback(response);
           return socket.emit("error", response);
         }
 
-        console.log("📞 [CALLING joinBingoGame SERVICE]", {
-          gameId,
-          telegramId,
-          betAmount,
-          luckyNumber,
-        });
-        const result = await joinBingoGame(
-          gameId,
-          telegramId,
-          betAmount,
-          luckyNumber,
-        );
+        console.log("📞 [CALLING joinBingoGame SERVICE]", { gameId, telegramId, betAmount, luckyNumber });
+        const result = await joinBingoGame(gameId, telegramId, betAmount, luckyNumber);
 
         console.log("✅ [SERVICE RETURNED]", {
           gameId,
@@ -130,10 +107,7 @@ export const initBingoSocket = (io) => {
         });
 
         socket.join(result.game.roomId);
-        console.log("✅ [SOCKET JOINED]", {
-          socketId: socket.id,
-          roomId: result.game.roomId,
-        });
+        console.log("✅ [SOCKET JOINED]", { socketId: socket.id, roomId: result.game.roomId });
 
         socket.emit("joinedRoom", {
           success: true,
@@ -172,14 +146,8 @@ export const initBingoSocket = (io) => {
           status: result.game.status,
         };
 
-        io.to(result.game.roomId).emit("gameUpdate", {
-          type: "playerJoined",
-          ...joinedRoomState,
-        });
-        io.to(result.game.roomId).emit("bingo:roundState", {
-          ...joinedRoomState,
-          status: "waiting",
-        });
+        io.to(result.game.roomId).emit("gameUpdate", { type: "playerJoined", ...joinedRoomState });
+        io.to(result.game.roomId).emit("bingo:roundState", { ...joinedRoomState, status: "waiting" });
 
         if (typeof callback === "function") {
           callback({
@@ -206,14 +174,8 @@ export const initBingoSocket = (io) => {
           finalPlayerCount: result.game.players.length,
         });
       } catch (error) {
-        console.error("❌ [JOIN ROOM ERROR]", {
-          message: error.message,
-          timestamp: new Date().toISOString(),
-        });
-        const response = {
-          success: false,
-          message: error.message || "Failed to join room",
-        };
+        console.error("❌ [JOIN ROOM ERROR]", { message: error.message, timestamp: new Date().toISOString() });
+        const response = { success: false, message: error.message || "Failed to join room" };
         if (typeof callback === "function") return callback(response);
         socket.emit("error", response);
       }
@@ -225,21 +187,11 @@ export const initBingoSocket = (io) => {
     socket.on("startGame", async (data) => {
       try {
         const { gameId } = data;
-        if (!gameId)
-          return socket.emit("error", {
-            success: false,
-            message: "Game ID is required",
-          });
+        if (!gameId) return socket.emit("error", { success: false, message: "Game ID is required" });
 
         if (startCountdowns.has(gameId)) {
           const s = startCountdowns.get(gameId);
-          try {
-            clearInterval(s.intervalId);
-          } catch (e) {
-            try {
-              clearTimeout(s);
-            } catch (_) {}
-          }
+          try { clearInterval(s.intervalId); } catch (e) { try { clearTimeout(s); } catch (_) {} }
           startCountdowns.delete(gameId);
         }
 
@@ -258,19 +210,13 @@ export const initBingoSocket = (io) => {
           startTime: game.startTime,
         };
 
-        io.to(game.roomId).emit("gameUpdate", {
-          type: "gameStarted",
-          ...startedState,
-        });
+        io.to(game.roomId).emit("gameUpdate", { type: "gameStarted", ...startedState });
         io.to(game.roomId).emit("bingo:roundState", startedState);
 
         startNumberCalling(io, game.gameId, game.roomId);
       } catch (error) {
         console.error("Start Game Error:", error.message);
-        socket.emit("error", {
-          success: false,
-          message: error.message || "Failed to start game",
-        });
+        socket.emit("error", { success: false, message: error.message || "Failed to start game" });
       }
     });
 
@@ -281,10 +227,7 @@ export const initBingoSocket = (io) => {
       try {
         const { gameId, telegramId, number } = data;
         if (!gameId || !telegramId || !number) {
-          return socket.emit("error", {
-            success: false,
-            message: "GameId, TelegramId, and Number are required",
-          });
+          return socket.emit("error", { success: false, message: "GameId, TelegramId, and Number are required" });
         }
 
         const result = await markNumber(gameId, telegramId, number);
@@ -302,7 +245,7 @@ export const initBingoSocket = (io) => {
         // ✅ IF BINGO IS DETECTED
         if (result.bingo) {
           console.log(`🏆 BINGO DETECTED! Winner: ${result.winner.username}`);
-
+          
           // 1. Stop the number timer immediately
           stopNumberCalling(gameId);
 
@@ -328,7 +271,7 @@ export const initBingoSocket = (io) => {
                 game.roomId,
                 game.maxPlayers,
                 game.minBet,
-                game.maxBet,
+                game.maxBet
               );
 
               // Broadcast the new round state to all clients so they reset their UI
@@ -342,7 +285,7 @@ export const initBingoSocket = (io) => {
                 selectedNumbers: [],
                 message: "New round started! Select your lucky numbers.",
               });
-
+              
               io.to(game.roomId).emit("bingo:roundState", {
                 gameId: nextGame.gameId,
                 roomId: nextGame.roomId,
@@ -362,10 +305,7 @@ export const initBingoSocket = (io) => {
         }
       } catch (error) {
         console.error("Mark Number Error:", error.message);
-        socket.emit("error", {
-          success: false,
-          message: error.message || "Failed to mark number",
-        });
+        socket.emit("error", { success: false, message: error.message || "Failed to mark number" });
       }
     });
 
@@ -404,11 +344,7 @@ export const initBingoSocket = (io) => {
       try {
         const { gameId, telegramId } = data;
         const card = await getPlayerCard(gameId, telegramId);
-        socket.emit("playerCard", {
-          success: true,
-          card: card.card,
-          markedNumbers: card.markedNumbers,
-        });
+        socket.emit("playerCard", { success: true, card: card.card, markedNumbers: card.markedNumbers });
       } catch (error) {
         console.error("Get Card Error:", error.message);
         socket.emit("error", { success: false, message: error.message });
@@ -422,16 +358,8 @@ export const initBingoSocket = (io) => {
       const { roomId } = data;
       if (roomId) {
         socket.leave(roomId);
-        socket.emit("leftRoom", {
-          success: true,
-          message: `Left room ${roomId}`,
-        });
-        socket
-          .to(roomId)
-          .emit("gameUpdate", {
-            type: "playerLeft",
-            message: "A player has left the room.",
-          });
+        socket.emit("leftRoom", { success: true, message: `Left room ${roomId}` });
+        socket.to(roomId).emit("gameUpdate", { type: "playerLeft", message: "A player has left the room." });
       }
     });
 
@@ -450,19 +378,13 @@ export const initBingoSocket = (io) => {
 const scheduleAutoStart = (gameId, roomId, seconds = 30, force = false) => {
   if (startCountdowns.has(gameId) && !force) {
     const existing = startCountdowns.get(gameId);
-    if (
-      existing &&
-      typeof existing.remaining === "number" &&
-      existing.remaining <= seconds
-    ) {
+    if (existing && typeof existing.remaining === "number" && existing.remaining <= seconds) {
       return;
     }
     try {
       clearInterval(existing.intervalId);
     } catch (e) {
-      try {
-        clearTimeout(existing);
-      } catch (_) {}
+      try { clearTimeout(existing); } catch (_) {}
     }
     startCountdowns.delete(gameId);
   }
@@ -519,9 +441,7 @@ const scheduleAutoStart = (gameId, roomId, seconds = 30, force = false) => {
               startTime: started.startTime,
             };
 
-            globalThis.io
-              .to(roomId)
-              .emit("gameUpdate", { type: "gameStarted", ...autoStartedState });
+            globalThis.io.to(roomId).emit("gameUpdate", { type: "gameStarted", ...autoStartedState });
             globalThis.io.to(roomId).emit("bingo:roundState", autoStartedState);
           }
           if (globalThis.io && typeof globalThis.io.to === "function") {
@@ -531,8 +451,7 @@ const scheduleAutoStart = (gameId, roomId, seconds = 30, force = false) => {
           if (globalThis.io && typeof globalThis.io.to === "function") {
             globalThis.io.to(roomId).emit("gameUpdate", {
               type: "notEnoughPlayers",
-              message:
-                "Not enough players to start the game — waiting for more players.",
+              message: "Not enough players to start the game — waiting for more players.",
               playerCount: game.players.length,
             });
           }
@@ -578,10 +497,7 @@ const startNumberCalling = (io, gameId, roomId) => {
       if (!result) {
         clearInterval(interval);
         gameTimers.delete(gameId);
-        io.to(roomId).emit("gameUpdate", {
-          type: "gameEnded",
-          message: "All numbers called! Game ended.",
-        });
+        io.to(roomId).emit("gameUpdate", { type: "gameEnded", message: "All numbers called! Game ended." });
 
         setTimeout(async () => {
           const nextGame = await createBingoGame(roomId);
@@ -619,10 +535,7 @@ const startNumberCalling = (io, gameId, roomId) => {
       console.error("Number Calling Interval Error:", error.message);
       clearInterval(interval);
       gameTimers.delete(gameId);
-      io.to(roomId).emit("error", {
-        success: false,
-        message: "Error calling numbers. Game stopping.",
-      });
+      io.to(roomId).emit("error", { success: false, message: "Error calling numbers. Game stopping." });
     }
   }, 1000);
 
@@ -639,9 +552,7 @@ const stopNumberCalling = (gameId) => {
       if (entry && entry.intervalId) clearInterval(entry.intervalId);
       else clearInterval(entry);
     } catch (e) {
-      try {
-        clearTimeout(entry.intervalId || entry);
-      } catch (_) {}
+      try { clearTimeout(entry.intervalId || entry); } catch (_) {}
     }
     gameTimers.delete(gameId);
     console.log(`⏹️ Stopped number calling for game: ${gameId}`);

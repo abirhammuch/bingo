@@ -718,7 +718,7 @@ const Bingo = ({ theme }) => {
                   return { ...cell, marked: true };
                 }
                 return cell;
-              }),
+              })
             );
           });
         });
