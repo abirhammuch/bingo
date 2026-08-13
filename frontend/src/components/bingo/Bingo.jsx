@@ -768,13 +768,15 @@ const Bingo = ({ theme }) => {
     if (
       phase === "live" ||
       gameStatus === "live" ||
-      gameStatus === "finished"
+      gameStatus === "finished" ||
+      (phase === "selection" && selectionTimeLeft <= 0)
     ) {
       console.log(
-        "⏳ [Round active] Waiting until current round ends before joining.",
+        "⏳ [Round active or locked] Waiting until the next round before joining.",
         {
           phase,
           gameStatus,
+          selectionTimeLeft,
           gameId,
         },
       );
@@ -787,12 +789,10 @@ const Bingo = ({ theme }) => {
       socket.emit("createRoom", { roomId: "Main Room" });
     }
 
-    console.log(
-      "📍 [handleJoin - Showing selection UI, waiting for number selection]",
-      {
-        gameId,
-      },
-    );
+    console.log("📍 [handleJoin - Selection window open, user can join now]", {
+      gameId,
+      selectionTimeLeft,
+    });
 
     resetRoundState(true);
   };
@@ -855,6 +855,14 @@ const Bingo = ({ theme }) => {
 
     lockSelections();
   }, [phase, selectionNumbers.length, pendingSelections.length, gameId]);
+
+  const joinButtonDisabled =
+    phase === "live" ||
+    gameStatus === "live" ||
+    gameStatus === "finished" ||
+    (phase === "selection" && selectionTimeLeft <= 0);
+
+  const joinButtonLabel = joinButtonDisabled ? "Wait next round" : "Join game";
 
   const statusText = phase === "selection" ? "Selection" : gameStatus;
   const currentStatus =
@@ -921,24 +929,14 @@ const Bingo = ({ theme }) => {
               </div>
               <button
                 onClick={handleJoin}
-                disabled={
-                  phase === "live" ||
-                  gameStatus === "live" ||
-                  gameStatus === "finished"
-                }
+                disabled={joinButtonDisabled}
                 className={`rounded-3xl border px-4 py-2 text-sm font-semibold transition ${
-                  phase === "live" ||
-                  gameStatus === "live" ||
-                  gameStatus === "finished"
+                  joinButtonDisabled
                     ? "border-slate-700 bg-slate-800 text-slate-400 cursor-not-allowed"
                     : "border-emerald-500/20 bg-emerald-500/10 text-emerald-300"
                 }`}
               >
-                {phase === "live" ||
-                gameStatus === "live" ||
-                gameStatus === "finished"
-                  ? "Waiting for next round"
-                  : "Join game"}
+                {joinButtonLabel}
               </button>
             </div>
           </div>
