@@ -742,23 +742,8 @@ const Bingo = ({ theme }) => {
     }
   }, [gameId, joined]);
 
-  const handleJoin = () => {
-    setRoomCreating(true);
-
-    if (!gameId) {
-      socket.emit("createRoom", { roomId: "Main Room" });
-    }
-
-    // Don't auto-join with luckyNumber: null
-    // User will join when they select their first number via toggleLuckyNumber
-    console.log(
-      "📍 [handleJoin - Showing selection UI, waiting for number selection]",
-      {
-        gameId,
-      },
-    );
-
-    setJoined(true);
+  const resetRoundState = (keepJoined = true) => {
+    setJoined(keepJoined);
     setPhase("selection");
     setSelectionTimeLeft(30);
     setCountdownRemaining(30);
@@ -776,7 +761,35 @@ const Bingo = ({ theme }) => {
     setMySelectedNumber(null);
     setPendingSelections([]);
     setPendingStart(false);
+    setDrawTimeLeft(7);
   };
+
+  const handleJoin = () => {
+    setRoomCreating(true);
+
+    if (!gameId) {
+      socket.emit("createRoom", { roomId: "Main Room" });
+    }
+
+    console.log(
+      "📍 [handleJoin - Showing selection UI, waiting for number selection]",
+      {
+        gameId,
+      },
+    );
+
+    resetRoundState(true);
+  };
+
+  useEffect(() => {
+    if (!winner) return;
+
+    const timer = window.setTimeout(() => {
+      resetRoundState(true);
+    }, 3500);
+
+    return () => window.clearTimeout(timer);
+  }, [winner]);
 
   useEffect(() => {
     if (phase !== "selection") return;
@@ -894,7 +907,7 @@ const Bingo = ({ theme }) => {
                 onClick={handleJoin}
                 className="rounded-3xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-300"
               >
-                {joined ? "Restart room" : "Join game"}
+                Join game
               </button>
             </div>
           </div>

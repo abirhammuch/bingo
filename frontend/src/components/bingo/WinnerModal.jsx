@@ -30,7 +30,7 @@ const WinnerModal = ({ open, winner, luckyNumber, onClose, accent = {} }) => {
           onClick={onClose}
           className="mt-8 inline-flex w-full justify-center rounded-full bg-emerald-500 px-6 py-3 text-sm font-semibold text-slate-950 transition hover:brightness-110"
         >
-          Close
+          Continue
         </button>
       </div>
     </div>
