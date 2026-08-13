@@ -547,11 +547,9 @@ const scheduleAutoStart = (gameId, roomId, seconds = 20, force = false) => {
         const game = await getGameState(gameId);
         if (!game) return;
 
-        const selectedCount = Array.isArray(game.selectedNumbers)
-          ? game.selectedNumbers.length
-          : 0;
-
-        if (game.status === "waiting" && selectedCount > 1) {
+        // ✅ FIX: Check if the game is waiting AND has at least 1 player
+        // The "selectedCount" check is already handled inside startGame()
+        if (game.status === "waiting" && game.players.length >= 1) {
           const started = await startGame(gameId);
           if (globalThis.io && typeof globalThis.io.to === "function") {
             const autoStartedState = {
