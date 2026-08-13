@@ -5,7 +5,6 @@ import CalledNumbers from "./CalledNumbers";
 import GameStatus from "./GameStatus";
 import Countdown from "./Countdown";
 import WinnerModal from "./WinnerModal";
-import RoomInfo from "./RoomInfo";
 import {
   createBingoCard,
   createNumberPool,
@@ -837,16 +836,6 @@ const Bingo = ({ theme }) => {
     resetRoundState(true);
   };
 
-  useEffect(() => {
-    if (!winner) return;
-
-    const timer = window.setTimeout(() => {
-      resetRoundState(true);
-    }, 3500);
-
-    return () => window.clearTimeout(timer);
-  }, [winner]);
-
   // When phase transitions from selection to live, clear selection countdown
   // and initialize live countdown so timers don't bleed between phases
   useEffect(() => {
@@ -1106,14 +1095,15 @@ const Bingo = ({ theme }) => {
       </div>
 
       <aside className="space-y-6">
-        <RoomInfo room="Main Room" players={participants} accent={accent} />
         <WinnerModal
           open={Boolean(winner)}
-          winner={winner || "You"}
+          winner={winner || "Unknown Player"}
           luckyNumber={winningLuckyNumber}
+          isCurrentUserWinner={winner === "You"}
           onClose={() => {
             setWinner(null);
             setWinningLuckyNumber(null);
+            resetRoundState(true);
           }}
           accent={accent}
         />
