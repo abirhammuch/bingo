@@ -217,13 +217,9 @@ export const joinBingoGame = async (
     throw new Error("Game is full");
   }
 
-  const playerAlreadyJoined = game.players.some(
-    (player) => normalizeTelegramId(player.telegramId) === normalizedTelegramId,
-  );
-
-  if (playerAlreadyJoined) {
-    throw new Error("User already joined this game");
-  }
+  // Allow one user to hold multiple selected cards in the same room.
+  // The room tracks selected lucky numbers at the game level, so a single
+  // Telegram user can submit several card picks without being rejected.
 
   // Find user
   console.log("🔍 [LOOKUP USER]", { telegramId: normalizedTelegramId });

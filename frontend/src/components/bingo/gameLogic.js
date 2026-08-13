@@ -91,30 +91,26 @@ export const markNumberOnCard = (card, number) => {
 };
 
 export const hasBingo = (card) => {
-  if (!card) {
+  if (!card || !Array.isArray(card) || card.length !== 5) {
     return false;
   }
 
-  const isMarked = (cell) => Boolean(cell?.marked || cell?.value === "FREE");
+  const isMarked = (cell) =>
+    Boolean(cell && (cell.marked || cell.value === "FREE" || cell.value === 0));
 
-  const hasLine = (line) => line.every(isMarked);
+  const hasLine = (line) =>
+    Array.isArray(line) && line.length === 5 && line.every(isMarked);
 
   const rows = card.some((row) => hasLine(row));
-  if (rows) {
-    return true;
-  }
+  if (rows) return true;
 
   const columns = Array.from({ length: 5 }, (_, columnIndex) =>
     hasLine(card.map((row) => row[columnIndex])),
   ).some(Boolean);
-  if (columns) {
-    return true;
-  }
+  if (columns) return true;
 
   const diagonalOne = hasLine(card.map((row, index) => row[index]));
-  if (diagonalOne) {
-    return true;
-  }
+  if (diagonalOne) return true;
 
   const diagonalTwo = hasLine(card.map((row, index) => row[4 - index]));
   return diagonalTwo;
