@@ -26,6 +26,11 @@ const bingoGameSchema = new mongoose.Schema(
         firstName: String,
         card: [[Number]], // 5x5 bingo card
         markedNumbers: [Number],
+        selectedLuckyNumbers: [Number], // Track which lucky numbers this player selected
+        cardsSelected: {
+          type: Number,
+          default: 1, // How many cards this player selected
+        },
         hasBingo: {
           type: Boolean,
           default: false,
@@ -38,6 +43,10 @@ const bingoGameSchema = new mongoose.Schema(
         winAmount: {
           type: Number,
           default: 0,
+        },
+        joinedAt: {
+          type: Date,
+          default: Date.now,
         },
       },
     ],

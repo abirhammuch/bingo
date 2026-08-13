@@ -72,20 +72,17 @@ const Bingo = ({ theme }) => {
   );
   const reservedCount = selectedNumbersGlobal.length;
   const canSelectMore = mySelections.length < maxSelectionCount;
-  const displayedPlayerCount = Math.max(participants, selectionNumbers.length);
+  const displayedPlayerCount =
+    typeof participants === "number" && participants > 0 ? participants : 0;
 
-  // ============================================================
-  // ✅ FIX 1: Updated helper to TRUST server playerCount first
-  // ============================================================
-  const getActivePlayerCount = (players, selectedNumbers, fallback = 0) => {
+  // Count actual joined players from the server. Do not use the selected
+  // lucky-number list because it can be much larger than the real player count.
+  const getActivePlayerCount = (players, _selectedNumbers, fallback = 0) => {
     const playerCount = Array.isArray(players) ? players.length : 0;
-    const selectedCount = Array.isArray(selectedNumbers)
-      ? selectedNumbers.length
-      : 0;
     const fallbackCount =
       typeof fallback === "number" && fallback > 0 ? fallback : 0;
 
-    return Math.max(playerCount, selectedCount, fallbackCount);
+    return Math.max(playerCount, fallbackCount);
   };
 
   const emitStartGame = () => {
@@ -362,16 +359,17 @@ const Bingo = ({ theme }) => {
       );
 
       // ✅ Set participants directly from playerCount
-      const playerCount = state.playerCount || state.game?.playerCount || 0;
-      if (typeof playerCount === "number" && playerCount > 0) {
+      const playerCount =
+        typeof state.playerCount === "number"
+          ? state.playerCount
+          : typeof state.game?.playerCount === "number"
+            ? state.game.playerCount
+            : Array.isArray(state.players || state.game?.players)
+              ? (state.players || state.game?.players).length
+              : 0;
+
+      if (typeof playerCount === "number") {
         setParticipants(playerCount);
-      } else {
-        setParticipants(
-          getActivePlayerCount(
-            state.players || state.game?.players || [],
-            state.selectedNumbers || state.game?.selectedNumbers || [],
-          ),
-        );
       }
 
       if (state.calledNumbers) setCalledNumbers(state.calledNumbers);
@@ -402,11 +400,11 @@ const Bingo = ({ theme }) => {
           setParticipants(
             typeof payload.playerCount === "number"
               ? payload.playerCount
-              : getActivePlayerCount(
-                  payload.players || [],
-                  payload.selectedNumbers || [],
-                  payload.playerCount || participants,
-                ),
+              : Array.isArray(payload.players)
+                ? payload.players.length
+                : typeof payload.currentPlayers === "number"
+                  ? payload.currentPlayers
+                  : participants,
           );
           setSelectedNumbersGlobal(payload.selectedNumbers || []);
           break;
@@ -439,14 +437,8 @@ const Bingo = ({ theme }) => {
         setParticipants(data.playerCount);
       } else if (typeof data.count === "number") {
         setParticipants(data.count);
-      } else {
-        setParticipants(
-          getActivePlayerCount(
-            data.players || [],
-            data.selectedNumbers || [],
-            0,
-          ),
-        );
+      } else if (Array.isArray(data.players)) {
+        setParticipants(data.players.length);
       }
     };
 
@@ -465,11 +457,11 @@ const Bingo = ({ theme }) => {
       setParticipants(
         typeof data.playerCount === "number"
           ? data.playerCount
-          : getActivePlayerCount(
-              data.players || [],
-              data.selectedNumbers || [],
-              data.playerCount || participants,
-            ),
+          : Array.isArray(data.players)
+            ? data.players.length
+            : typeof data.currentPlayers === "number"
+              ? data.currentPlayers
+              : participants,
       );
     };
 
@@ -493,11 +485,9 @@ const Bingo = ({ theme }) => {
           ? data.playerCount
           : typeof data.currentPlayers === "number"
             ? data.currentPlayers
-            : getActivePlayerCount(
-                data.players || [],
-                data.selectedNumbers || [],
-                0,
-              ),
+            : Array.isArray(data.players)
+              ? data.players.length
+              : participants,
       );
 
       if (data.gameId && socket.connected) {
