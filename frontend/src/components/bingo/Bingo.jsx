@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import BingoCell from "./BingoCell";
 import CurrentNumber from "./CurrentNumber";
 import CalledNumbers from "./CalledNumbers";
@@ -64,6 +64,7 @@ const Bingo = ({ theme }) => {
   const [pendingSelections, setPendingSelections] = useState([]);
   const [roomCreating, setRoomCreating] = useState(false);
   const [pendingStart, setPendingStart] = useState(false);
+  const joinedGamesRef = useRef(new Set());
 
   const maxSelectionCount = 3;
   const selectedNumbersLabel = useMemo(
@@ -83,6 +84,37 @@ const Bingo = ({ theme }) => {
       typeof fallback === "number" && fallback > 0 ? fallback : 0;
 
     return Math.max(playerCount, fallbackCount);
+  };
+
+  const joinCurrentGame = (targetGameId = gameId) => {
+    const telegramId = authUser?.telegramId;
+    if (!targetGameId || !telegramId) return;
+    if (joinedGamesRef.current.has(targetGameId)) return;
+
+    joinedGamesRef.current.add(targetGameId);
+    socket.emit(
+      "joinRoom",
+      {
+        gameId: targetGameId,
+        telegramId,
+        betAmount: 1,
+        luckyNumber: null,
+      },
+      (response) => {
+        if (response?.success) {
+          setJoined(true);
+          setParticipants(
+            typeof response.playerCount === "number"
+              ? response.playerCount
+              : participants,
+          );
+          return;
+        }
+
+        console.warn("Join room failed:", response?.message || "Unknown error");
+        joinedGamesRef.current.delete(targetGameId);
+      },
+    );
   };
 
   const emitStartGame = () => {
@@ -388,14 +420,19 @@ const Bingo = ({ theme }) => {
       if (!payload) return;
       const type = payload.type;
       switch (type) {
-        case "roomCreated":
+        case "roomCreated": {
           handleRoundState({
             gameId: payload.gameId,
             status: payload.status || "waiting",
             selectedNumbers: payload.selectedNumbers || [],
             players: payload.players || [],
           });
+
+          if (payload.gameId && authUser?.telegramId) {
+            joinCurrentGame(payload.gameId);
+          }
           break;
+        }
         case "playerJoined":
           setParticipants(
             typeof payload.playerCount === "number"
@@ -599,7 +636,13 @@ const Bingo = ({ theme }) => {
 
   const handleJoin = () => {
     setRoomCreating(true);
-    socket.emit("createRoom", { roomId: "Main Room" });
+
+    if (gameId) {
+      joinCurrentGame(gameId);
+    } else {
+      socket.emit("createRoom", { roomId: "Main Room" });
+    }
+
     setJoined(true);
     setPhase("selection");
     setSelectionTimeLeft(30);
