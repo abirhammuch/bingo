@@ -142,36 +142,65 @@ export const telegramWebAppLogin = async (req, res) => {
       });
     }
 
-    const user = await User.findOne({ telegramId });
+    console.log("🔍 [LOGIN CHECK] Telegram WebApp login attempt", {
+      telegramId,
+      firstName,
+      timestamp: new Date().toISOString(),
+    });
+
+    let user = await User.findOne({ telegramId });
 
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        message:
-          "User not found. Please register through the Telegram bot first.",
+      console.log("👤 [USER NOT FOUND] Creating new user from WebApp login", {
+        telegramId,
+        firstName,
+      });
+      // Create new user if they don't exist
+      user = await User.create({
+        telegramId,
+        firstName,
+        lastName,
+        username,
+        profilePhoto,
+        balance: 100,
+        isRegistered: false,
+        lastLogin: new Date(),
+      });
+      console.log("✅ [NEW USER CREATED]", {
+        telegramId,
+        userId: user._id,
+        isRegistered: user.isRegistered,
+      });
+    } else {
+      console.log("✅ [USER FOUND]", {
+        telegramId,
+        isRegistered: user.isRegistered,
+        firstName: user.firstName,
+      });
+      // Update existing user with latest info
+      user.firstName = firstName || user.firstName;
+      user.lastName = lastName || user.lastName;
+      user.username = username || user.username;
+      user.profilePhoto = profilePhoto || user.profilePhoto;
+      user.lastLogin = new Date();
+      await user.save();
+      console.log("✅ [USER UPDATED]", {
+        telegramId,
+        isRegistered: user.isRegistered,
       });
     }
 
-    if (!user.isRegistered) {
-      return res.status(403).json({
-        success: false,
-        message:
-          "Telegram registration is incomplete. Please share your phone number in the bot first.",
-      });
-    }
-
-    user.firstName = firstName || user.firstName;
-    user.lastName = lastName || user.lastName;
-    user.username = username || user.username;
-    user.profilePhoto = profilePhoto || user.profilePhoto;
-    user.lastLogin = new Date();
-    await user.save();
-
+    // Generate token regardless of registration status
     const token = generateToken({
       id: user._id,
       telegramId: user.telegramId,
       username: user.username,
       firstName: user.firstName,
+    });
+
+    console.log("🎫 [TOKEN GENERATED]", {
+      telegramId,
+      tokenLength: token.length,
     });
 
     return res.status(200).json({
@@ -186,6 +215,7 @@ export const telegramWebAppLogin = async (req, res) => {
         username: user.username,
         balance: user.balance,
         profilePhoto: user.profilePhoto,
+        isRegistered: user.isRegistered,
         gamesPlayed: user.gamesPlayed,
         gamesWon: user.gamesWon,
         bingoGames: user.bingoGames,
@@ -195,7 +225,10 @@ export const telegramWebAppLogin = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Telegram WebApp Login Error:", error);
+    console.error("❌ [TELEGRAM WEBAPP LOGIN ERROR]", {
+      message: error.message,
+      timestamp: new Date().toISOString(),
+    });
     res.status(500).json({
       success: false,
       message: "Failed to login with Telegram WebApp",

@@ -179,8 +179,10 @@ export const joinBingoGame = async (
   luckyNumber = null,
 ) => {
   const normalizedTelegramId = normalizeTelegramId(telegramId);
+  const joinStartTime = new Date();
 
-  console.log("DEBUG joinBingoGame start:", {
+  console.log("✅ [JOIN START]", {
+    timestamp: joinStartTime.toISOString(),
     gameId,
     telegramId,
     normalizedTelegramId,
@@ -193,11 +195,19 @@ export const joinBingoGame = async (
   }
 
   // Find game
+  console.log("🔍 [LOOKUP GAME]", { gameId });
   const game = await BingoGame.findOne({ gameId });
 
   if (!game) {
     throw new Error("Game not found");
   }
+
+  console.log("📊 [GAME STATUS]", {
+    gameId,
+    status: game.status,
+    currentPlayerCount: game.players.length,
+    maxPlayers: game.maxPlayers,
+  });
 
   if (game.status !== "waiting") {
     throw new Error("Game already in progress");
@@ -216,12 +226,15 @@ export const joinBingoGame = async (
   }
 
   // Find user
+  console.log("🔍 [LOOKUP USER]", { telegramId: normalizedTelegramId });
   const user = await User.findOne({ telegramId: normalizedTelegramId });
 
-  console.log("DEBUG joinBingoGame user lookup:", {
+  console.log("👤 [USER INFO]", {
     telegramId: normalizedTelegramId,
     userFound: !!user,
     userBalance: user?.balance,
+    userRegistered: user?.isRegistered,
+    firstName: user?.firstName,
   });
 
   if (!user) {
@@ -233,8 +246,18 @@ export const joinBingoGame = async (
   }
 
   // Deduct bet amount
+  console.log("💰 [DEDUCT BALANCE]", {
+    telegramId: normalizedTelegramId,
+    oldBalance: user.balance,
+    betAmount,
+    newBalance: user.balance - betAmount,
+  });
   user.balance -= betAmount;
   await user.save();
+  console.log("✅ [BALANCE DEDUCTED]", {
+    telegramId: normalizedTelegramId,
+    newBalance: user.balance,
+  });
 
   // If a luckyNumber is provided, ensure it's not already taken
   if (luckyNumber != null) {
@@ -338,6 +361,16 @@ export const joinBingoGame = async (
     betAmount,
   });
 
+  // Update game player count and summary
+  console.log("📝 [BEFORE DB UPDATE]", {
+    gameId,
+    playersArray: game.players.map((p) => ({
+      telegramId: p.telegramId,
+      firstName: p.firstName,
+    })),
+    playerCount: game.players.length,
+  });
+
   game.playerCount = game.players.length;
   game.roundSummary.playerCount = game.players.length;
   game.roundSummary.selectedNumbersCount = game.selectedNumbers.length;
@@ -346,10 +379,29 @@ export const joinBingoGame = async (
     0,
   );
 
-  await game.save();
+  console.log("💾 [SAVING TO DB]", {
+    gameId,
+    playerCountBeforeSave: game.playerCount,
+    selectedNumbers: game.selectedNumbers,
+    totalBet: game.roundSummary.totalBetAmount,
+  });
+
+  const savedGame = await game.save();
+  const joinEndTime = new Date();
+  const joinDurationMs = joinEndTime - joinStartTime;
+
+  console.log("✅ [JOIN COMPLETE]", {
+    timestamp: joinEndTime.toISOString(),
+    durationMs: joinDurationMs,
+    gameId,
+    telegramId: normalizedTelegramId,
+    finalPlayerCount: savedGame.players.length,
+    finalPlayerCountField: savedGame.playerCount,
+    selectedNumbers: savedGame.selectedNumbers,
+  });
 
   return {
-    game,
+    game: savedGame,
     ticket,
     user: {
       balance: user.balance,

@@ -89,7 +89,13 @@ export const initBingoSocket = (io) => {
     // ------------------------------------------------------------------
     socket.on("joinRoom", async (data, callback) => {
       try {
-        console.log("DEBUG joinRoom payload:", data);
+        const socketJoinStartTime = new Date();
+        console.log("\n🚪 [SOCKET JOIN ROOM START]", {
+          timestamp: socketJoinStartTime.toISOString(),
+          socketId: socket.id,
+          payload: data,
+        });
+
         const { gameId, telegramId, betAmount, luckyNumber = null } = data;
 
         // Validate inputs
@@ -99,10 +105,17 @@ export const initBingoSocket = (io) => {
             message:
               "Invalid data. GameId, TelegramId, and a valid bet are required.",
           };
-          console.log("DEBUG joinRoom invalid payload:", response);
+          console.log("❌ [INVALID PAYLOAD]", { response, data });
           if (typeof callback === "function") return callback(response);
           return socket.emit("error", response);
         }
+
+        console.log("📞 [CALLING joinBingoGame SERVICE]", {
+          gameId,
+          telegramId,
+          betAmount,
+          luckyNumber,
+        });
 
         // Join the game logic (deducts balance, creates ticket, generates card)
         const result = await joinBingoGame(
@@ -112,17 +125,32 @@ export const initBingoSocket = (io) => {
           luckyNumber,
         );
 
-        console.log("DEBUG joinRoom success for game:", {
+        console.log("✅ [SERVICE RETURNED]", {
           gameId,
           telegramId,
           playerCount: result?.game?.players?.length,
+          playerCountField: result?.game?.playerCount,
           selectedNumbers: result?.game?.selectedNumbers,
+          ticketId: result?.ticket?.ticketId,
         });
 
         // Join the Socket.IO room
+        console.log("🔗 [SOCKET JOIN ROOM]", {
+          socketId: socket.id,
+          roomId: result.game.roomId,
+        });
         socket.join(result.game.roomId);
+        console.log("✅ [SOCKET JOINED]", {
+          socketId: socket.id,
+          roomId: result.game.roomId,
+        });
 
         // Send success to the player with their card
+        console.log("📤 [EMIT joinedRoom]", {
+          socketId: socket.id,
+          telegramId,
+          playerCount: result.game.players.length,
+        });
         socket.emit("joinedRoom", {
           success: true,
           gameId: result.game.gameId,
@@ -165,6 +193,11 @@ export const initBingoSocket = (io) => {
           status: result.game.status,
         };
 
+        console.log("📢 [BROADCAST playerJoined TO ROOM]", {
+          roomId: result.game.roomId,
+          newPlayerCount: result.game.players.length,
+          playerTelegramIds: joinedRoomState.players.map((p) => p.telegramId),
+        });
         io.to(result.game.roomId).emit("gameUpdate", {
           type: "playerJoined",
           ...joinedRoomState,
@@ -173,8 +206,13 @@ export const initBingoSocket = (io) => {
           ...joinedRoomState,
           status: "waiting",
         });
+        console.log("✅ [BROADCAST COMPLETE]");
 
         if (typeof callback === "function") {
+          console.log("📞 [EMIT CALLBACK]", {
+            gameId: result.game.gameId,
+            playerCount: result.game.players.length,
+          });
           callback({
             success: true,
             gameId: result.game.gameId,
@@ -193,8 +231,22 @@ export const initBingoSocket = (io) => {
           // Re-anchor the countdown to the full 30-second window for the room.
           scheduleAutoStart(currentGame.gameId, currentGame.roomId, 30, true);
         }
+
+        const socketJoinEndTime = new Date();
+        const socketJoinDurationMs = socketJoinEndTime - socketJoinStartTime;
+        console.log("\n✅ [SOCKET JOIN COMPLETE]", {
+          timestamp: socketJoinEndTime.toISOString(),
+          durationMs: socketJoinDurationMs,
+          socketId: socket.id,
+          gameId: result.game.gameId,
+          telegramId,
+          finalPlayerCount: result.game.players.length,
+        });
       } catch (error) {
-        console.error("Join Room Error:", error.message);
+        console.error("❌ [JOIN ROOM ERROR]", {
+          message: error.message,
+          timestamp: new Date().toISOString(),
+        });
         const response = {
           success: false,
           message: error.message || "Failed to join room",
