@@ -88,14 +88,41 @@ const Bingo = ({ theme }) => {
 
   const joinCurrentGame = (targetGameId = gameId) => {
     const telegramId = authUser?.telegramId;
-    if (!targetGameId || !telegramId) return;
-    if (joinedGamesRef.current.has(targetGameId)) return;
-
-    console.log("DEBUG emit joinRoom:", {
+    console.log("📞 [joinCurrentGame called]", {
       targetGameId,
       telegramId,
-      authUser: authUser ? { telegramId: authUser.telegramId } : null,
+      authUser: authUser
+        ? {
+            telegramId: authUser.telegramId,
+            firstName: authUser.firstName,
+            isRegistered: authUser.isRegistered,
+          }
+        : null,
+      socketConnected: socket.connected,
     });
+
+    if (!targetGameId || !telegramId) {
+      console.warn("⚠️ [joinCurrentGame early return]", {
+        missingGameId: !targetGameId,
+        missingTelegramId: !telegramId,
+      });
+      return;
+    }
+    if (joinedGamesRef.current.has(targetGameId)) {
+      console.log("⚠️ [Already joined this game]", { targetGameId });
+      return;
+    }
+
+    console.log("✅ [Proceeding with joinRoom emit]", {
+      targetGameId,
+      telegramId,
+      socketConnected: socket.connected,
+    });
+
+    if (!socket.connected) {
+      console.log("🔗 [Socket not connected, connecting...]");
+      socket.connect();
+    }
 
     joinedGamesRef.current.add(targetGameId);
     socket.emit(
@@ -107,6 +134,11 @@ const Bingo = ({ theme }) => {
         luckyNumber: null,
       },
       (response) => {
+        console.log("📥 [joinRoom callback response]", {
+          success: response?.success,
+          message: response?.message,
+          playerCount: response?.playerCount,
+        });
         if (response?.success) {
           setJoined(true);
           setParticipants(
@@ -117,7 +149,10 @@ const Bingo = ({ theme }) => {
           return;
         }
 
-        console.warn("Join room failed:", response?.message || "Unknown error");
+        console.warn("❌ [Join room failed]", {
+          message: response?.message || "Unknown error",
+          response,
+        });
         joinedGamesRef.current.delete(targetGameId);
       },
     );
@@ -210,6 +245,17 @@ const Bingo = ({ theme }) => {
     if (mySelections.includes(number)) return;
 
     const telegramId = authUser?.telegramId;
+    console.log("🎲 [toggleLuckyNumber]", {
+      number,
+      phase,
+      joined,
+      canSelectMore,
+      telegramId,
+      gameId,
+      roomCreating,
+      socketConnected: socket.connected,
+    });
+
     if (
       selectedNumbersGlobal.includes(number) &&
       !mySelections.includes(number)
@@ -218,10 +264,12 @@ const Bingo = ({ theme }) => {
     }
 
     if (!socket.connected) {
+      console.log("🔗 [Socket not connected, connecting now...]");
       socket.connect();
     }
 
     if (!gameId && !roomCreating) {
+      console.log("🏗️ [Creating room - first number selected]", { number });
       setRoomCreating(true);
       setPendingSelections((prev) =>
         prev.includes(number) ? prev : [...prev, number],
@@ -231,6 +279,7 @@ const Bingo = ({ theme }) => {
       setSelectionNumbers((prev) =>
         prev.includes(number) ? prev : [...prev, number],
       );
+      console.log("📤 [Emitting createRoom]");
       socket.emit("createRoom", { roomId: "Main Room" });
       return;
     }
@@ -364,6 +413,11 @@ const Bingo = ({ theme }) => {
 
     if (!socket.connected) socket.connect();
 
+    console.log("🔌 [Setting up socket listeners]", {
+      socketConnected: socket.connected,
+      socketId: socket.id,
+    });
+
     // ============================================================
     // ✅ FIX 2: Handle bingo:* events with direct playerCount trust
     // ============================================================
@@ -424,9 +478,28 @@ const Bingo = ({ theme }) => {
 
     const mapGameUpdateToRoundState = (payload) => {
       if (!payload) return;
+      console.log("📨 [gameUpdate received]", {
+        type: payload.type,
+        gameId: payload.gameId,
+        playerCount: payload.playerCount,
+        status: payload.status,
+      });
+
       const type = payload.type;
       switch (type) {
         case "roomCreated": {
+          console.log("🎮 [roomCreated event]", {
+            gameId: payload.gameId,
+            hasAuthUser: !!authUser,
+            hasTelegramId: !!authUser?.telegramId,
+            authUserDetails: authUser
+              ? {
+                  telegramId: authUser.telegramId,
+                  firstName: authUser.firstName,
+                }
+              : null,
+          });
+
           handleRoundState({
             gameId: payload.gameId,
             status: payload.status || "waiting",
@@ -435,7 +508,14 @@ const Bingo = ({ theme }) => {
           });
 
           if (payload.gameId && authUser?.telegramId) {
+            console.log("✅ [Calling joinCurrentGame from roomCreated]");
             joinCurrentGame(payload.gameId);
+          } else {
+            console.warn("⚠️ [Cannot join - missing data]", {
+              hasGameId: !!payload.gameId,
+              hasAuthUser: !!authUser,
+              hasTelegramId: !!authUser?.telegramId,
+            });
           }
           break;
         }
