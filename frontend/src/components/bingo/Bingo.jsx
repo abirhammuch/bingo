@@ -227,8 +227,6 @@ const Bingo = ({ theme }) => {
 
   const toggleLuckyNumber = (number) => {
     if (phase !== "selection") return;
-    if (!joined) return;
-    if (!canSelectMore) return;
     if (mySelections.includes(number)) return;
 
     const telegramId = authUser?.telegramId;
@@ -292,29 +290,13 @@ const Bingo = ({ theme }) => {
       return;
     }
 
-    // ✅ FIX: Only emit joinRoom if the user hasn't already joined
-    if (joined && mySelections.length === 0) {
-      socket.emit("joinRoom", {
-        gameId,
-        telegramId,
-        betAmount: 1,
-        luckyNumber: number,
-      });
-      setMySelections((prev) => [...prev, number]);
-      setMySelectedNumber(number);
-      setSelectionNumbers((prev) =>
-        prev.includes(number) ? prev : [...prev, number],
-      );
-      return;
-    }
-
-    // Fallback (existing logic)
     socket.emit("joinRoom", {
       gameId,
       telegramId,
       betAmount: 1,
       luckyNumber: number,
     });
+
     setMySelections((prev) => [...prev, number]);
     setMySelectedNumber(number);
     setSelectionNumbers((prev) =>
@@ -497,6 +479,25 @@ const Bingo = ({ theme }) => {
                 }
               : null,
           });
+
+          setJoined(false);
+          setCards([]);
+          setSelectionNumbers([]);
+          setMySelections([]);
+          setMySelectedNumber(null);
+          setSelectedNumbersGlobal([]);
+          setWinner(null);
+          setWinningLuckyNumber(null);
+          setCurrentNumber(null);
+          setCalledNumbers([]);
+          setRemainingBalls(75);
+          setPhase("selection");
+          setGameStatus("waiting");
+          setSelectionTimeLeft(20);
+          setCountdownRemaining(20);
+          setNumberPool(createNumberPool());
+          setPendingSelections([]);
+          setPendingStart(false);
 
           handleRoundState({
             gameId: payload.gameId,
@@ -745,8 +746,8 @@ const Bingo = ({ theme }) => {
   const resetRoundState = (keepJoined = true) => {
     setJoined(keepJoined);
     setPhase("selection");
-    setSelectionTimeLeft(30);
-    setCountdownRemaining(30);
+    setSelectionTimeLeft(20);
+    setCountdownRemaining(20);
     setGameStatus("waiting");
     setWinner(null);
     setWinningLuckyNumber(null);
@@ -860,13 +861,13 @@ const Bingo = ({ theme }) => {
     phase === "live" ||
     gameStatus === "live" ||
     gameStatus === "finished" ||
-    (phase === "selection" && selectionTimeLeft <= 0);
+    phase === "finished";
 
   const joinButtonLabel =
-    phase === "selection" && selectionTimeLeft > 0
-      ? `Auto-claim in ${selectionTimeLeft}s`
-      : joinButtonDisabled
-        ? "Wait next round"
+    phase === "live" || gameStatus === "live"
+      ? "Game in progress"
+      : gameStatus === "finished" || phase === "finished"
+        ? "Wait for next round"
         : "Join game";
 
   const statusText = phase === "selection" ? "Selection" : gameStatus;

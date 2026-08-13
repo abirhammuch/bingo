@@ -181,43 +181,18 @@ export const joinBingoGame = async (
   const normalizedTelegramId = normalizeTelegramId(telegramId);
   const joinStartTime = new Date();
 
-  console.log("✅ [JOIN START]", {
-    timestamp: joinStartTime.toISOString(),
-    gameId,
-    telegramId,
-    normalizedTelegramId,
-    betAmount,
-    luckyNumber,
-  });
-
   if (!normalizedTelegramId) {
     throw new Error("Telegram ID is required");
   }
 
-  // Find game
-  console.log("🔍 [LOOKUP GAME]", { gameId });
   const game = await BingoGame.findOne({ gameId });
-
   if (!game) {
     throw new Error("Game not found");
   }
 
-  console.log("📊 [GAME STATUS]", {
-    gameId,
-    status: game.status,
-    currentPlayerCount: game.players.length,
-    maxPlayers: game.maxPlayers,
-  });
-
-  if (game.status === "active") {
+  if (game.status !== "waiting") {
     throw new Error(
-      "Round is already in progress. Please wait until this round ends before joining.",
-    );
-  }
-
-  if (game.status === "completed") {
-    throw new Error(
-      "This round has ended. Please wait for the next round to start.",
+      "This round is no longer accepting new players. Please wait for the next round.",
     );
   }
 
@@ -225,64 +200,127 @@ export const joinBingoGame = async (
     throw new Error("Game is full");
   }
 
-  // Allow one user to hold multiple selected cards in the same room.
-  // The room tracks selected lucky numbers at the game level, so a single
-  // Telegram user can submit several card picks without being rejected.
-
-  // Find user
-  console.log("🔍 [LOOKUP USER]", { telegramId: normalizedTelegramId });
   const user = await User.findOne({ telegramId: normalizedTelegramId });
-
-  console.log("👤 [USER INFO]", {
-    telegramId: normalizedTelegramId,
-    userFound: !!user,
-    userBalance: user?.balance,
-    userRegistered: user?.isRegistered,
-    firstName: user?.firstName,
-  });
-
   if (!user) {
     throw new Error("User not found");
+  }
+
+  const existingPlayerIndex = game.players.findIndex(
+    (player) => normalizeTelegramId(player.telegramId) === normalizedTelegramId,
+  );
+
+  const normalizedLuckyNumber =
+    luckyNumber === null || luckyNumber === undefined || luckyNumber === ""
+      ? null
+      : Number(luckyNumber);
+
+  const selectedNumbers = normalizeSelectedNumbers(game.selectedNumbers || []);
+
+  if (
+    normalizedLuckyNumber !== null &&
+    Number.isFinite(normalizedLuckyNumber) &&
+    selectedNumbers.includes(normalizedLuckyNumber)
+  ) {
+    if (existingPlayerIndex === -1) {
+      throw new Error("Lucky number already selected by another player");
+    }
+
+    const existingPlayer = game.players[existingPlayerIndex];
+    const existingLucky = Array.isArray(existingPlayer.selectedLuckyNumbers)
+      ? existingPlayer.selectedLuckyNumbers.map(Number)
+      : [];
+
+    if (!existingLucky.includes(normalizedLuckyNumber)) {
+      existingPlayer.selectedLuckyNumbers = normalizeSelectedNumbers([
+        ...existingLucky,
+        normalizedLuckyNumber,
+      ]);
+      game.players[existingPlayerIndex] = existingPlayer;
+      game.selectedNumbers = normalizeSelectedNumbers([
+        ...selectedNumbers,
+        normalizedLuckyNumber,
+      ]);
+      await game.save();
+
+      return {
+        game,
+        ticket: null,
+        user: { balance: user.balance, firstName: user.firstName },
+      };
+    }
+
+    await game.save();
+    return {
+      game,
+      ticket: null,
+      user: { balance: user.balance, firstName: user.firstName },
+    };
+  }
+
+  if (existingPlayerIndex !== -1) {
+    const existingPlayer = game.players[existingPlayerIndex];
+    if (
+      normalizedLuckyNumber !== null &&
+      Number.isFinite(normalizedLuckyNumber)
+    ) {
+      const existingLucky = Array.isArray(existingPlayer.selectedLuckyNumbers)
+        ? existingPlayer.selectedLuckyNumbers.map(Number)
+        : [];
+
+      if (!existingLucky.includes(normalizedLuckyNumber)) {
+        existingPlayer.selectedLuckyNumbers = normalizeSelectedNumbers([
+          ...existingLucky,
+          normalizedLuckyNumber,
+        ]);
+        game.players[existingPlayerIndex] = existingPlayer;
+      }
+    }
+
+    game.selectedNumbers = normalizeSelectedNumbers(
+      Array.from(
+        new Set([
+          ...selectedNumbers,
+          ...(normalizedLuckyNumber !== null &&
+          Number.isFinite(normalizedLuckyNumber)
+            ? [normalizedLuckyNumber]
+            : []),
+        ]),
+      ),
+    );
+    await game.save();
+
+    return {
+      game,
+      ticket: null,
+      user: { balance: user.balance, firstName: user.firstName },
+    };
   }
 
   if (user.balance < betAmount) {
     throw new Error("Insufficient balance");
   }
 
-  // Deduct bet amount
-  console.log("💰 [DEDUCT BALANCE]", {
-    telegramId: normalizedTelegramId,
-    oldBalance: user.balance,
-    betAmount,
-    newBalance: user.balance - betAmount,
-  });
   user.balance -= betAmount;
   await user.save();
-  console.log("✅ [BALANCE DEDUCTED]", {
-    telegramId: normalizedTelegramId,
-    newBalance: user.balance,
-  });
 
-  // If a luckyNumber is provided, ensure it's not already taken
-  if (luckyNumber != null) {
-    const selectedLuckyNumber = Number(luckyNumber);
-    const selectedNumbers = normalizeSelectedNumbers(
-      game.selectedNumbers || [],
-    );
-
-    if (selectedNumbers.includes(selectedLuckyNumber)) {
-      throw new Error("Lucky number already selected by another player");
-    }
-
-    selectedNumbers.push(selectedLuckyNumber);
-    game.selectedNumbers = normalizeSelectedNumbers(selectedNumbers);
+  if (
+    normalizedLuckyNumber !== null &&
+    Number.isFinite(normalizedLuckyNumber)
+  ) {
+    game.selectedNumbers = normalizeSelectedNumbers([
+      ...selectedNumbers,
+      normalizedLuckyNumber,
+    ]);
   }
 
-  // Generate bingo card, placing luckyNumber on the card if provided
   const card = (() => {
-    if (luckyNumber == null) return generateBingoCard();
+    if (
+      normalizedLuckyNumber === null ||
+      !Number.isFinite(normalizedLuckyNumber)
+    ) {
+      return generateBingoCard();
+    }
 
-    // create card ensuring luckyNumber is present in the correct column
     const columns = [
       { min: 1, max: 15 },
       { min: 16, max: 30 },
@@ -291,88 +329,73 @@ export const joinBingoGame = async (
       { min: 61, max: 75 },
     ];
 
-    // Determine column index
     const colIndex = columns.findIndex(
-      (c) => luckyNumber >= c.min && luckyNumber <= c.max,
+      (column) =>
+        normalizedLuckyNumber >= column.min &&
+        normalizedLuckyNumber <= column.max,
     );
-    // Build column-based numbers and ensure luckyNumber placed in that column
+
     const cardCols = [];
     for (let col = 0; col < 5; col++) {
       const available = [];
-      for (let n = columns[col].min; n <= columns[col].max; n++)
-        available.push(n);
+      for (let value = columns[col].min; value <= columns[col].max; value++) {
+        available.push(value);
+      }
 
-      // If this is the lucky number column, remove luckyNumber from available and we'll insert it
       if (col === colIndex) {
-        const idx = available.indexOf(luckyNumber);
-        if (idx !== -1) available.splice(idx, 1);
+        const index = available.indexOf(normalizedLuckyNumber);
+        if (index !== -1) available.splice(index, 1);
       }
 
-      // pick 5 numbers for the column
-      const colNums = [];
-      while (colNums.length < 5) {
-        const idx = Math.floor(Math.random() * available.length);
-        colNums.push(available.splice(idx, 1)[0]);
+      const columnValues = [];
+      while (columnValues.length < 5) {
+        const randomIndex = Math.floor(Math.random() * available.length);
+        columnValues.push(available.splice(randomIndex, 1)[0]);
       }
-      cardCols.push(colNums);
+      cardCols.push(columnValues);
     }
 
-    // convert to row-based
     const rowCard = Array.from({ length: 5 }, () => Array(5).fill(0));
-    for (let c = 0; c < 5; c++) {
-      for (let r = 0; r < 5; r++) {
-        rowCard[r][c] = cardCols[c][r];
+    for (let col = 0; col < 5; col++) {
+      for (let row = 0; row < 5; row++) {
+        rowCard[row][col] = cardCols[col][row];
       }
     }
 
-    // free center
     rowCard[2][2] = 0;
 
-    // ensure luckyNumber is placed in a non-center row for its column
     if (colIndex >= 0) {
-      // choose a random row index that is not 2 (center)
       const possibleRows = [0, 1, 3, 4];
-      const r = possibleRows[Math.floor(Math.random() * possibleRows.length)];
-      rowCard[r][colIndex] = luckyNumber;
+      const row = possibleRows[Math.floor(Math.random() * possibleRows.length)];
+      rowCard[row][colIndex] = normalizedLuckyNumber;
     }
 
     return rowCard;
   })();
 
-  const numbers = getCardNumbers(card);
-
-  // Create ticket
   const ticketId = uuidv4();
   const ticket = new BingoTicket({
     ticketId,
     gameId,
     telegramId: normalizedTelegramId,
     card,
-    numbers,
+    numbers: getCardNumbers(card),
     markedNumbers: [],
     betAmount,
   });
   await ticket.save();
 
-  // Add player to game
   game.players.push({
     telegramId: normalizedTelegramId,
     username: user.username || user.firstName,
     firstName: user.firstName,
     card,
     markedNumbers: [],
-    selectedLuckyNumbers: luckyNumber != null ? [Number(luckyNumber)] : [],
+    selectedLuckyNumbers:
+      normalizedLuckyNumber !== null && Number.isFinite(normalizedLuckyNumber)
+        ? [normalizedLuckyNumber]
+        : [],
     betAmount,
-  });
-
-  // Update game player count and summary
-  console.log("📝 [BEFORE DB UPDATE]", {
-    gameId,
-    playersArray: game.players.map((p) => ({
-      telegramId: p.telegramId,
-      firstName: p.firstName,
-    })),
-    playerCount: game.players.length,
   });
 
   game.playerCount = game.players.length;
@@ -383,34 +406,12 @@ export const joinBingoGame = async (
     0,
   );
 
-  console.log("💾 [SAVING TO DB]", {
-    gameId,
-    playerCountBeforeSave: game.playerCount,
-    selectedNumbers: game.selectedNumbers,
-    totalBet: game.roundSummary.totalBetAmount,
-  });
-
   const savedGame = await game.save();
-  const joinEndTime = new Date();
-  const joinDurationMs = joinEndTime - joinStartTime;
-
-  console.log("✅ [JOIN COMPLETE]", {
-    timestamp: joinEndTime.toISOString(),
-    durationMs: joinDurationMs,
-    gameId,
-    telegramId: normalizedTelegramId,
-    finalPlayerCount: savedGame.players.length,
-    finalPlayerCountField: savedGame.playerCount,
-    selectedNumbers: savedGame.selectedNumbers,
-  });
 
   return {
     game: savedGame,
     ticket,
-    user: {
-      balance: user.balance,
-      firstName: user.firstName,
-    },
+    user: { balance: user.balance, firstName: user.firstName },
   };
 };
 

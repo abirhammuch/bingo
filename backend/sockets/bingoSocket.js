@@ -369,10 +369,8 @@ export const initBingoSocket = (io) => {
 
         // IF BINGO IS DETECTED
         if (result.bingo) {
-          // Stop the number timer
           stopNumberCalling(gameId);
 
-          // Notify ALL players in the room
           io.to(game.roomId).emit("gameUpdate", {
             type: "bingo",
             winner: result.winner,
@@ -380,17 +378,50 @@ export const initBingoSocket = (io) => {
             message: `🎉 ${result.winner.username} got BINGO! Won ${result.winner.winAmount} coins!`,
           });
 
-          // Tell everyone the game is over
           io.to(game.roomId).emit("gameUpdate", {
             type: "gameEnded",
             message: "Game has ended. Thanks for playing!",
             winner: result.winner,
           });
 
-          // Stop the live round immediately and launch the next wait-countdown
           setTimeout(async () => {
-            await startNextRoundCountdown(game.roomId, game);
-          }, 3000);
+            const nextGame = await createBingoGame(
+              game.roomId,
+              game.maxPlayers,
+              game.minBet,
+              game.maxBet,
+            );
+
+            io.to(game.roomId).emit("roomCreated", {
+              success: true,
+              gameId: nextGame.gameId,
+              roomId: nextGame.roomId,
+              message: "New round started! Select your lucky numbers.",
+              status: "waiting",
+              selectedNumbers: nextGame.selectedNumbers || [],
+            });
+
+            io.to(game.roomId).emit("bingo:roundState", {
+              gameId: nextGame.gameId,
+              roomId: nextGame.roomId,
+              players: [],
+              playerCount: 0,
+              status: "waiting",
+              selectedNumbers: nextGame.selectedNumbers || [],
+            });
+
+            io.to(game.roomId).emit("gameUpdate", {
+              type: "roomCreated",
+              gameId: nextGame.gameId,
+              roomId: nextGame.roomId,
+              players: [],
+              playerCount: 0,
+              status: "waiting",
+              selectedNumbers: nextGame.selectedNumbers || [],
+            });
+
+            scheduleAutoStart(nextGame.gameId, nextGame.roomId, 20);
+          }, 5000);
         }
       } catch (error) {
         console.error("Mark Number Error:", error.message);
@@ -610,7 +641,7 @@ const startNumberCalling = (io, gameId, roomId) => {
 
   // We'll emit a per-second countdown so clients stay perfectly synchronized.
   // After the countdown reaches 0 we call the next number and reset the countdown.
-  let remaining = 3; // seconds until next number
+  let remaining = 5; // seconds until next number
 
   const interval = setInterval(async () => {
     try {
@@ -672,7 +703,7 @@ const startNumberCalling = (io, gameId, roomId) => {
       });
 
       // reset countdown for next number
-      remaining = 3;
+      remaining = 5;
 
       // update stored remaining in gameTimers entry if present
       if (gameTimers.has(gameId)) {
