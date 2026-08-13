@@ -125,37 +125,43 @@ const Bingo = ({ theme }) => {
     }
 
     joinedGamesRef.current.add(targetGameId);
-    socket.emit(
-      "joinRoom",
-      {
-        gameId: targetGameId,
-        telegramId,
-        betAmount: 1,
-        luckyNumber: null,
-      },
-      (response) => {
-        console.log("📥 [joinRoom callback response]", {
-          success: response?.success,
-          message: response?.message,
-          playerCount: response?.playerCount,
-        });
-        if (response?.success) {
-          setJoined(true);
-          setParticipants(
-            typeof response.playerCount === "number"
-              ? response.playerCount
-              : participants,
-          );
-          return;
-        }
 
-        console.warn("❌ [Join room failed]", {
-          message: response?.message || "Unknown error",
-          response,
-        });
-        joinedGamesRef.current.delete(targetGameId);
-      },
-    );
+    const emitPayload = {
+      gameId: targetGameId,
+      telegramId,
+      betAmount: 1,
+      luckyNumber: null,
+    };
+
+    console.log("📤 [EMITTING joinRoom TO SERVER]", {
+      payload: emitPayload,
+      socketId: socket.id,
+      socketConnected: socket.connected,
+      socketReadyState: socket.connected ? "CONNECTED" : "DISCONNECTED",
+    });
+
+    socket.emit("joinRoom", emitPayload, (response) => {
+      console.log("📥 [joinRoom callback response]", {
+        success: response?.success,
+        message: response?.message,
+        playerCount: response?.playerCount,
+      });
+      if (response?.success) {
+        setJoined(true);
+        setParticipants(
+          typeof response.playerCount === "number"
+            ? response.playerCount
+            : participants,
+        );
+        return;
+      }
+
+      console.warn("❌ [Join room failed]", {
+        message: response?.message || "Unknown error",
+        response,
+      });
+      joinedGamesRef.current.delete(targetGameId);
+    });
   };
 
   const emitStartGame = () => {

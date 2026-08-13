@@ -27,7 +27,12 @@ export const initBingoSocket = (io) => {
   }
 
   io.on("connection", (socket) => {
-    console.log(`🎯 Bingo client connected: ${socket.id}`);
+    console.log(`\n🎯 [BINGO CLIENT CONNECTED] ${socket.id}`);
+    console.log("📊 [Socket connection details]", {
+      socketId: socket.id,
+      timestamp: new Date().toISOString(),
+      transport: socket.conn?.transport?.name || "unknown",
+    });
 
     // ------------------------------------------------------------------
     // 1. CREATE ROOM
@@ -88,14 +93,17 @@ export const initBingoSocket = (io) => {
     // 2. JOIN ROOM
     // ------------------------------------------------------------------
     socket.on("joinRoom", async (data, callback) => {
-      try {
-        const socketJoinStartTime = new Date();
-        console.log("\n🚪 [SOCKET JOIN ROOM START]", {
-          timestamp: socketJoinStartTime.toISOString(),
-          socketId: socket.id,
-          payload: data,
-        });
+      const socketJoinStartTime = new Date();
+      console.log("\n" + "=".repeat(70));
+      console.log("🚪 [JOINROOM EVENT RECEIVED]", {
+        timestamp: socketJoinStartTime.toISOString(),
+        socketId: socket.id,
+        dataReceived: data,
+        hasCallback: typeof callback === "function",
+      });
+      console.log("=".repeat(70));
 
+      try {
         const { gameId, telegramId, betAmount, luckyNumber = null } = data;
 
         // Validate inputs
