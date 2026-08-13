@@ -887,33 +887,6 @@ const Bingo = ({ theme }) => {
   return (
     <div className="grid grid-cols-1 xl:grid-cols-[1.55fr_0.95fr] gap-6">
       <div className="space-y-6">
-        <div className="flex flex-nowrap gap-3 sm:gap-4">
-          <div className="flex-1 min-w-0 rounded-3xl border border-slate-700 bg-slate-950/80 p-3 shadow-xl shadow-slate-950/20 sm:p-5">
-            <div className="mb-2 text-[10px] uppercase tracking-[0.3em] text-slate-400 sm:mb-3 sm:text-xs">
-              Room
-            </div>
-            <div className="text-lg font-semibold text-slate-100 sm:text-2xl md:text-3xl">
-              Main Room
-            </div>
-          </div>
-          <div className="flex-1 min-w-0 rounded-3xl border border-slate-700 bg-slate-950/80 p-3 shadow-xl shadow-slate-950/20 sm:p-5">
-            <div className="mb-2 text-[10px] uppercase tracking-[0.3em] text-slate-400 sm:mb-3 sm:text-xs">
-              Prize pool
-            </div>
-            <div className="text-lg font-semibold text-slate-100 sm:text-2xl md:text-3xl">
-              ${prizePool}
-            </div>
-          </div>
-          <div className="flex-1 min-w-0 rounded-3xl border border-slate-700 bg-slate-950/80 p-3 shadow-xl shadow-slate-950/20 sm:p-5">
-            <div className="mb-2 text-[10px] uppercase tracking-[0.3em] text-slate-400 sm:mb-3 sm:text-xs">
-              Remaining balls
-            </div>
-            <div className="text-lg font-semibold text-slate-100 sm:text-2xl md:text-3xl">
-              {remainingBalls}
-            </div>
-          </div>
-        </div>
-
         <div className="rounded-3xl border border-slate-700 bg-emerald-950/10 shadow-xl shadow-slate-950/20 overflow-hidden">
           <div className="flex flex-col gap-4 border-b border-slate-700 bg-slate-950/90 p-5 md:flex-row md:items-center md:justify-between">
             <div>
@@ -930,6 +903,13 @@ const Bingo = ({ theme }) => {
               <div className="rounded-3xl border border-slate-700 bg-slate-800/80 px-4 py-2 text-sm text-slate-100">
                 {displayedPlayerCount} players
               </div>
+              {showLivePanel && showLiveNumberCountdown && (
+                <div className="rounded-3xl border border-slate-700 bg-slate-800/80 px-3 py-2 text-sm font-semibold text-amber-300">
+                  {typeof countdownRemaining === "number"
+                    ? `${countdownRemaining}s`
+                    : `${drawTimeLeft}s`}
+                </div>
+              )}
               <button
                 onClick={handleJoin}
                 disabled={joinButtonDisabled}
@@ -1075,24 +1055,6 @@ const Bingo = ({ theme }) => {
       </div>
 
       <aside className="space-y-6">
-        {showLivePanel && (
-          <div className="rounded-3xl border border-slate-700 bg-slate-950/90 p-6 shadow-xl shadow-slate-950/20">
-            {showLiveNumberCountdown && (
-              <div className="rounded-3xl border border-slate-700 bg-slate-900/90 p-4">
-                <Countdown
-                  seconds={
-                    typeof countdownRemaining === "number"
-                      ? countdownRemaining
-                      : drawTimeLeft
-                  }
-                  label="Next number in"
-                  selectedCardsCount={selectedNumbersGlobal.length}
-                />
-              </div>
-            )}
-          </div>
-        )}
-
         <RoomInfo room="Main Room" players={participants} accent={accent} />
         <WinnerModal
           open={Boolean(winner)}
