@@ -387,32 +387,10 @@ export const initBingoSocket = (io) => {
             winner: result.winner,
           });
 
-          // After a short delay, create a new waiting game for the same room
+          // Stop the live round immediately and launch the next wait-countdown
           setTimeout(async () => {
-            try {
-              const newGame = await createBingoGame(
-                game.roomId,
-                game.maxPlayers,
-                game.minBet,
-                game.maxBet,
-              );
-              // Broadcast new room created state
-              io.to(game.roomId).emit("gameUpdate", {
-                type: "roomCreated",
-                gameId: newGame.gameId,
-                roomId: newGame.roomId,
-                players: newGame.players,
-                status: newGame.status,
-                maxPlayers: newGame.maxPlayers,
-                selectedNumbers: newGame.selectedNumbers || [],
-              });
-
-              // Schedule auto-start for the new game
-              scheduleAutoStart(newGame.gameId, newGame.roomId, 20);
-            } catch (err) {
-              console.error("Failed to create new round:", err.message || err);
-            }
-          }, 5000);
+            await startNextRoundCountdown(game.roomId, game);
+          }, 3000);
         }
       } catch (error) {
         console.error("Mark Number Error:", error.message);
@@ -667,24 +645,15 @@ const startNumberCalling = (io, gameId, roomId) => {
           message: "All numbers called! Game ended.",
         });
 
-        // create a new waiting round after a short delay
+        // Stop the live number calls and start the next waiting round immediately
         setTimeout(async () => {
-          try {
-            const newGame = await createBingoGame(roomId);
-            io.to(roomId).emit("gameUpdate", {
-              type: "roomCreated",
-              gameId: newGame.gameId,
-              roomId: newGame.roomId,
-              players: newGame.players,
-              status: newGame.status,
-              maxPlayers: newGame.maxPlayers,
-              selectedNumbers: newGame.selectedNumbers || [],
-            });
-            scheduleAutoStart(newGame.gameId, newGame.roomId, 20);
-          } catch (err) {
-            console.error("Failed to create next round:", err.message || err);
-          }
-        }, 5000);
+          await startNextRoundCountdown(roomId, {
+            roomId,
+            maxPlayers: 10,
+            minBet: 1,
+            maxBet: 100,
+          });
+        }, 2000);
 
         return;
       }
@@ -742,6 +711,48 @@ const stopNumberCalling = (gameId) => {
     }
     gameTimers.delete(gameId);
     console.log(`⏹️ Stopped number calling for game: ${gameId}`);
+  }
+};
+
+const startNextRoundCountdown = async (roomId, currentGame = null) => {
+  try {
+    const baseGame = currentGame || {
+      roomId,
+      maxPlayers: 10,
+      minBet: 1,
+      maxBet: 100,
+    };
+    const newGame = await createBingoGame(
+      roomId,
+      baseGame.maxPlayers,
+      baseGame.minBet,
+      baseGame.maxBet,
+    );
+
+    io.to(roomId).emit("gameUpdate", {
+      type: "roomCreated",
+      gameId: newGame.gameId,
+      roomId: newGame.roomId,
+      players: newGame.players || [],
+      status: newGame.status,
+      maxPlayers: newGame.maxPlayers,
+      selectedNumbers: newGame.selectedNumbers || [],
+    });
+
+    io.to(roomId).emit("bingo:roundState", {
+      gameId: newGame.gameId,
+      roomId: newGame.roomId,
+      players: newGame.players || [],
+      playerCount: (newGame.players || []).length,
+      status: "waiting",
+      selectedNumbers: newGame.selectedNumbers || [],
+    });
+
+    scheduleAutoStart(newGame.gameId, newGame.roomId, 20);
+    return newGame;
+  } catch (err) {
+    console.error("Failed to start next round:", err.message || err);
+    return null;
   }
 };
 
