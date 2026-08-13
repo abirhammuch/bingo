@@ -1,7 +1,5 @@
 import crypto from "crypto";
-import dotenv from "dotenv";
 
-dotenv.config();
 
 export const verifyTelegramInitData = (initData) => {
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
