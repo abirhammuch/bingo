@@ -6,9 +6,20 @@ import Bingo from "../../components/bingo/Bingo";
 
 const BingoPPage = () => {
   const navigate = useNavigate();
-  const { user: authUser } = useAuth();
+  const { user: authUser, loginWithTelegramInitData } = useAuth();
 
   useEffect(() => {
+    const telegram = window?.Telegram?.WebApp;
+    const initData =
+      telegram?.initData || telegram?.initDataUnsafe?.initData || null;
+
+    if (!authUser && initData) {
+      loginWithTelegramInitData({ initData }).catch(() => {
+        promptTelegramShareContact();
+      });
+      return;
+    }
+
     if (!authUser) {
       return;
     }
@@ -16,7 +27,7 @@ const BingoPPage = () => {
     if (authUser.isRegistered === false) {
       promptTelegramShareContact();
     }
-  }, [authUser]);
+  }, [authUser, loginWithTelegramInitData, navigate]);
 
   return (
     <div>

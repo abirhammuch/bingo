@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { promptTelegramShareContact } from "../utils/telegramWebApp";
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -37,9 +38,11 @@ const LoginPage = () => {
       setError(null);
       try {
         await loginWithTelegramInitData({ initData });
-        navigate("/wallet");
+        navigate("/bingopage", { replace: true });
       } catch (err) {
-        setError(err.message || "Telegram WebApp login failed");
+        console.warn("Telegram WebApp registration check failed:", err);
+        promptTelegramShareContact();
+        navigate("/bingopage", { replace: true });
       }
     };
 
