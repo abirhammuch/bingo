@@ -871,6 +871,7 @@ const Bingo = ({ theme }) => {
       : gameStatus === "finished"
         ? "finished"
         : "running";
+  const showLiveNumberCountdown = phase === "live" && gameStatus === "live";
 
   // ============================================================
   // Render UI
@@ -1095,23 +1096,19 @@ const Bingo = ({ theme }) => {
             <div className="rounded-3xl border border-slate-700 bg-slate-900/90 p-4">
               <GameStatus status={currentStatus} accent={accent} />
             </div>
-            <div className="rounded-3xl border border-slate-700 bg-slate-900/90 p-4">
-              <Countdown
-                seconds={
-                  typeof countdownRemaining === "number"
-                    ? countdownRemaining
-                    : phase === "selection"
-                      ? selectionTimeLeft
+            {showLiveNumberCountdown && (
+              <div className="rounded-3xl border border-slate-700 bg-slate-900/90 p-4">
+                <Countdown
+                  seconds={
+                    typeof countdownRemaining === "number"
+                      ? countdownRemaining
                       : drawTimeLeft
-                }
-                label={
-                  phase === "selection"
-                    ? "Selection closes in"
-                    : "Next number in"
-                }
-                selectedCardsCount={selectedNumbersGlobal.length}
-              />
-            </div>
+                  }
+                  label="Next number in"
+                  selectedCardsCount={selectedNumbersGlobal.length}
+                />
+              </div>
+            )}
           </div>
         </div>
 

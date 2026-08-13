@@ -610,7 +610,7 @@ const startNumberCalling = (io, gameId, roomId) => {
 
   // We'll emit a per-second countdown so clients stay perfectly synchronized.
   // After the countdown reaches 0 we call the next number and reset the countdown.
-  let remaining = 5; // seconds until next number
+  let remaining = 3; // seconds until next number
 
   const interval = setInterval(async () => {
     try {
@@ -672,7 +672,7 @@ const startNumberCalling = (io, gameId, roomId) => {
       });
 
       // reset countdown for next number
-      remaining = 5;
+      remaining = 3;
 
       // update stored remaining in gameTimers entry if present
       if (gameTimers.has(gameId)) {
