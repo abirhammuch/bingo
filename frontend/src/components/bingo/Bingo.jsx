@@ -1076,42 +1076,19 @@ const Bingo = ({ theme }) => {
       <aside className="space-y-6">
         {showLivePanel && (
           <div className="rounded-3xl border border-slate-700 bg-slate-950/90 p-6 shadow-xl shadow-slate-950/20">
-            <div className="mb-6 flex items-center justify-between gap-4">
-              <div>
-                <div className="text-xs uppercase tracking-[0.3em] text-slate-400">
-                  Current number
-                </div>
-                <div className="mt-2 text-4xl font-semibold text-slate-100">
-                  {currentNumber ?? "—"}
-                </div>
-              </div>
-              <div
-                className={`rounded-3xl px-4 py-2 text-sm font-semibold ${accent.accentText} border ${accent.accentBg} border-emerald-500/20`}
-              >
-                {statusText}
-              </div>
-            </div>
-            <div className="space-y-4">
+            {showLiveNumberCountdown && (
               <div className="rounded-3xl border border-slate-700 bg-slate-900/90 p-4">
-                <CurrentNumber number={currentNumber ?? "—"} accent={accent} />
+                <Countdown
+                  seconds={
+                    typeof countdownRemaining === "number"
+                      ? countdownRemaining
+                      : drawTimeLeft
+                  }
+                  label="Next number in"
+                  selectedCardsCount={selectedNumbersGlobal.length}
+                />
               </div>
-              <div className="rounded-3xl border border-slate-700 bg-slate-900/90 p-4">
-                <GameStatus status={currentStatus} accent={accent} />
-              </div>
-              {showLiveNumberCountdown && (
-                <div className="rounded-3xl border border-slate-700 bg-slate-900/90 p-4">
-                  <Countdown
-                    seconds={
-                      typeof countdownRemaining === "number"
-                        ? countdownRemaining
-                        : drawTimeLeft
-                    }
-                    label="Next number in"
-                    selectedCardsCount={selectedNumbersGlobal.length}
-                  />
-                </div>
-              )}
-            </div>
+            )}
           </div>
         )}
 
