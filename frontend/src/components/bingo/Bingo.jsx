@@ -489,16 +489,13 @@ const Bingo = ({ theme }) => {
             players: payload.players || [],
           });
 
-          if (payload.gameId && authUser?.telegramId) {
-            console.log("✅ [Calling joinCurrentGame from roomCreated]");
-            joinCurrentGame(payload.gameId);
-          } else {
-            console.warn("⚠️ [Cannot join - missing data]", {
-              hasGameId: !!payload.gameId,
-              hasAuthUser: !!authUser,
-              hasTelegramId: !!authUser?.telegramId,
-            });
-          }
+          console.log(
+            "🎮 [Room created - waiting for player to select numbers]",
+            {
+              gameId: payload.gameId,
+              selectedNumbers: payload.selectedNumbers || [],
+            },
+          );
           break;
         }
         case "playerJoined":
@@ -692,23 +689,35 @@ const Bingo = ({ theme }) => {
   }, [participants, selectionNumbers, authUser, gameId, pendingSelections]);
 
   // ============================================================
-  // Re-run join if gameId changes but joined is false
+  // Don't auto-join with luckyNumber: null
+  // User joins when they select a number via toggleLuckyNumber
   // ============================================================
   useEffect(() => {
     if (gameId && !joined) {
-      console.log("🔄 [gameId changed but not joined, trying to re-join]");
-      joinCurrentGame(gameId);
+      console.log(
+        "🎮 [gameId changed - user must click 'Join game' button to proceed]",
+        {
+          gameId,
+        },
+      );
     }
   }, [gameId, joined]);
 
   const handleJoin = () => {
     setRoomCreating(true);
 
-    if (gameId) {
-      joinCurrentGame(gameId);
-    } else {
+    if (!gameId) {
       socket.emit("createRoom", { roomId: "Main Room" });
     }
+
+    // Don't auto-join with luckyNumber: null
+    // User will join when they select their first number via toggleLuckyNumber
+    console.log(
+      "📍 [handleJoin - Showing selection UI, waiting for number selection]",
+      {
+        gameId,
+      },
+    );
 
     setJoined(true);
     setPhase("selection");
