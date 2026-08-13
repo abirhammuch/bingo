@@ -765,6 +765,22 @@ const Bingo = ({ theme }) => {
   };
 
   const handleJoin = () => {
+    if (
+      phase === "live" ||
+      gameStatus === "live" ||
+      gameStatus === "finished"
+    ) {
+      console.log(
+        "⏳ [Round active] Waiting until current round ends before joining.",
+        {
+          phase,
+          gameStatus,
+          gameId,
+        },
+      );
+      return;
+    }
+
     setRoomCreating(true);
 
     if (!gameId) {
@@ -905,9 +921,24 @@ const Bingo = ({ theme }) => {
               </div>
               <button
                 onClick={handleJoin}
-                className="rounded-3xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-300"
+                disabled={
+                  phase === "live" ||
+                  gameStatus === "live" ||
+                  gameStatus === "finished"
+                }
+                className={`rounded-3xl border px-4 py-2 text-sm font-semibold transition ${
+                  phase === "live" ||
+                  gameStatus === "live" ||
+                  gameStatus === "finished"
+                    ? "border-slate-700 bg-slate-800 text-slate-400 cursor-not-allowed"
+                    : "border-emerald-500/20 bg-emerald-500/10 text-emerald-300"
+                }`}
               >
-                Join game
+                {phase === "live" ||
+                gameStatus === "live" ||
+                gameStatus === "finished"
+                  ? "Waiting for next round"
+                  : "Join game"}
               </button>
             </div>
           </div>

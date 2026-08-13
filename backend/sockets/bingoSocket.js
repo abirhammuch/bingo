@@ -118,6 +118,16 @@ export const initBingoSocket = (io) => {
           return socket.emit("error", response);
         }
 
+        if (typeof callback === "function") {
+          const joinAttempt = await joinBingoGame(
+            gameId,
+            telegramId,
+            betAmount,
+            luckyNumber,
+          );
+          return callback({ success: true, ...joinAttempt });
+        }
+
         console.log("📞 [CALLING joinBingoGame SERVICE]", {
           gameId,
           telegramId,

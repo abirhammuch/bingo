@@ -209,8 +209,16 @@ export const joinBingoGame = async (
     maxPlayers: game.maxPlayers,
   });
 
-  if (game.status !== "waiting") {
-    throw new Error("Game already in progress");
+  if (game.status === "active") {
+    throw new Error(
+      "Round is already in progress. Please wait until this round ends before joining.",
+    );
+  }
+
+  if (game.status === "completed") {
+    throw new Error(
+      "This round has ended. Please wait for the next round to start.",
+    );
   }
 
   if (game.players.length >= game.maxPlayers) {
