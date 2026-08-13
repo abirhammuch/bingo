@@ -420,7 +420,7 @@ export const initBingoSocket = (io) => {
               selectedNumbers: nextGame.selectedNumbers || [],
             });
 
-            scheduleAutoStart(nextGame.gameId, nextGame.roomId, 20);
+            scheduleAutoStart(nextGame.gameId, nextGame.roomId, 30);
           }, 5000);
         }
       } catch (error) {
@@ -515,7 +515,7 @@ export const initBingoSocket = (io) => {
 // =========================================================================
 // HELPER: SCHEDULE AUTO-START (synchronized countdown)
 // =========================================================================
-const scheduleAutoStart = (gameId, roomId, seconds = 20, force = false) => {
+const scheduleAutoStart = (gameId, roomId, seconds = 30, force = false) => {
   // If already scheduled and not forced, keep existing if it has less or equal remaining
   if (startCountdowns.has(gameId) && !force) {
     const existing = startCountdowns.get(gameId);
@@ -779,7 +779,7 @@ const startNextRoundCountdown = async (roomId, currentGame = null) => {
       selectedNumbers: newGame.selectedNumbers || [],
     });
 
-    scheduleAutoStart(newGame.gameId, newGame.roomId, 20);
+    scheduleAutoStart(newGame.gameId, newGame.roomId, 30);
     return newGame;
   } catch (err) {
     console.error("Failed to start next round:", err.message || err);

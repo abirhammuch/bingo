@@ -493,8 +493,8 @@ const Bingo = ({ theme }) => {
           setRemainingBalls(75);
           setPhase("selection");
           setGameStatus("waiting");
-          setSelectionTimeLeft(20);
-          setCountdownRemaining(20);
+          setSelectionTimeLeft(30);
+          setCountdownRemaining(30);
           setNumberPool(createNumberPool());
           setPendingSelections([]);
           setPendingStart(false);
@@ -746,8 +746,8 @@ const Bingo = ({ theme }) => {
   const resetRoundState = (keepJoined = true) => {
     setJoined(keepJoined);
     setPhase("selection");
-    setSelectionTimeLeft(20);
-    setCountdownRemaining(20);
+    setSelectionTimeLeft(30);
+    setCountdownRemaining(30);
     setGameStatus("waiting");
     setWinner(null);
     setWinningLuckyNumber(null);
