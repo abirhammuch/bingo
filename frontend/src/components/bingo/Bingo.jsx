@@ -873,27 +873,9 @@ const Bingo = ({ theme }) => {
     if (!pendingStart || !gameId) return;
     if (pendingSelections.length === 0) return;
 
-    flushPendingSelections(true);
+    flushPendingSelections(false);
     setPendingStart(false);
   }, [pendingStart, gameId, pendingSelections]);
-
-  // ============================================================
-  // ✅ FIX: Change the required number of selections to 2
-  // ============================================================
-  useEffect(() => {
-    if (phase !== "selection") return;
-    if (!gameId) return;
-
-    // ✅ Changed from 3 to 2 to match backend requirement (>1 selected card)
-    if (selectionNumbers.length < 2) return;
-
-    if (pendingSelections.length > 0) {
-      flushPendingSelections(true);
-      return;
-    }
-
-    lockSelections();
-  }, [phase, selectionNumbers.length, pendingSelections.length, gameId]);
 
   const joinButtonDisabled =
     phase === "live" ||
