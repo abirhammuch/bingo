@@ -89,6 +89,7 @@ export const initBingoSocket = (io) => {
     // ------------------------------------------------------------------
     socket.on("joinRoom", async (data, callback) => {
       try {
+        console.log("DEBUG joinRoom payload:", data);
         const { gameId, telegramId, betAmount, luckyNumber = null } = data;
 
         // Validate inputs
@@ -98,6 +99,7 @@ export const initBingoSocket = (io) => {
             message:
               "Invalid data. GameId, TelegramId, and a valid bet are required.",
           };
+          console.log("DEBUG joinRoom invalid payload:", response);
           if (typeof callback === "function") return callback(response);
           return socket.emit("error", response);
         }
@@ -109,6 +111,13 @@ export const initBingoSocket = (io) => {
           betAmount,
           luckyNumber,
         );
+
+        console.log("DEBUG joinRoom success for game:", {
+          gameId,
+          telegramId,
+          playerCount: result?.game?.players?.length,
+          selectedNumbers: result?.game?.selectedNumbers,
+        });
 
         // Join the Socket.IO room
         socket.join(result.game.roomId);

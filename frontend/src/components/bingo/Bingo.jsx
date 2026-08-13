@@ -91,6 +91,12 @@ const Bingo = ({ theme }) => {
     if (!targetGameId || !telegramId) return;
     if (joinedGamesRef.current.has(targetGameId)) return;
 
+    console.log("DEBUG emit joinRoom:", {
+      targetGameId,
+      telegramId,
+      authUser: authUser ? { telegramId: authUser.telegramId } : null,
+    });
+
     joinedGamesRef.current.add(targetGameId);
     socket.emit(
       "joinRoom",

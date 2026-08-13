@@ -180,6 +180,14 @@ export const joinBingoGame = async (
 ) => {
   const normalizedTelegramId = normalizeTelegramId(telegramId);
 
+  console.log("DEBUG joinBingoGame start:", {
+    gameId,
+    telegramId,
+    normalizedTelegramId,
+    betAmount,
+    luckyNumber,
+  });
+
   if (!normalizedTelegramId) {
     throw new Error("Telegram ID is required");
   }
@@ -209,6 +217,12 @@ export const joinBingoGame = async (
 
   // Find user
   const user = await User.findOne({ telegramId: normalizedTelegramId });
+
+  console.log("DEBUG joinBingoGame user lookup:", {
+    telegramId: normalizedTelegramId,
+    userFound: !!user,
+    userBalance: user?.balance,
+  });
 
   if (!user) {
     throw new Error("User not found");
