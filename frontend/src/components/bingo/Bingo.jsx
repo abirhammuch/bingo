@@ -61,6 +61,8 @@ const Bingo = ({ theme }) => {
   const [mySelectedNumber, setMySelectedNumber] = useState(null);
   const [mySelections, setMySelections] = useState([]);
   const [countdownRemaining, setCountdownRemaining] = useState(null);
+  const [selectionCountdown, setSelectionCountdown] = useState(30);
+  const [liveCountdown, setLiveCountdown] = useState(null);
   const [pendingSelections, setPendingSelections] = useState([]);
   const [roomCreating, setRoomCreating] = useState(false);
   const [pendingStart, setPendingStart] = useState(false);
@@ -495,6 +497,8 @@ const Bingo = ({ theme }) => {
           setGameStatus("waiting");
           setSelectionTimeLeft(30);
           setCountdownRemaining(30);
+          setSelectionCountdown(30);
+          setLiveCountdown(null);
           setNumberPool(createNumberPool());
           setPendingSelections([]);
           setPendingStart(false);
@@ -527,9 +531,14 @@ const Bingo = ({ theme }) => {
           );
           setSelectedNumbersGlobal(payload.selectedNumbers || []);
           break;
-        case "countdownStarted":
-          setCountdownRemaining(payload.seconds ?? null);
+        case "countdownStarted": {
+          const nextSeconds = payload.seconds ?? 30;
+          setCountdownRemaining(nextSeconds);
+          setSelectionCountdown(nextSeconds);
+          setSelectionTimeLeft(nextSeconds);
+          setLiveCountdown(null);
           break;
+        }
         case "gameStarted":
           handleRoundState({ gameId: payload.gameId, status: "active" });
           break;
@@ -659,7 +668,14 @@ const Bingo = ({ theme }) => {
 
     socket.on("countdownTick", (data) => {
       if (data && typeof data.remaining === "number") {
-        setCountdownRemaining(data.remaining);
+        const nextValue = data.remaining;
+        setCountdownRemaining(nextValue);
+        if (phase === "selection") {
+          setSelectionCountdown(nextValue);
+          setSelectionTimeLeft(nextValue);
+        } else {
+          setLiveCountdown(nextValue);
+        }
       }
       if (data && typeof data.playerCount === "number") {
         setParticipants(data.playerCount);
@@ -667,9 +683,23 @@ const Bingo = ({ theme }) => {
     });
 
     socket.on("countdownRemaining", (data) => {
-      if (typeof data === "number") setCountdownRemaining(data);
-      else if (data && typeof data.remaining === "number")
+      if (typeof data === "number") {
+        setCountdownRemaining(data);
+        if (phase === "selection") {
+          setSelectionCountdown(data);
+          setSelectionTimeLeft(data);
+        } else {
+          setLiveCountdown(data);
+        }
+      } else if (data && typeof data.remaining === "number") {
         setCountdownRemaining(data.remaining);
+        if (phase === "selection") {
+          setSelectionCountdown(data.remaining);
+          setSelectionTimeLeft(data.remaining);
+        } else {
+          setLiveCountdown(data.remaining);
+        }
+      }
     });
 
     socket.on("numberCalled", handleNumberCalledUnified);
@@ -726,7 +756,14 @@ const Bingo = ({ theme }) => {
       socket.off("gameState");
       socket.off("error");
     };
-  }, [participants, selectionNumbers, authUser, gameId, pendingSelections]);
+  }, [
+    participants,
+    selectionNumbers,
+    authUser,
+    gameId,
+    pendingSelections,
+    phase,
+  ]);
 
   // ============================================================
   // Don't auto-join with luckyNumber: null
@@ -748,6 +785,8 @@ const Bingo = ({ theme }) => {
     setPhase("selection");
     setSelectionTimeLeft(30);
     setCountdownRemaining(30);
+    setSelectionCountdown(30);
+    setLiveCountdown(null);
     setGameStatus("waiting");
     setWinner(null);
     setWinningLuckyNumber(null);
@@ -808,12 +847,28 @@ const Bingo = ({ theme }) => {
     return () => window.clearTimeout(timer);
   }, [winner]);
 
+  // When phase transitions from selection to live, clear selection countdown
+  // and initialize live countdown so timers don't bleed between phases
+  useEffect(() => {
+    if (phase === "live") {
+      setSelectionCountdown(null);
+      setSelectionTimeLeft(0);
+      setLiveCountdown(5); // Start live draw countdown at 5 seconds
+    } else if (phase === "selection") {
+      setLiveCountdown(null);
+      setSelectionCountdown(30);
+    } else if (phase === "finished") {
+      setSelectionCountdown(null);
+      setLiveCountdown(null);
+    }
+  }, [phase]);
+
   useEffect(() => {
     if (phase !== "selection") return;
 
-    if (typeof countdownRemaining === "number") {
-      setSelectionTimeLeft(countdownRemaining);
-      if (countdownRemaining <= 0) {
+    if (typeof selectionCountdown === "number") {
+      setSelectionTimeLeft(selectionCountdown);
+      if (selectionCountdown <= 0) {
         lockSelections();
       }
       return;
@@ -823,13 +878,7 @@ const Bingo = ({ theme }) => {
       lockSelections();
       return;
     }
-
-    const timer = window.setTimeout(() => {
-      setSelectionTimeLeft((prev) => prev - 1);
-    }, 1000);
-
-    return () => window.clearTimeout(timer);
-  }, [phase, countdownRemaining, selectionTimeLeft]);
+  }, [phase, selectionCountdown, selectionTimeLeft]);
 
   useEffect(() => {
     if (!pendingStart || !gameId) return;
@@ -880,6 +929,10 @@ const Bingo = ({ theme }) => {
   const showSelectionPanel = phase === "selection";
   const showLivePanel = phase === "live" && gameStatus === "live";
   const showLiveNumberCountdown = showLivePanel;
+  const currentCountdownValue =
+    phase === "live"
+      ? (liveCountdown ?? countdownRemaining ?? drawTimeLeft)
+      : (selectionCountdown ?? countdownRemaining ?? selectionTimeLeft);
 
   // ============================================================
   // Render UI
@@ -905,9 +958,7 @@ const Bingo = ({ theme }) => {
               </div>
               {showLivePanel && showLiveNumberCountdown && (
                 <div className="rounded-3xl border border-slate-700 bg-slate-800/80 px-3 py-2 text-sm font-semibold text-amber-300">
-                  {typeof countdownRemaining === "number"
-                    ? `${countdownRemaining}s`
-                    : `${drawTimeLeft}s`}
+                  {`${currentCountdownValue}s`}
                 </div>
               )}
               <button
