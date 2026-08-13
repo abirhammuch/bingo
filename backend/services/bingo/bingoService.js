@@ -575,10 +575,22 @@ export const startGame = async (gameId) => {
     throw new Error("Game not found");
   }
 
-  // Require at least 2 players to start the game
-  if (game.players.length < 2) {
+  // Require at least 1 player, or 3+ selected numbers (cards)
+  if (game.players.length < 1) {
     throw new Error(
-      `Need at least 2 players to start. Currently have ${game.players.length} player(s).`,
+      `Need at least 1 player to start the game.`,
+    );
+  }
+
+  // Check if enough "participants" (players or selected cards)
+  const selectedCount = Array.isArray(game.selectedNumbers)
+    ? game.selectedNumbers.length
+    : 0;
+  const participantCount = Math.max(game.players.length, selectedCount);
+  
+  if (participantCount < 3) {
+    throw new Error(
+      `Need at least 3 participants to start. Currently have ${participantCount} (${game.players.length} player(s), ${selectedCount} card(s)).`,
     );
   }
 
