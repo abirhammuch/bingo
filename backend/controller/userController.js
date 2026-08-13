@@ -109,6 +109,9 @@ export const telegramLogin = async (req, res) => {
 // ==========================================
 // 1b. Login User via Telegram WebApp initData
 // ==========================================
+// ==========================================
+// 1b. Login User via Telegram WebApp initData
+// ==========================================
 export const telegramWebAppLogin = async (req, res) => {
   try {
     const { initData } = req.body;
@@ -121,16 +124,27 @@ export const telegramWebAppLogin = async (req, res) => {
     }
 
     const params = verifyTelegramInitData(initData);
-    const telegramId = params.id?.toString();
-    const firstName = params.first_name || "Player";
-    const lastName = params.last_name || "";
-    const username = params.username || "";
-    const profilePhoto = params.photo_url || "";
+
+    // ✅ FIX: Parse the nested user JSON string
+    if (params.user && typeof params.user === "string") {
+      try {
+        params.user = JSON.parse(params.user);
+      } catch (e) {
+        console.warn("⚠️ Failed to parse user JSON:", e.message);
+      }
+    }
+
+    // ✅ Extract data from the parsed user object
+    const telegramId = params.user?.id?.toString() || params.id?.toString();
+    const firstName = params.user?.first_name || params.first_name || "Player";
+    const lastName = params.user?.last_name || params.last_name || "";
+    const username = params.user?.username || params.username || "";
+    const profilePhoto = params.user?.photo_url || params.photo_url || "";
 
     if (!telegramId) {
       return res.status(400).json({
         success: false,
-        message: "Telegram user id is required",
+        message: "Telegram user id is required (even after decoding)",
       });
     }
 
@@ -236,7 +250,6 @@ export const telegramWebAppLogin = async (req, res) => {
     });
   }
 };
-
 // ==========================================
 // 1c. Login User via Telegram Bot Code
 // ==========================================
