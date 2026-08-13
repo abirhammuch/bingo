@@ -654,12 +654,31 @@ const Bingo = ({ theme }) => {
       if (d?.winner) setWinner(d.winner);
     });
     socket.on("bingo:nextRound", (d) => {
-      handleRoundState({
-        gameId: d?.gameId || d?.newGameId,
-        status: "waiting",
-        selectedNumbers: d?.selectedNumbers || [],
-        players: d?.players || [],
-      });
+      // Fully reset the UI for the new round
+      setJoined(false);
+      setCards([]);
+      setSelectionNumbers([]);
+      setMySelections([]);
+      setMySelectedNumber(null);
+      setSelectedNumbersGlobal(d?.selectedNumbers || []);
+      setWinner(null);
+      setWinningLuckyNumber(null);
+      setCurrentNumber(null);
+      setCalledNumbers([]);
+      setRemainingBalls(75);
+      setPhase("selection");
+      setGameStatus("waiting");
+      setSelectionTimeLeft(30);
+      setCountdownRemaining(30);
+      setSelectionCountdown(30);
+      setLiveCountdown(null);
+      setNumberPool(createNumberPool());
+      setPendingSelections([]);
+      setPendingStart(false);
+      setDrawTimeLeft(7);
+      setGameId(d?.gameId || d?.newGameId);
+      setParticipants((d?.players || []).length);
+      setRoomCreating(false);
     });
 
     socket.on("joinedRoom", handleJoinedRoom);
@@ -804,6 +823,7 @@ const Bingo = ({ theme }) => {
   };
 
   const handleJoin = () => {
+    // Only allow joining during selection phase with time remaining
     if (
       phase === "live" ||
       gameStatus === "live" ||
@@ -811,29 +831,33 @@ const Bingo = ({ theme }) => {
       (phase === "selection" && selectionTimeLeft <= 0)
     ) {
       console.log(
-        "⏳ [Round active or locked] Waiting until the next round before joining.",
+        "⏳ [Cannot join] Round is locked or in progress. Waiting for next round.",
         {
           phase,
           gameStatus,
           selectionTimeLeft,
-          gameId,
         },
       );
       return;
     }
 
-    setRoomCreating(true);
-
-    if (!gameId) {
-      socket.emit("createRoom", { roomId: "Main Room" });
+    // Ensure socket is connected
+    if (!socket.connected) {
+      socket.connect();
     }
 
-    console.log("📍 [handleJoin - Selection window open, user can join now]", {
-      gameId,
-      selectionTimeLeft,
-    });
+    // Create room if it doesn't exist yet
+    if (!gameId) {
+      console.log("🏗️ [Creating room for first joiner]");
+      socket.emit("createRoom", { roomId: "Main Room" });
+    } else {
+      console.log("📍 [User joining existing game]", {
+        gameId,
+        selectionTimeLeft,
+      });
+    }
 
-    resetRoundState(true);
+    setRoomCreating(false);
   };
 
   // When phase transitions from selection to live, clear selection countdown
@@ -881,12 +905,15 @@ const Bingo = ({ theme }) => {
     phase === "live" ||
     gameStatus === "live" ||
     gameStatus === "finished" ||
-    phase === "finished";
+    phase === "finished" ||
+    (phase === "selection" && selectionTimeLeft <= 0);
 
   const joinButtonLabel =
     phase === "live" || gameStatus === "live"
       ? "Game in progress"
-      : gameStatus === "finished" || phase === "finished"
+      : gameStatus === "finished" ||
+          phase === "finished" ||
+          (phase === "selection" && selectionTimeLeft <= 0)
         ? "Wait for next round"
         : "Join game";
 

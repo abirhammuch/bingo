@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 
 const WinnerModal = ({
   open,
@@ -8,6 +8,17 @@ const WinnerModal = ({
   accent = {},
   isCurrentUserWinner = false,
 }) => {
+  // Auto-close after 5 seconds
+  useEffect(() => {
+    if (!open) return;
+
+    const timer = setTimeout(() => {
+      onClose();
+    }, 5000);
+
+    return () => clearTimeout(timer);
+  }, [open, onClose]);
+
   if (!open) return null;
 
   const isWinner = isCurrentUserWinner || winner === "You";
