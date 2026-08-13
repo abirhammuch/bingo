@@ -3,6 +3,18 @@ import BingoTicket from "../../models/BingoTicket.js";
 import User from "../../models/User.js";
 import { v4 as uuidv4 } from "uuid";
 
+export const normalizeTelegramId = (telegramId) => {
+  if (telegramId === null || telegramId === undefined) return "";
+  return String(telegramId).trim();
+};
+
+const normalizeSelectedNumbers = (numbers = []) => {
+  const unique = [
+    ...new Set((numbers || []).map((value) => Number(value))),
+  ].filter((value) => Number.isFinite(value));
+  return unique.sort((a, b) => a - b);
+};
+
 // Generate a 5x5 bingo card
 export const generateBingoCard = () => {
   const card = [];
@@ -166,6 +178,12 @@ export const joinBingoGame = async (
   betAmount,
   luckyNumber = null,
 ) => {
+  const normalizedTelegramId = normalizeTelegramId(telegramId);
+
+  if (!normalizedTelegramId) {
+    throw new Error("Telegram ID is required");
+  }
+
   // Find game
   const game = await BingoGame.findOne({ gameId });
 
@@ -181,8 +199,16 @@ export const joinBingoGame = async (
     throw new Error("Game is full");
   }
 
+  const playerAlreadyJoined = game.players.some(
+    (player) => normalizeTelegramId(player.telegramId) === normalizedTelegramId,
+  );
+
+  if (playerAlreadyJoined) {
+    throw new Error("User already joined this game");
+  }
+
   // Find user
-  const user = await User.findOne({ telegramId });
+  const user = await User.findOne({ telegramId: normalizedTelegramId });
 
   if (!user) {
     throw new Error("User not found");
@@ -198,11 +224,17 @@ export const joinBingoGame = async (
 
   // If a luckyNumber is provided, ensure it's not already taken
   if (luckyNumber != null) {
-    if (game.selectedNumbers && game.selectedNumbers.includes(luckyNumber)) {
+    const selectedLuckyNumber = Number(luckyNumber);
+    const selectedNumbers = normalizeSelectedNumbers(
+      game.selectedNumbers || [],
+    );
+
+    if (selectedNumbers.includes(selectedLuckyNumber)) {
       throw new Error("Lucky number already selected by another player");
     }
-    game.selectedNumbers = game.selectedNumbers || [];
-    game.selectedNumbers.push(luckyNumber);
+
+    selectedNumbers.push(selectedLuckyNumber);
+    game.selectedNumbers = normalizeSelectedNumbers(selectedNumbers);
   }
 
   // Generate bingo card, placing luckyNumber on the card if provided
@@ -273,7 +305,7 @@ export const joinBingoGame = async (
   const ticket = new BingoTicket({
     ticketId,
     gameId,
-    telegramId,
+    telegramId: normalizedTelegramId,
     card,
     numbers,
     markedNumbers: [],
@@ -283,16 +315,18 @@ export const joinBingoGame = async (
 
   // Add player to game
   game.players.push({
-    telegramId,
+    telegramId: normalizedTelegramId,
     username: user.username || user.firstName,
     firstName: user.firstName,
     card,
     markedNumbers: [],
+    selectedLuckyNumbers: luckyNumber != null ? [Number(luckyNumber)] : [],
     betAmount,
   });
 
   game.playerCount = game.players.length;
   game.roundSummary.playerCount = game.players.length;
+  game.roundSummary.selectedNumbersCount = game.selectedNumbers.length;
   game.roundSummary.totalBetAmount = game.players.reduce(
     (sum, player) => sum + (player.betAmount || 0),
     0,
@@ -366,8 +400,9 @@ export const markNumber = async (gameId, telegramId, number) => {
   }
 
   // Find player
+  const normalizedTelegramId = normalizeTelegramId(telegramId);
   const playerIndex = game.players.findIndex(
-    (p) => p.telegramId === telegramId,
+    (p) => normalizeTelegramId(p.telegramId) === normalizedTelegramId,
   );
 
   if (playerIndex === -1) {
@@ -414,10 +449,11 @@ export const markNumber = async (gameId, telegramId, number) => {
       (sum, playerItem) => sum + (playerItem.betAmount || 0),
       0,
     );
+    const winAmount = Number(player.betAmount || 0) * 5;
     game.winner = {
       telegramId: player.telegramId,
       username: player.username,
-      winAmount: player.betAmount * 5, // 5x payout
+      winAmount,
     };
     game.roundSummary.winnerTelegramId = game.winner.telegramId;
     game.roundSummary.winnerUsername = game.winner.username;
@@ -425,7 +461,7 @@ export const markNumber = async (gameId, telegramId, number) => {
     game.roundSummary.endedReason = "bingo";
 
     // Update user balance
-    const user = await User.findOne({ telegramId });
+    const user = await User.findOne({ telegramId: normalizedTelegramId });
     if (user) {
       user.balance += game.winner.winAmount;
       user.bingoGames += 1;
@@ -436,7 +472,10 @@ export const markNumber = async (gameId, telegramId, number) => {
     }
 
     // Update ticket
-    const ticket = await BingoTicket.findOne({ gameId, telegramId });
+    const ticket = await BingoTicket.findOne({
+      gameId,
+      telegramId: normalizedTelegramId,
+    });
     if (ticket) {
       ticket.isWinner = true;
       ticket.winAmount = game.winner.winAmount;
@@ -513,7 +552,10 @@ export const getPlayerCard = async (gameId, telegramId) => {
     throw new Error("Game not found");
   }
 
-  const player = game.players.find((p) => p.telegramId === telegramId);
+  const normalizedTelegramId = normalizeTelegramId(telegramId);
+  const player = game.players.find(
+    (p) => normalizeTelegramId(p.telegramId) === normalizedTelegramId,
+  );
 
   if (!player) {
     throw new Error("Player not in game");
