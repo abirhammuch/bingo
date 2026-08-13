@@ -547,10 +547,24 @@ const scheduleAutoStart = (gameId, roomId, seconds = 20, force = false) => {
         const game = await getGameState(gameId);
         if (!game) return;
 
-        // ✅ FIX: Check if the game is waiting AND has at least 1 player
-        // The "selectedCount" check is already handled inside startGame()
+        // ✅ FIX: Only start if waiting AND at least 1 player
         if (game.status === "waiting" && game.players.length >= 1) {
-          const started = await startGame(gameId);
+          // ✅ CRITICAL FIX: Wait 500ms to ensure MongoDB finishes saving the selected numbers
+          console.log("⏳ [WAITING 500ms FOR DB TO FINISH SAVING SELECTIONS]");
+          await new Promise((resolve) => setTimeout(resolve, 500));
+
+          // Re-fetch the game after the delay to get the FINAL saved state
+          const refreshedGame = await getGameState(gameId);
+
+          console.log("🚀 [AUTO-START CHECK AFTER DELAY]", {
+            selectedNumbers: refreshedGame.selectedNumbers,
+            count: refreshedGame.selectedNumbers?.length || 0,
+            players: refreshedGame.players.length,
+          });
+
+          // Now try to start the game with the fully saved data
+          const started = await startGame(refreshedGame.gameId);
+
           if (globalThis.io && typeof globalThis.io.to === "function") {
             const autoStartedState = {
               gameId: started.gameId,

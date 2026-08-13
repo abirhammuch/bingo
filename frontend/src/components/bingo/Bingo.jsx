@@ -225,73 +225,75 @@ const Bingo = ({ theme }) => {
     }
   };
 
-  const toggleLuckyNumber = (number) => {
-    if (phase !== "selection") return;
-    if (!joined) return;
-    if (!canSelectMore) return;
-    if (mySelections.includes(number)) return;
+const toggleLuckyNumber = (number) => {
+  if (phase !== "selection") return;
+  if (!joined) return;
+  if (!canSelectMore) return;
+  if (mySelections.includes(number)) return;
 
-    const telegramId = authUser?.telegramId;
-    console.log("🎲 [toggleLuckyNumber]", {
-      number,
-      phase,
-      joined,
-      canSelectMore,
-      telegramId,
-      gameId,
-      roomCreating,
-      socketConnected: socket.connected,
-    });
+  const telegramId = authUser?.telegramId;
+  console.log("🎲 [toggleLuckyNumber]", {
+    number,
+    phase,
+    joined,
+    canSelectMore,
+    telegramId,
+    gameId,
+    roomCreating,
+    socketConnected: socket.connected,
+  });
 
-    if (
-      selectedNumbersGlobal.includes(number) &&
-      !mySelections.includes(number)
-    ) {
-      return;
-    }
+  if (
+    selectedNumbersGlobal.includes(number) &&
+    !mySelections.includes(number)
+  ) {
+    return;
+  }
 
-    if (!socket.connected) {
-      console.log("🔗 [Socket not connected, connecting now...]");
-      socket.connect();
-    }
+  if (!socket.connected) {
+    console.log("🔗 [Socket not connected, connecting now...]");
+    socket.connect();
+  }
 
-    if (!gameId && !roomCreating) {
-      console.log("🏗️ [Creating room - first number selected]", { number });
-      setRoomCreating(true);
-      setPendingSelections((prev) =>
-        prev.includes(number) ? prev : [...prev, number],
-      );
-      setMySelections((prev) => [...prev, number]);
-      setMySelectedNumber(number);
-      setSelectionNumbers((prev) =>
-        prev.includes(number) ? prev : [...prev, number],
-      );
-      console.log("📤 [Emitting createRoom]");
-      socket.emit("createRoom", { roomId: "Main Room" });
-      return;
-    }
+  if (!gameId && !roomCreating) {
+    console.log("🏗️ [Creating room - first number selected]", { number });
+    setRoomCreating(true);
+    setPendingSelections((prev) =>
+      prev.includes(number) ? prev : [...prev, number],
+    );
+    setMySelections((prev) => [...prev, number]);
+    setMySelectedNumber(number);
+    setSelectionNumbers((prev) =>
+      prev.includes(number) ? prev : [...prev, number],
+    );
+    console.log("📤 [Emitting createRoom]");
+    socket.emit("createRoom", { roomId: "Main Room" });
+    return;
+  }
 
-    if (!gameId && roomCreating) {
-      setPendingSelections((prev) =>
-        prev.includes(number) ? prev : [...prev, number],
-      );
-      setMySelections((prev) => [...prev, number]);
-      setMySelectedNumber(number);
-      setSelectionNumbers((prev) =>
-        prev.includes(number) ? prev : [...prev, number],
-      );
-      return;
-    }
+  if (!gameId && roomCreating) {
+    setPendingSelections((prev) =>
+      prev.includes(number) ? prev : [...prev, number],
+    );
+    setMySelections((prev) => [...prev, number]);
+    setMySelectedNumber(number);
+    setSelectionNumbers((prev) =>
+      prev.includes(number) ? prev : [...prev, number],
+    );
+    return;
+  }
 
-    if (!telegramId) {
-      setMySelections((prev) => [...prev, number]);
-      setMySelectedNumber(number);
-      setSelectionNumbers((prev) =>
-        prev.includes(number) ? prev : [...prev, number],
-      );
-      return;
-    }
+  if (!telegramId) {
+    setMySelections((prev) => [...prev, number]);
+    setMySelectedNumber(number);
+    setSelectionNumbers((prev) =>
+      prev.includes(number) ? prev : [...prev, number],
+    );
+    return;
+  }
 
+  // ✅ FIX: Only emit joinRoom if the user hasn't already joined
+  if (joined && mySelections.length === 0) {
     socket.emit("joinRoom", {
       gameId,
       telegramId,
@@ -303,8 +305,22 @@ const Bingo = ({ theme }) => {
     setSelectionNumbers((prev) =>
       prev.includes(number) ? prev : [...prev, number],
     );
-  };
+    return;
+  }
 
+  // Fallback (existing logic)
+  socket.emit("joinRoom", {
+    gameId,
+    telegramId,
+    betAmount: 1,
+    luckyNumber: number,
+  });
+  setMySelections((prev) => [...prev, number]);
+  setMySelectedNumber(number);
+  setSelectionNumbers((prev) =>
+    prev.includes(number) ? prev : [...prev, number],
+  );
+};
   const lockSelections = () => {
     if (selectionNumbers.length < 1 && pendingSelections.length < 1) return;
 
