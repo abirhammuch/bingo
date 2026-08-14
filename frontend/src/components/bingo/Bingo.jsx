@@ -5,6 +5,7 @@ import CalledNumbers from "./CalledNumbers";
 import GameStatus from "./GameStatus";
 import Countdown from "./Countdown";
 import WinnerModal from "./WinnerModal";
+import Header from "./Header";
 import {
   createBingoCard,
   createNumberPool,
@@ -956,6 +957,13 @@ const Bingo = ({ theme }) => {
   // ============================================================
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-950 to-slate-900 flex flex-col">
+      {/* Header */}
+      <Header
+        timeLeft={Math.ceil(selectionCountdown || countdownRemaining || 30)}
+        stake="10"
+        balance="0.00"
+      />
+
       {/* Main Content */}
       <div className="flex-1 overflow-auto p-4">
         <div className="max-w-4xl mx-auto">
@@ -977,40 +985,42 @@ const Bingo = ({ theme }) => {
             </button>
           </div>
 
-          {/* Bingo Grid */}
-          <div className="grid grid-cols-8 gap-2 mb-8 bg-slate-950/30 p-4 rounded-lg">
-            {Array.from({ length: 300 }, (_, index) => index + 1).map(
-              (number) => {
-                const isSelected =
-                  selectedNumbersGlobal.includes(number) ||
-                  mySelections.includes(number);
-                const isCalled = calledNumbers.includes(number);
-                const isReservedByOther =
-                  selectedNumbersGlobal.includes(number) &&
-                  !mySelections.includes(number);
-                const disabled =
-                  !showSelectionPanel ||
-                  isReservedByOther ||
-                  (!mySelections.includes(number) && !canSelectMore);
+          {/* Bingo Grid - Scrollable with 8 rows visible */}
+          <div className="h-96 overflow-y-auto bg-slate-950/30 p-4 rounded-lg mb-8 border border-slate-700">
+            <div className="grid grid-cols-8 gap-2">
+              {Array.from({ length: 300 }, (_, index) => index + 1).map(
+                (number) => {
+                  const isSelected =
+                    selectedNumbersGlobal.includes(number) ||
+                    mySelections.includes(number);
+                  const isCalled = calledNumbers.includes(number);
+                  const isReservedByOther =
+                    selectedNumbersGlobal.includes(number) &&
+                    !mySelections.includes(number);
+                  const disabled =
+                    !showSelectionPanel ||
+                    isReservedByOther ||
+                    (!mySelections.includes(number) && !canSelectMore);
 
-                return (
-                  <button
-                    key={number}
-                    onClick={() => toggleLuckyNumber(number)}
-                    disabled={disabled}
-                    className={`
-                    aspect-square rounded-lg text-sm font-semibold transition-all border
-                    ${isCalled ? "border-emerald-400/50 bg-emerald-500/20 text-emerald-100" : ""}
-                    ${isSelected && !isCalled ? "border-emerald-400 bg-emerald-600/30 text-emerald-100" : ""}
-                    ${!isSelected && !isCalled ? "border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-600 hover:bg-slate-800" : ""}
-                    ${isReservedByOther ? "opacity-40 cursor-not-allowed" : ""}
-                  `}
-                  >
-                    {number}
-                  </button>
-                );
-              },
-            )}
+                  return (
+                    <button
+                      key={number}
+                      onClick={() => toggleLuckyNumber(number)}
+                      disabled={disabled}
+                      className={`
+                      aspect-square rounded-lg text-sm font-semibold transition-all border
+                      ${isCalled ? "border-emerald-400/50 bg-emerald-500/20 text-emerald-100" : ""}
+                      ${isSelected && !isCalled ? "border-rose-400 bg-rose-600/30 text-rose-100" : ""}
+                      ${!isSelected && !isCalled ? "border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-600 hover:bg-slate-800" : ""}
+                      ${isReservedByOther ? "opacity-40 cursor-not-allowed" : ""}
+                    `}
+                    >
+                      {number}
+                    </button>
+                  );
+                },
+              )}
+            </div>
           </div>
 
           {/* Select Card Buttons */}
