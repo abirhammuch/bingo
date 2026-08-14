@@ -171,6 +171,84 @@ const AdminLayout = () => {
             ))}
           </div>
 
+          <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+            <section className="rounded-[32px] border border-slate-800 bg-slate-900/80 p-6 shadow-xl shadow-slate-950/40">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-sm uppercase tracking-[0.25em] text-slate-500">
+                    Bingo Round
+                  </div>
+                  <h2 className="mt-2 text-2xl font-semibold">Round Status</h2>
+                </div>
+                <span className="rounded-full border border-emerald-500/30 bg-emerald-500/15 px-3 py-1 text-sm font-medium text-emerald-300">
+                  Live
+                </span>
+              </div>
+
+              <div className="mt-6 grid gap-4 sm:grid-cols-3">
+                <div className="rounded-3xl border border-slate-800 bg-slate-950/70 p-4">
+                  <div className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                    Phase
+                  </div>
+                  <div className="mt-3 text-2xl font-semibold text-white">
+                    Selection
+                  </div>
+                </div>
+
+                <div className="rounded-3xl border border-slate-800 bg-slate-950/70 p-4">
+                  <div className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                    Timer
+                  </div>
+                  <div className="mt-3 text-2xl font-semibold text-amber-300">
+                    23s
+                  </div>
+                </div>
+
+                <div className="rounded-3xl border border-slate-800 bg-slate-950/70 p-4">
+                  <div className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                    Players
+                  </div>
+                  <div className="mt-3 text-2xl font-semibold text-emerald-300">
+                    18
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-6 rounded-3xl border border-slate-800 bg-slate-950/70 p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-sm text-slate-400">
+                      Global round rules
+                    </div>
+                    <div className="mt-2 text-lg font-medium text-slate-100">
+                      Selection closes at 0s, then live game begins.
+                    </div>
+                  </div>
+                  <button className="rounded-full border border-slate-700 bg-slate-800 px-4 py-2 text-sm text-slate-200 hover:bg-slate-700">
+                    Manage Round
+                  </button>
+                </div>
+              </div>
+            </section>
+
+            <aside className="rounded-[32px] border border-slate-800 bg-slate-900/80 p-6 shadow-xl shadow-slate-950/40">
+              <div className="text-sm uppercase tracking-[0.25em] text-slate-500">
+                Quick actions
+              </div>
+              <div className="mt-5 space-y-3">
+                <button className="w-full rounded-2xl border border-slate-700 bg-slate-800 px-4 py-3 text-left text-slate-100 hover:bg-slate-700">
+                  Start new round
+                </button>
+                <button className="w-full rounded-2xl border border-slate-700 bg-slate-800 px-4 py-3 text-left text-slate-100 hover:bg-slate-700">
+                  Pause live draw
+                </button>
+                <button className="w-full rounded-2xl border border-slate-700 bg-slate-800 px-4 py-3 text-left text-slate-100 hover:bg-slate-700">
+                  Reset winner state
+                </button>
+              </div>
+            </aside>
+          </div>
+
           <div className="grid gap-6 xl:grid-cols-[1.4fr_0.6fr]">
             <section className="rounded-[32px] border border-slate-800 bg-slate-900/80 p-6 shadow-xl shadow-slate-950/40">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

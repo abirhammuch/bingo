@@ -13,6 +13,7 @@ import WithdrawPage from "./pages/footerPage/WithdrawPage";
 import TeleBirrWithdrawPage from "./pages/footerPage/TeleBirrWithdrawPage";
 import SettingPage from "./pages/footerPage/SettingPage";
 import AdminLayout from "./pages/admin/adminlayout.jsx";
+import UserPage from "./pages/admin/UserPage.jsx";
 import { useAppContext } from "./context/AppContext.jsx";
 
 const App = () => {
@@ -44,6 +45,7 @@ const App = () => {
       ) : isAdminPath ? (
         <Routes>
           <Route path="/admin" element={<AdminLayout />} />
+          <Route path="/admin/users" element={<UserPage />} />
         </Routes>
       ) : (
         <main className="min-h-screen">
