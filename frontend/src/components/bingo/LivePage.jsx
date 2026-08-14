@@ -9,8 +9,8 @@ const LivePage = ({
   accent,
 }) => {
   return (
-    <div className="max-w-6xl mx-auto grid grid-cols-3 gap-6">
-      {/* Left: Small Grid */}
+    <div className="max-w-6xl mx-auto grid grid-cols-2 gap-6">
+      {/* Left: 75-Number Grid */}
       <div>
         <div className="grid grid-cols-5 gap-2 mb-4">
           {Array.from({ length: 75 }, (_, index) => index + 1).map((number) => {
@@ -33,36 +33,27 @@ const LivePage = ({
         </div>
       </div>
 
-      {/* Center: Current Number */}
-      <div className="flex items-center justify-center">
-        <div className="text-center">
-          {currentNumber ? (
-            <div className="relative w-48 h-48 flex items-center justify-center">
-              <div className="absolute inset-0 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 opacity-20 animate-pulse"></div>
-              <div className="relative w-40 h-40 rounded-full border-4 border-purple-400 bg-purple-600/30 flex items-center justify-center">
-                <div className="text-6xl font-bold text-purple-100">
-                  {currentNumber}
+      {/* Right: Current Number (Small) + Cards */}
+      <div className="flex flex-col gap-4">
+        {/* Current Number - Small Purple Circle */}
+        <div className="flex items-center justify-center">
+          <div className="text-center">
+            {currentNumber ? (
+              <div className="relative w-32 h-32 flex items-center justify-center">
+                <div className="absolute inset-0 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 opacity-20 animate-pulse"></div>
+                <div className="relative w-28 h-28 rounded-full border-4 border-purple-400 bg-purple-600/30 flex items-center justify-center">
+                  <div className="text-4xl font-bold text-purple-100">
+                    {currentNumber}
+                  </div>
                 </div>
               </div>
-            </div>
-          ) : (
-            <div className="w-48 h-48 flex items-center justify-center border-2 border-dashed border-slate-600 rounded-lg">
-              <div className="text-center">
-                <div className="text-slate-500">Waiting...</div>
+            ) : (
+              <div className="w-32 h-32 flex items-center justify-center border-2 border-dashed border-slate-600 rounded-lg">
+                <div className="text-center">
+                  <div className="text-slate-500 text-sm">Waiting...</div>
+                </div>
               </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Right: Game Status */}
-      <div className="flex flex-col gap-4">
-        {/* Status Message */}
-        <div className="bg-slate-800/40 border border-slate-700 rounded-lg p-4">
-          <div className="text-center text-slate-400 text-sm mb-4">
-            <p>ጤንነት ይሰጣል</p>
-            <p>ይህን ዲዛይን ታሊ ሰራብ</p>
-            <p>ግምት አይሰጥም</p>
+            )}
           </div>
         </div>
 
@@ -75,7 +66,7 @@ const LivePage = ({
 
         {/* Cards Display */}
         {cards.length > 0 && (
-          <div className="space-y-4 max-h-96 overflow-y-auto">
+          <div className="space-y-3 max-h-96 overflow-y-auto">
             {cards.map((card, index) => (
               <div
                 key={`${selectionNumbers[index]}-${index}`}
