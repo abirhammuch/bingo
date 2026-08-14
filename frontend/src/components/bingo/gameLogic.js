@@ -4,6 +4,7 @@ const COLUMN_RANGES = [
   { start: 31, end: 45 },
   { start: 46, end: 60 },
   { start: 61, end: 75 },
+  
 ];
 
 const shuffle = (values) => {

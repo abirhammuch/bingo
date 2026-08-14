@@ -47,7 +47,7 @@ const Bingo = ({ theme }) => {
   const [drawTimeLeft, setDrawTimeLeft] = useState(7);
   const [currentNumber, setCurrentNumber] = useState(null);
   const [calledNumbers, setCalledNumbers] = useState([]);
-  const [remainingBalls, setRemainingBalls] = useState(75);
+  const [remainingBalls, setRemainingBalls] = useState(300);
   const [gameStatus, setGameStatus] = useState("waiting");
   const [numberPool, setNumberPool] = useState(() => createNumberPool());
   const [winner, setWinner] = useState(null);
@@ -67,7 +67,7 @@ const Bingo = ({ theme }) => {
   const [pendingStart, setPendingStart] = useState(false);
   const joinedGamesRef = useRef(new Set());
 
-  const maxSelectionCount = 3;
+  const maxSelectionCount = 2;
   const selectedNumbersLabel = useMemo(
     () => selectionNumbers.join(", "),
     [selectionNumbers],
@@ -321,7 +321,7 @@ const Bingo = ({ theme }) => {
     setCards(selectionNumbers.map((number) => createBingoCard([number])));
     setSelectionTimeLeft(0);
     setNumberPool(createNumberPool());
-    setRemainingBalls(75);
+    setRemainingBalls(300);
     setCurrentNumber(null);
     setCalledNumbers([]);
     setWinner(null);
@@ -392,7 +392,7 @@ const Bingo = ({ theme }) => {
       setCurrentNumber(data.number);
       setCalledNumbers(data.calledNumbers || ((prev) => prev));
       setRemainingBalls(
-        data.remaining ?? 75 - (data.calledNumbers || []).length,
+        data.remaining ?? 300 - (data.calledNumbers || []).length,
       );
     };
 
@@ -491,7 +491,7 @@ const Bingo = ({ theme }) => {
           setWinningLuckyNumber(null);
           setCurrentNumber(null);
           setCalledNumbers([]);
-          setRemainingBalls(75);
+          setRemainingBalls(300);
           setPhase("selection");
           setGameStatus("waiting");
           setSelectionTimeLeft(30);
@@ -573,7 +573,7 @@ const Bingo = ({ theme }) => {
 
       setCurrentNumber(number);
       setCalledNumbers(nextCalled);
-      setRemainingBalls(data.remaining ?? Math.max(0, 75 - nextCalled.length));
+      setRemainingBalls(data.remaining ?? Math.max(0, 300 - nextCalled.length));
 
       if (number == null) return;
 
@@ -684,7 +684,7 @@ const Bingo = ({ theme }) => {
       setWinningLuckyNumber(null);
       setCurrentNumber(null);
       setCalledNumbers([]);
-      setRemainingBalls(75);
+      setRemainingBalls(300);
       setPhase("selection");
       setGameStatus("waiting");
       setSelectionTimeLeft(30);
@@ -831,7 +831,7 @@ const Bingo = ({ theme }) => {
     setCalledNumbers([]);
     setCards([]);
     setNumberPool(createNumberPool());
-    setRemainingBalls(75);
+    setRemainingBalls(300);
     setSelectionNumbers([]);
     setMySelections([]);
     setSelectedNumbersGlobal([]);
@@ -962,7 +962,7 @@ const Bingo = ({ theme }) => {
           {/* Available Numbers Label */}
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-sm font-semibold text-emerald-400 uppercase tracking-wide">
-              AVAILABLE ({75 - calledNumbers.length})
+              AVAILABLE ({300 - calledNumbers.length})
             </h2>
             <button
               onClick={handleJoin}
@@ -979,7 +979,7 @@ const Bingo = ({ theme }) => {
 
           {/* Bingo Grid */}
           <div className="grid grid-cols-8 gap-2 mb-8 bg-slate-950/30 p-4 rounded-lg">
-            {Array.from({ length: 75 }, (_, index) => index + 1).map(
+            {Array.from({ length: 300 }, (_, index) => index + 1).map(
               (number) => {
                 const isSelected =
                   selectedNumbersGlobal.includes(number) ||
