@@ -967,8 +967,10 @@ const Bingo = ({ theme }) => {
       : gameStatus === "finished"
         ? "finished"
         : "running";
-  const showSelectionPanel = phase === "selection";
-  const showLivePanel = phase === "live" && gameStatus === "live";
+  const waitingForSelectionRound = phase === "live" && !joined;
+  const showSelectionPanel = phase === "selection" || waitingForSelectionRound;
+  const showLivePanel =
+    phase === "live" && gameStatus === "live" && !waitingForSelectionRound;
   const showLiveNumberCountdown = showLivePanel;
   const currentCountdownValue =
     phase === "live"
@@ -979,7 +981,7 @@ const Bingo = ({ theme }) => {
   // Render UI - New Design
   // ============================================================
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 to-slate-900 flex flex-col">
+    <div className="min-h-screen bg-linear-to-b from-slate-950 to-slate-900 flex flex-col">
       {/* Header */}
       {phase === "selection" ? (
         <Header
@@ -1002,7 +1004,7 @@ const Bingo = ({ theme }) => {
       {/* Main Content */}
       <div className="flex-1 overflow-auto p-4">
         {/* SELECTION PHASE */}
-        {phase === "selection" && (
+        {(phase === "selection" || waitingForSelectionRound) && (
           <SelectionPage
             selectionCountdown={selectionCountdown}
             calledNumbers={calledNumbers}
@@ -1017,7 +1019,7 @@ const Bingo = ({ theme }) => {
         )}
 
         {/* LIVE PHASE */}
-        {phase === "live" && (
+        {phase === "live" && !waitingForSelectionRound && (
           <LivePage
             calledNumbers={calledNumbers}
             currentNumber={currentNumber}

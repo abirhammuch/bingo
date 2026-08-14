@@ -44,19 +44,25 @@ const SelectionPage = ({
     <div className="max-w-4xl mx-auto">
       {/* Available Numbers Label */}
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-sm font-semibold text-emerald-400 uppercase tracking-wide">
-          AVAILABLE ({300 - calledNumbers.length})
+        <h2
+          className={`text-sm font-semibold uppercase tracking-wide ${
+            showSelectionPanel ? "text-emerald-400" : "text-amber-400"
+          }`}
+        >
+          {showSelectionPanel
+            ? `AVAILABLE (${300 - calledNumbers.length})`
+            : "WAITING FOR NEXT SELECTION"}
         </h2>
         <button
           onClick={handleJoin}
-          disabled={joinButtonDisabled}
+          disabled={joinButtonDisabled || !showSelectionPanel}
           className={`text-xs px-3 py-1 rounded transition ${
-            joinButtonDisabled
+            joinButtonDisabled || !showSelectionPanel
               ? "text-slate-500 cursor-not-allowed"
               : "text-emerald-400 hover:text-emerald-300"
           }`}
         >
-          Tap to select
+          {showSelectionPanel ? "Tap to select" : "Waiting..."}
         </button>
       </div>
 
