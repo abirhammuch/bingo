@@ -915,6 +915,18 @@ const Bingo = ({ theme }) => {
     setPendingStart(false);
   }, [pendingStart, gameId, pendingSelections]);
 
+  useEffect(() => {
+    if (!winner) return;
+
+    const timeoutId = setTimeout(() => {
+      setWinner(null);
+      setWinningLuckyNumber(null);
+      resetRoundState(true);
+    }, 4000);
+
+    return () => clearTimeout(timeoutId);
+  }, [winner]);
+
   const joinButtonDisabled =
     phase === "live" ||
     gameStatus === "live" ||
@@ -938,10 +950,8 @@ const Bingo = ({ theme }) => {
       : gameStatus === "finished"
         ? "finished"
         : "running";
-  const waitingForSelectionRound = phase === "live" && !joined;
-  const showSelectionPanel = phase === "selection" || waitingForSelectionRound;
-  const showLivePanel =
-    phase === "live" && gameStatus === "live" && !waitingForSelectionRound;
+  const showSelectionPanel = phase === "selection";
+  const showLivePanel = phase === "live" && gameStatus === "live";
   const showLiveNumberCountdown = showLivePanel;
   const currentCountdownValue =
     phase === "live"
