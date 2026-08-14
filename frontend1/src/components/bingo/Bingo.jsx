@@ -387,6 +387,8 @@ const Bingo = ({ theme }) => {
       }
     };
 
+    
+
     const handleNumberCalled = (data) => {
       if (!data) return;
       setCurrentNumber(data.number);
@@ -952,91 +954,131 @@ const Bingo = ({ theme }) => {
       : (selectionCountdown ?? countdownRemaining ?? selectionTimeLeft);
 
   // ============================================================
-  // Render UI - New Design
+  // Render UI
   // ============================================================
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 to-slate-900 flex flex-col">
-      {/* Main Content */}
-      <div className="flex-1 overflow-auto p-4">
-        <div className="max-w-4xl mx-auto">
-          {/* Available Numbers Label */}
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-sm font-semibold text-emerald-400 uppercase tracking-wide">
-              AVAILABLE ({75 - calledNumbers.length})
-            </h2>
-            <button
-              onClick={handleJoin}
-              disabled={joinButtonDisabled}
-              className={`text-xs px-3 py-1 rounded transition ${
-                joinButtonDisabled
-                  ? "text-slate-500 cursor-not-allowed"
-                  : "text-emerald-400 hover:text-emerald-300"
-              }`}
-            >
-              Tap to select
-            </button>
+    <div className="grid grid-cols-1 xl:grid-cols-[1.55fr_0.95fr] gap-6">
+      <div className="space-y-6">
+        <div className="rounded-3xl border border-slate-700 bg-emerald-950/10 shadow-xl shadow-slate-950/20 overflow-hidden">
+          <div className="flex flex-col gap-4 border-b border-slate-700 bg-slate-950/90 p-5 md:flex-row md:items-center md:justify-between">
+            <div>
+              <div className="text-xs uppercase tracking-[0.3em] text-slate-400">
+                Marshal · Bingo
+              </div>
+              <div className="text-sm text-slate-300">
+                {joined
+                  ? "Choose your lucky numbers before the lock timer ends."
+                  : "Join the room to enter the selection phase."}
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="rounded-3xl border border-slate-700 bg-slate-800/80 px-4 py-2 text-sm text-slate-100">
+                {displayedPlayerCount} players
+              </div>
+              {showLivePanel && showLiveNumberCountdown && (
+                <div className="rounded-3xl border border-slate-700 bg-slate-800/80 px-3 py-2 text-sm font-semibold text-amber-300">
+                  {`${currentCountdownValue}s`}
+                </div>
+              )}
+              <button
+                onClick={handleJoin}
+                disabled={joinButtonDisabled}
+                className={`rounded-3xl border px-4 py-2 text-sm font-semibold transition ${
+                  joinButtonDisabled
+                    ? "border-slate-700 bg-slate-800 text-slate-400 cursor-not-allowed"
+                    : "border-emerald-500/20 bg-emerald-500/10 text-emerald-300"
+                }`}
+              >
+                {joinButtonLabel}
+              </button>
+            </div>
           </div>
 
-          {/* Bingo Grid */}
-          <div className="grid grid-cols-8 gap-2 mb-8 bg-slate-950/30 p-4 rounded-lg">
-            {Array.from({ length: 75 }, (_, index) => index + 1).map(
-              (number) => {
-                const isSelected =
-                  selectedNumbersGlobal.includes(number) ||
-                  mySelections.includes(number);
-                const isCalled = calledNumbers.includes(number);
-                const isReservedByOther =
-                  selectedNumbersGlobal.includes(number) &&
-                  !mySelections.includes(number);
-                const disabled =
-                  !showSelectionPanel ||
-                  isReservedByOther ||
-                  (!mySelections.includes(number) && !canSelectMore);
+          {showSelectionPanel && (
+            <div className="border-b border-slate-700 bg-slate-900/70 p-5">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <div className="text-sm font-semibold text-slate-100">
+                    Lucky numbers
+                  </div>
+                  <div className="text-sm text-slate-400">
+                    Pick up to {maxSelectionCount} numbers from 1–75.
+                  </div>
+                </div>
+                <div className="rounded-full border border-slate-700 bg-slate-950/70 px-3 py-1 text-sm text-slate-300">
+                  {selectionNumbers.length}/{maxSelectionCount} selected
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {mySelections.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {mySelections.map((number) => (
+                      <span
+                        key={number}
+                        className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-sm font-semibold text-emerald-300"
+                      >
+                        {number}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <span className="text-sm text-slate-500">
+                    No lucky numbers selected yet.
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
 
-                return (
-                  <button
-                    key={number}
-                    onClick={() => toggleLuckyNumber(number)}
-                    disabled={disabled}
-                    className={`
-                    aspect-square rounded-lg text-sm font-semibold transition-all border
-                    ${isCalled ? "border-emerald-400/50 bg-emerald-500/20 text-emerald-100" : ""}
-                    ${isSelected && !isCalled ? "border-emerald-400 bg-emerald-600/30 text-emerald-100" : ""}
-                    ${!isSelected && !isCalled ? "border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-600 hover:bg-slate-800" : ""}
-                    ${isReservedByOther ? "opacity-40 cursor-not-allowed" : ""}
-                  `}
-                  >
-                    {number}
-                  </button>
-                );
-              },
-            )}
-          </div>
+          {showSelectionPanel && (
+            <div className="grid grid-cols-5 gap-2 p-5 sm:grid-cols-8 lg:grid-cols-10 max-h-[360px] overflow-y-auto">
+              {Array.from({ length: 75 }, (_, index) => index + 1).map(
+                (number) => {
+                  const isSelected =
+                    selectedNumbersGlobal.includes(number) ||
+                    mySelections.includes(number);
+                  const isReservedByOther =
+                    selectedNumbersGlobal.includes(number) &&
+                    !mySelections.includes(number);
+                  const disabled =
+                    !showSelectionPanel ||
+                    isReservedByOther ||
+                    (!mySelections.includes(number) && !canSelectMore);
 
-          {/* Select Card Buttons */}
-          <div className="flex gap-4 mb-8">
-            <button className="flex-1 py-4 bg-slate-800/60 border border-slate-700 rounded-lg text-slate-300 font-semibold hover:bg-slate-800 transition">
-              Select Card 1
-            </button>
-            <button className="flex-1 py-4 bg-slate-800/60 border border-slate-700 rounded-lg text-slate-300 font-semibold hover:bg-slate-800 transition">
-              Select Card 2
-            </button>
-          </div>
+                  return (
+                    <button
+                      key={number}
+                      onClick={() => toggleLuckyNumber(number)}
+                      disabled={disabled}
+                      className={`aspect-square rounded-2xl border text-sm font-semibold transition-all ${
+                        isSelected
+                          ? "border-emerald-400 bg-emerald-500/20 text-emerald-200"
+                          : "border-slate-700 bg-slate-950 text-slate-100 hover:border-slate-500"
+                      } ${
+                        isReservedByOther ? "opacity-50 cursor-not-allowed" : ""
+                      }`}
+                    >
+                      {number}
+                    </button>
+                  );
+                },
+              )}
+            </div>
+          )}
 
-          {/* Game Cards Display */}
           {phase !== "selection" && cards.length > 0 && (
-            <div className="grid gap-6 mb-8">
+            <div className="grid gap-6 p-5 lg:grid-cols-2">
               {cards.map((card, index) => (
                 <div
                   key={`${selectionNumbers[index]}-${index}`}
-                  className="bg-slate-800/40 border border-slate-700 rounded-lg p-4"
+                  className="rounded-2xl border border-slate-700 bg-slate-950/70 p-4"
                 >
                   <div className="mb-3 flex items-center justify-between">
                     <div>
                       <div className="text-sm font-semibold text-slate-100">
                         Card {index + 1}
                       </div>
-                      <div className="text-xs text-slate-500">
+                      <div className="text-xs uppercase tracking-[0.2em] text-slate-500">
                         Lucky number {selectionNumbers[index]}
                       </div>
                     </div>
@@ -1062,26 +1104,44 @@ const Bingo = ({ theme }) => {
               ))}
             </div>
           )}
+
+          {phase !== "selection" && cards.length === 0 && (
+            <div className="p-10 text-center text-sm text-slate-400">
+              The game cards will appear after your picks are locked.
+            </div>
+          )}
         </div>
+
+        <div className="rounded-3xl border border-slate-700 bg-slate-900/60 p-4">
+          <div className="mb-3 text-sm font-semibold text-slate-100">
+            Selected lucky numbers
+          </div>
+          <div className="min-h-10 text-sm text-slate-400">
+            {selectedNumbersLabel || "No lucky numbers locked yet."}
+          </div>
+        </div>
+
+        <CalledNumbers numbers={calledNumbers} accent={accent} />
       </div>
 
-      {/* Winner Modal */}
-      <WinnerModal
-        open={Boolean(winner)}
-        winner={winner || "Unknown Player"}
-        luckyNumber={winningLuckyNumber}
-        isCurrentUserWinner={
-          winner === "You" ||
-          (Array.isArray(winner) &&
-            winner.some((w) => w?.telegramId === authUser?.telegramId))
-        }
-        onClose={() => {
-          setWinner(null);
-          setWinningLuckyNumber(null);
-          resetRoundState(true);
-        }}
-        accent={accent}
-      />
+      <aside className="space-y-6">
+        <WinnerModal
+          open={Boolean(winner)}
+          winner={winner || "Unknown Player"}
+          luckyNumber={winningLuckyNumber}
+          isCurrentUserWinner={
+            winner === "You" ||
+            (Array.isArray(winner) &&
+              winner.some((w) => w?.telegramId === user?.id))
+          }
+          onClose={() => {
+            setWinner(null);
+            setWinningLuckyNumber(null);
+            resetRoundState(true);
+          }}
+          accent={accent}
+        />
+      </aside>
     </div>
   );
 };
