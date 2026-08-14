@@ -1024,8 +1024,6 @@ const Bingo = ({ theme }) => {
             cards={cards}
             selectionNumbers={selectionNumbers}
             accent={accent}
-            selectedNumbersGlobal={selectedNumbersGlobal}
-            mySelections={mySelections}
           />
         )}
       </div>

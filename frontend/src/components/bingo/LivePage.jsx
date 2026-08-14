@@ -7,8 +7,6 @@ const LivePage = ({
   cards,
   selectionNumbers,
   accent,
-  selectedNumbersGlobal = [],
-  mySelections = [],
 }) => {
   return (
     <div className="max-w-6xl mx-auto grid grid-cols-2 gap-6">
@@ -18,11 +16,6 @@ const LivePage = ({
           {Array.from({ length: 75 }, (_, index) => index + 1).map((number) => {
             const isCalled = calledNumbers.includes(number);
             const isHighlight = number === currentNumber;
-            const isMySelection = mySelections.includes(number);
-            const isOtherSelection =
-              selectedNumbersGlobal.includes(number) &&
-              !mySelections.includes(number);
-
             return (
               <button
                 key={number}
@@ -30,9 +23,7 @@ const LivePage = ({
                     aspect-square rounded-lg text-xs font-bold transition-all border
                     ${isHighlight ? "border-purple-400 bg-purple-600/40 text-purple-100 scale-110" : ""}
                     ${isCalled && !isHighlight ? "border-emerald-400/50 bg-emerald-500/20 text-emerald-100" : ""}
-                    ${isMySelection && !isCalled ? "border-emerald-400 bg-emerald-600/30 text-emerald-100" : ""}
-                    ${isOtherSelection && !isCalled ? "border-rose-400 bg-rose-600/30 text-rose-100" : ""}
-                    ${!isCalled && !isMySelection && !isOtherSelection && !isHighlight ? "border-slate-700 bg-slate-900 text-slate-300" : ""}
+                    ${!isCalled && !isHighlight ? "border-slate-700 bg-slate-900 text-slate-300" : ""}
                   `}
               >
                 {number}
