@@ -976,121 +976,209 @@ const Bingo = ({ theme }) => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-950 to-slate-900 flex flex-col">
       {/* Header */}
-      <Header
-        timeLeft={Math.ceil(selectionCountdown || countdownRemaining || 30)}
-        stake="10"
-        balance="0.00"
-      />
+      {phase === "selection" ? (
+        <Header
+          gameType="selection"
+          timeLeft={Math.ceil(selectionCountdown || countdownRemaining || 30)}
+          stake="10"
+          balance="0.00"
+        />
+      ) : (
+        <Header
+          gameType="live"
+          players={participants}
+          called={calledNumbers.length}
+          derash={1250}
+          round="5/TECI"
+          stake="10"
+        />
+      )}
 
       {/* Main Content */}
       <div className="flex-1 overflow-auto p-4">
-        <div className="max-w-4xl mx-auto">
-          {/* Available Numbers Label */}
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-sm font-semibold text-emerald-400 uppercase tracking-wide">
-              AVAILABLE ({300 - calledNumbers.length})
-            </h2>
-            <button
-              onClick={handleJoin}
-              disabled={joinButtonDisabled}
-              className={`text-xs px-3 py-1 rounded transition ${
-                joinButtonDisabled
-                  ? "text-slate-500 cursor-not-allowed"
-                  : "text-emerald-400 hover:text-emerald-300"
-              }`}
-            >
-              Tap to select
-            </button>
+        {/* SELECTION PHASE */}
+        {phase === "selection" && (
+          <div className="max-w-4xl mx-auto">
+            {/* Available Numbers Label */}
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-sm font-semibold text-emerald-400 uppercase tracking-wide">
+                AVAILABLE ({300 - calledNumbers.length})
+              </h2>
+              <button
+                onClick={handleJoin}
+                disabled={joinButtonDisabled}
+                className={`text-xs px-3 py-1 rounded transition ${
+                  joinButtonDisabled
+                    ? "text-slate-500 cursor-not-allowed"
+                    : "text-emerald-400 hover:text-emerald-300"
+                }`}
+              >
+                Tap to select
+              </button>
+            </div>
+
+            {/* Bingo Grid - Scrollable with 8 rows visible */}
+            <div className="h-96 overflow-y-auto bg-slate-950/30 p-4 rounded-lg mb-8 border border-slate-700">
+              <div className="grid grid-cols-8 gap-2">
+                {Array.from({ length: 300 }, (_, index) => index + 1).map(
+                  (number) => {
+                    const isSelected =
+                      selectedNumbersGlobal.includes(number) ||
+                      mySelections.includes(number);
+                    const isCalled = calledNumbers.includes(number);
+                    const isReservedByOther =
+                      selectedNumbersGlobal.includes(number) &&
+                      !mySelections.includes(number);
+                    const disabled =
+                      !showSelectionPanel ||
+                      isReservedByOther ||
+                      (!mySelections.includes(number) && !canSelectMore);
+
+                    return (
+                      <button
+                        key={number}
+                        onClick={() => toggleLuckyNumber(number)}
+                        disabled={disabled}
+                        className={`
+                        aspect-square rounded-lg text-sm font-semibold transition-all border
+                        ${isCalled ? "border-emerald-400/50 bg-emerald-500/20 text-emerald-100" : ""}
+                        ${isSelected && !isCalled ? "border-rose-400 bg-rose-600/30 text-rose-100" : ""}
+                        ${!isSelected && !isCalled ? "border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-600 hover:bg-slate-800" : ""}
+                        ${isReservedByOther ? "opacity-40 cursor-not-allowed" : ""}
+                      `}
+                      >
+                        {number}
+                      </button>
+                    );
+                  },
+                )}
+              </div>
+            </div>
+
+            {/* Select Card Buttons */}
+            <div className="flex gap-4 mb-8">
+              <button className="flex-1 py-4 bg-slate-800/60 border border-slate-700 rounded-lg text-slate-300 font-semibold hover:bg-slate-800 transition">
+                Select Card 1
+              </button>
+              <button className="flex-1 py-4 bg-slate-800/60 border border-slate-700 rounded-lg text-slate-300 font-semibold hover:bg-slate-800 transition">
+                Select Card 2
+              </button>
+            </div>
           </div>
+        )}
 
-          {/* Bingo Grid - Scrollable with 8 rows visible */}
-          <div className="h-96 overflow-y-auto bg-slate-950/30 p-4 rounded-lg mb-8 border border-slate-700">
-            <div className="grid grid-cols-8 gap-2">
-              {Array.from({ length: 300 }, (_, index) => index + 1).map(
-                (number) => {
-                  const isSelected =
-                    selectedNumbersGlobal.includes(number) ||
-                    mySelections.includes(number);
-                  const isCalled = calledNumbers.includes(number);
-                  const isReservedByOther =
-                    selectedNumbersGlobal.includes(number) &&
-                    !mySelections.includes(number);
-                  const disabled =
-                    !showSelectionPanel ||
-                    isReservedByOther ||
-                    (!mySelections.includes(number) && !canSelectMore);
+        {/* LIVE PHASE */}
+        {phase === "live" && (
+          <div className="max-w-6xl mx-auto grid grid-cols-3 gap-6">
+            {/* Left: Small Grid */}
+            <div>
+              <div className="grid grid-cols-5 gap-2 mb-4">
+                {Array.from({ length: 75 }, (_, index) => index + 1).map(
+                  (number) => {
+                    const isCalled = calledNumbers.includes(number);
+                    const isHighlight = number === currentNumber;
+                    return (
+                      <button
+                        key={number}
+                        className={`
+                          aspect-square rounded-lg text-xs font-bold transition-all border
+                          ${isHighlight ? "border-purple-400 bg-purple-600/40 text-purple-100 scale-110" : ""}
+                          ${isCalled && !isHighlight ? "border-emerald-400/50 bg-emerald-500/20 text-emerald-100" : ""}
+                          ${!isCalled && !isHighlight ? "border-slate-700 bg-slate-900 text-slate-300" : ""}
+                        `}
+                      >
+                        {number}
+                      </button>
+                    );
+                  },
+                )}
+              </div>
+            </div>
 
-                  return (
-                    <button
-                      key={number}
-                      onClick={() => toggleLuckyNumber(number)}
-                      disabled={disabled}
-                      className={`
-                      aspect-square rounded-lg text-sm font-semibold transition-all border
-                      ${isCalled ? "border-emerald-400/50 bg-emerald-500/20 text-emerald-100" : ""}
-                      ${isSelected && !isCalled ? "border-rose-400 bg-rose-600/30 text-rose-100" : ""}
-                      ${!isSelected && !isCalled ? "border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-600 hover:bg-slate-800" : ""}
-                      ${isReservedByOther ? "opacity-40 cursor-not-allowed" : ""}
-                    `}
+            {/* Center: Current Number */}
+            <div className="flex items-center justify-center">
+              <div className="text-center">
+                {currentNumber ? (
+                  <div className="relative w-48 h-48 flex items-center justify-center">
+                    <div className="absolute inset-0 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 opacity-20 animate-pulse"></div>
+                    <div className="relative w-40 h-40 rounded-full border-4 border-purple-400 bg-purple-600/30 flex items-center justify-center">
+                      <div className="text-6xl font-bold text-purple-100">
+                        {currentNumber}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="w-48 h-48 flex items-center justify-center border-2 border-dashed border-slate-600 rounded-lg">
+                    <div className="text-center">
+                      <div className="text-slate-500">Waiting...</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Right: Game Status */}
+            <div className="flex flex-col gap-4">
+              {/* Status Message */}
+              <div className="bg-slate-800/40 border border-slate-700 rounded-lg p-4">
+                <div className="text-center text-slate-400 text-sm mb-4">
+                  <p>ጤንነት ይሰጣል</p>
+                  <p>ይህን ዲዛይን ታሊ ሰራብ</p>
+                  <p>ግምት አይሰጥም</p>
+                </div>
+              </div>
+
+              {/* No Card Placeholder */}
+              {cards.length === 0 && (
+                <div className="bg-slate-800/40 border border-slate-700 rounded-lg p-4 text-center">
+                  <div className="text-2xl font-bold text-slate-300">
+                    NO CARD
+                  </div>
+                </div>
+              )}
+
+              {/* Cards Display */}
+              {cards.length > 0 && (
+                <div className="space-y-4 max-h-96 overflow-y-auto">
+                  {cards.map((card, index) => (
+                    <div
+                      key={`${selectionNumbers[index]}-${index}`}
+                      className="bg-slate-800/40 border border-slate-700 rounded-lg p-3"
                     >
-                      {number}
-                    </button>
-                  );
-                },
+                      <div className="mb-2 flex items-center justify-between">
+                        <div>
+                          <div className="text-xs font-semibold text-slate-100">
+                            Card {index + 1}
+                          </div>
+                          <div className="text-xs text-slate-500">
+                            Lucky number {selectionNumbers[index]}
+                          </div>
+                        </div>
+                        <div className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-1 text-xs font-semibold text-emerald-300">
+                          {card.some((row) => row.some((cell) => cell?.marked))
+                            ? "In play"
+                            : "Ready"}
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-5 gap-1">
+                        {card.map((row, rowIndex) =>
+                          row.map((cell, columnIndex) => (
+                            <BingoCell
+                              key={`${rowIndex}-${columnIndex}`}
+                              number={cell?.value}
+                              marked={cell?.marked}
+                              accent={accent}
+                            />
+                          )),
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               )}
             </div>
           </div>
-
-          {/* Select Card Buttons */}
-          <div className="flex gap-4 mb-8">
-            <button className="flex-1 py-4 bg-slate-800/60 border border-slate-700 rounded-lg text-slate-300 font-semibold hover:bg-slate-800 transition">
-              Select Card 1
-            </button>
-            <button className="flex-1 py-4 bg-slate-800/60 border border-slate-700 rounded-lg text-slate-300 font-semibold hover:bg-slate-800 transition">
-              Select Card 2
-            </button>
-          </div>
-
-          {/* Game Cards Display */}
-          {phase !== "selection" && cards.length > 0 && (
-            <div className="grid gap-6 mb-8">
-              {cards.map((card, index) => (
-                <div
-                  key={`${selectionNumbers[index]}-${index}`}
-                  className="bg-slate-800/40 border border-slate-700 rounded-lg p-4"
-                >
-                  <div className="mb-3 flex items-center justify-between">
-                    <div>
-                      <div className="text-sm font-semibold text-slate-100">
-                        Card {index + 1}
-                      </div>
-                      <div className="text-xs text-slate-500">
-                        Lucky number {selectionNumbers[index]}
-                      </div>
-                    </div>
-                    <div className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-300">
-                      {card.some((row) => row.some((cell) => cell?.marked))
-                        ? "In play"
-                        : "Ready"}
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-5 gap-2">
-                    {card.map((row, rowIndex) =>
-                      row.map((cell, columnIndex) => (
-                        <BingoCell
-                          key={`${rowIndex}-${columnIndex}`}
-                          number={cell?.value}
-                          marked={cell?.marked}
-                          accent={accent}
-                        />
-                      )),
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        )}
       </div>
 
       {/* Winner Modal */}
