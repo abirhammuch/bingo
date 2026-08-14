@@ -7,6 +7,8 @@ const LivePage = ({
   cards,
   selectionNumbers,
   accent,
+  selectedNumbersGlobal = [],
+  mySelections = [],
 }) => {
   return (
     <div className="max-w-6xl mx-auto grid grid-cols-2 gap-6">
@@ -16,6 +18,11 @@ const LivePage = ({
           {Array.from({ length: 75 }, (_, index) => index + 1).map((number) => {
             const isCalled = calledNumbers.includes(number);
             const isHighlight = number === currentNumber;
+            const isMySelection = mySelections.includes(number);
+            const isOtherSelection =
+              selectedNumbersGlobal.includes(number) &&
+              !mySelections.includes(number);
+
             return (
               <button
                 key={number}
@@ -23,7 +30,9 @@ const LivePage = ({
                     aspect-square rounded-lg text-xs font-bold transition-all border
                     ${isHighlight ? "border-purple-400 bg-purple-600/40 text-purple-100 scale-110" : ""}
                     ${isCalled && !isHighlight ? "border-emerald-400/50 bg-emerald-500/20 text-emerald-100" : ""}
-                    ${!isCalled && !isHighlight ? "border-slate-700 bg-slate-900 text-slate-300" : ""}
+                    ${isMySelection && !isCalled ? "border-emerald-400 bg-emerald-600/30 text-emerald-100" : ""}
+                    ${isOtherSelection && !isCalled ? "border-rose-400 bg-rose-600/30 text-rose-100" : ""}
+                    ${!isCalled && !isMySelection && !isOtherSelection && !isHighlight ? "border-slate-700 bg-slate-900 text-slate-300" : ""}
                   `}
               >
                 {number}
@@ -36,21 +45,23 @@ const LivePage = ({
       {/* Right: Current Number (Small) + Cards */}
       <div className="flex flex-col gap-4">
         {/* Current Number - Small Purple Circle */}
-        <div className="flex items-center justify-center">
+        <div className="flex items-center justify-center py-2">
           <div className="text-center">
             {currentNumber ? (
-              <div className="relative w-32 h-32 flex items-center justify-center">
+              <div className="relative w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 flex items-center justify-center">
                 <div className="absolute inset-0 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 opacity-20 animate-pulse"></div>
-                <div className="relative w-28 h-28 rounded-full border-4 border-purple-400 bg-purple-600/30 flex items-center justify-center">
-                  <div className="text-4xl font-bold text-purple-100">
+                <div className="relative w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 rounded-full border-3 border-purple-400 bg-purple-600/30 flex items-center justify-center">
+                  <div className="text-2xl sm:text-3xl md:text-4xl font-bold text-purple-100">
                     {currentNumber}
                   </div>
                 </div>
               </div>
             ) : (
-              <div className="w-32 h-32 flex items-center justify-center border-2 border-dashed border-slate-600 rounded-lg">
+              <div className="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 flex items-center justify-center border-2 border-dashed border-slate-600 rounded-lg">
                 <div className="text-center">
-                  <div className="text-slate-500 text-sm">Waiting...</div>
+                  <div className="text-slate-500 text-xs sm:text-sm">
+                    Waiting...
+                  </div>
                 </div>
               </div>
             )}
