@@ -12,28 +12,31 @@ const SelectionPage = ({
   handleJoin,
 }) => {
   const isNumberDisabled = (number) => {
+    const isMySelected = mySelections.includes(number);
     const isReservedByOther =
-      selectedNumbersGlobal.includes(number) && !mySelections.includes(number);
+      selectedNumbersGlobal.includes(number) && !isMySelected;
+
     return (
       !showSelectionPanel ||
+      isMySelected ||
       isReservedByOther ||
-      (!mySelections.includes(number) && !canSelectMore)
+      (!isMySelected && !canSelectMore)
     );
   };
 
   const getNumberClasses = (number) => {
     const isCalled = calledNumbers.includes(number);
-    const isSelected =
-      selectedNumbersGlobal.includes(number) || mySelections.includes(number);
+    const isMySelected = mySelections.includes(number);
     const isReservedByOther =
-      selectedNumbersGlobal.includes(number) && !mySelections.includes(number);
+      selectedNumbersGlobal.includes(number) && !isMySelected;
 
     return `
       aspect-square rounded-lg text-sm font-semibold transition-all border
       ${isCalled ? "border-emerald-400/50 bg-emerald-500/20 text-emerald-100" : ""}
-      ${isSelected && !isCalled ? "border-rose-400 bg-rose-600/30 text-rose-100" : ""}
-      ${!isSelected && !isCalled ? "border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-600 hover:bg-slate-800" : ""}
-      ${isReservedByOther ? "opacity-40 cursor-not-allowed" : ""}
+      ${isMySelected && !isCalled ? "border-emerald-400 bg-emerald-600/30 text-emerald-100" : ""}
+      ${isReservedByOther && !isCalled ? "border-rose-400 bg-rose-600/30 text-rose-100 opacity-70 cursor-not-allowed" : ""}
+      ${!isCalled && !isMySelected && !isReservedByOther ? "border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-600 hover:bg-slate-800" : ""}
+      ${isMySelected || isReservedByOther ? "cursor-not-allowed" : ""}
     `;
   };
 
