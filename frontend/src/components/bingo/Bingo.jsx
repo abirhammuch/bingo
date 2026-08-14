@@ -899,6 +899,24 @@ const Bingo = ({ theme }) => {
   useEffect(() => {
     if (phase !== "selection") return;
 
+    // Start countdown from 30 to 0
+    const interval = setInterval(() => {
+      setSelectionCountdown((prev) => {
+        const newValue = prev - 1;
+        if (newValue <= 0) {
+          clearInterval(interval);
+          return 0;
+        }
+        return newValue;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [phase]);
+
+  useEffect(() => {
+    if (phase !== "selection") return;
+
     if (typeof selectionCountdown === "number") {
       setSelectionTimeLeft(selectionCountdown);
       if (selectionCountdown <= 0) {
