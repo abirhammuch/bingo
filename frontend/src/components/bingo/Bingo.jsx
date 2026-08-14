@@ -45,7 +45,7 @@ const Bingo = ({ theme }) => {
   const [joined, setJoined] = useState(false);
   const [selectionNumbers, setSelectionNumbers] = useState([]);
   const [selectionTimeLeft, setSelectionTimeLeft] = useState(30);
-  const [phase, setPhase] = useState("waiting");
+  const [phase, setPhase] = useState("selection");
   const [cards, setCards] = useState([]);
   const [drawTimeLeft, setDrawTimeLeft] = useState(7);
   const [currentNumber, setCurrentNumber] = useState(null);
@@ -905,9 +905,8 @@ const Bingo = ({ theme }) => {
     const interval = setInterval(() => {
       setSelectionCountdown((prev) => {
         const newValue = prev - 1;
-        if (newValue <= 0) {
-          clearInterval(interval);
-          return 0;
+        if (newValue < 0) {
+          return prev; // Don't go below 0
         }
         return newValue;
       });
@@ -916,35 +915,26 @@ const Bingo = ({ theme }) => {
     return () => clearInterval(interval);
   }, [phase]);
 
+  // Handle countdown reaching 0
   useEffect(() => {
-    if (phase !== "selection") return;
+    if (phase !== "selection" || selectionCountdown > 0) return;
 
-    if (typeof selectionCountdown === "number") {
+    // Timer reached 0, check if user selected
+    if (mySelections.length > 0) {
+      // User selected a number, proceed to live phase
+      lockSelections();
+    } else {
+      // User didn't select, reset timer to 30
+      setSelectionCountdown(30);
+    }
+  }, [phase, selectionCountdown, mySelections]);
+
+  // Update selectionTimeLeft whenever selectionCountdown changes
+  useEffect(() => {
+    if (phase === "selection") {
       setSelectionTimeLeft(selectionCountdown);
-
-      // When timer reaches 0
-      if (selectionCountdown <= 0) {
-        // Check if user selected a number
-        if (mySelections.length > 0) {
-          // User selected a number, proceed to live phase
-          lockSelections();
-        } else {
-          // User didn't select, reset timer to 30
-          setSelectionCountdown(30);
-        }
-      }
-      return;
     }
-
-    if (selectionTimeLeft <= 0) {
-      if (mySelections.length > 0) {
-        lockSelections();
-      } else {
-        setSelectionCountdown(30);
-      }
-      return;
-    }
-  }, [phase, selectionCountdown, selectionTimeLeft, mySelections]);
+  }, [selectionCountdown, phase]);
 
   useEffect(() => {
     if (!pendingStart || !gameId) return;
