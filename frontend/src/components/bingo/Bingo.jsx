@@ -898,43 +898,14 @@ const Bingo = ({ theme }) => {
     }
   }, [phase]);
 
-  useEffect(() => {
-    if (phase !== "selection") return;
-
-    // Start countdown from 30 to 0
-    const interval = setInterval(() => {
-      setSelectionCountdown((prev) => {
-        const newValue = prev - 1;
-        if (newValue < 0) {
-          return prev; // Don't go below 0
-        }
-        return newValue;
-      });
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [phase]);
-
-  // Handle countdown reaching 0
-  useEffect(() => {
-    if (phase !== "selection" || selectionCountdown > 0) return;
-
-    // Timer reached 0, check if user selected
-    if (mySelections.length > 0) {
-      // User selected a number, proceed to live phase
-      lockSelections();
-    } else {
-      // User didn't select, reset timer to 30
-      setSelectionCountdown(30);
-    }
-  }, [phase, selectionCountdown, mySelections]);
-
-  // Update selectionTimeLeft whenever selectionCountdown changes
+  // The round timer is global and controlled by the server.
+  // Do not decrement or reset the selection countdown locally here,
+  // otherwise different clients can drift into different phases.
   useEffect(() => {
     if (phase === "selection") {
-      setSelectionTimeLeft(selectionCountdown);
+      setSelectionTimeLeft(selectionCountdown ?? countdownRemaining ?? 30);
     }
-  }, [selectionCountdown, phase]);
+  }, [phase, selectionCountdown, countdownRemaining]);
 
   useEffect(() => {
     if (!pendingStart || !gameId) return;
@@ -1004,7 +975,7 @@ const Bingo = ({ theme }) => {
       {/* Main Content */}
       <div className="flex-1 overflow-auto p-4">
         {/* SELECTION PHASE */}
-        {(phase === "selection" || waitingForSelectionRound) && (
+        {phase === "selection" && (
           <SelectionPage
             selectionCountdown={selectionCountdown}
             calledNumbers={calledNumbers}
@@ -1019,7 +990,7 @@ const Bingo = ({ theme }) => {
         )}
 
         {/* LIVE PHASE */}
-        {phase === "live" && !waitingForSelectionRound && (
+        {phase === "live" && (
           <LivePage
             calledNumbers={calledNumbers}
             currentNumber={currentNumber}
