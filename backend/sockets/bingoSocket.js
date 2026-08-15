@@ -110,11 +110,17 @@ const stopCallerTimer = (gameId) => {
 // ✅ startSelectionCountdown now transitions to PLAYING correctly
 // =========================================================================
 const startSelectionCountdown = async (io, gameId, roomId) => {
+  console.log(
+    `⏱️ [TIMER START] Countdown starting for gameId: ${gameId}, roomId: ${roomId}`,
+  );
   stopSelectionTimer(gameId);
   stopCallerTimer(gameId);
 
   const game = await getGameState(gameId).catch(() => null);
-  if (!game) return;
+  if (!game) {
+    console.error(`❌ [TIMER START] Game not found: ${gameId}`);
+    return;
+  }
 
   game.status = "waiting";
   game.selectionEndsAt = new Date(Date.now() + ROUND_SELECTION_SECONDS * 1000);
@@ -123,6 +129,10 @@ const startSelectionCountdown = async (io, gameId, roomId) => {
   game.winner = null;
   game.playerCount = game.players.length;
   await saveWithRetry(game);
+
+  console.log(
+    `✅ [TIMER START] Game saved with selectionEndsAt: ${game.selectionEndsAt}`,
+  );
 
   emitRoundState(io, roomId, game, {
     remainingSeconds: ROUND_SELECTION_SECONDS,
@@ -133,6 +143,10 @@ const startSelectionCountdown = async (io, gameId, roomId) => {
     try {
       const latest = await getGameState(gameId).catch(() => null);
       if (!latest) {
+        console.warn(
+          `⚠️ [TIMER TICK] Game not found, stopping timer: ${gameId}`,
+        );
+        clearInterval(intervalId);
         stopSelectionTimer(gameId);
         return;
       }
@@ -140,18 +154,30 @@ const startSelectionCountdown = async (io, gameId, roomId) => {
       const remainingSeconds = getRemainingSelectionSeconds(
         latest.selectionEndsAt,
       );
+      console.log(
+        `⏱️ [TIMER TICK] gameId: ${gameId}, remaining: ${remainingSeconds}s, status: ${latest.status}`,
+      );
+
       emitRoundState(io, roomId, latest, {
         remainingSeconds,
         status: "WAITING",
       });
 
       if (remainingSeconds <= 0) {
+        console.log(
+          `✅ [TIMER END] Selection phase ended for gameId: ${gameId}`,
+        );
         clearInterval(intervalId);
         stopSelectionTimer(gameId);
 
         // ✅ CRITICAL FIX: Fetch the fresh game and start the game immediately
         const freshGame = await getGameState(gameId).catch(() => null);
-        if (!freshGame) return;
+        if (!freshGame) {
+          console.error(
+            `❌ [TIMER END] Game not found during transition: ${gameId}`,
+          );
+          return;
+        }
 
         // 1. Set the game to active
         freshGame.status = "active";
@@ -159,6 +185,10 @@ const startSelectionCountdown = async (io, gameId, roomId) => {
         freshGame.roundStartedAt = new Date();
         freshGame.playerCount = freshGame.players.length;
         await saveWithRetry(freshGame);
+
+        console.log(
+          `✅ [TIMER END] Game transitioned to PLAYING. Starting number calling...`,
+        );
 
         // 2. Broadcast that the game is now LIVE
         emitRoundState(io, roomId, freshGame, {
@@ -177,6 +207,9 @@ const startSelectionCountdown = async (io, gameId, roomId) => {
   }, 1000);
 
   selectionTimers.set(gameId, { intervalId });
+  console.log(
+    `✅ [TIMER REGISTERED] Interval ID registered for gameId: ${gameId}`,
+  );
 };
 
 // =========================================================================
