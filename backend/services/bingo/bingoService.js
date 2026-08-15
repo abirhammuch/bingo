@@ -3,6 +3,24 @@ import BingoTicket from "../../models/BingoTicket.js";
 import User from "../../models/User.js";
 import { v4 as uuidv4 } from "uuid";
 
+// Retry helper for handling Mongoose version conflicts
+const saveWithRetry = async (document, maxRetries = 3) => {
+  let retries = maxRetries;
+  while (retries > 0) {
+    try {
+      return await document.save();
+    } catch (error) {
+      if (error.name === "VersionError" && retries > 1) {
+        retries--;
+        // Small delay before retry
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      } else {
+        throw error;
+      }
+    }
+  }
+};
+
 export const normalizeTelegramId = (telegramId) => {
   if (telegramId === null || telegramId === undefined) return "";
   return String(telegramId).trim();
@@ -240,7 +258,7 @@ export const joinBingoGame = async (
         ...selectedNumbers,
         normalizedLuckyNumber,
       ]);
-      await game.save();
+      await saveWithRetry(game);
 
       return {
         game,
@@ -249,7 +267,7 @@ export const joinBingoGame = async (
       };
     }
 
-    await game.save();
+    await saveWithRetry(game);
     return {
       game,
       ticket: null,
@@ -287,7 +305,7 @@ export const joinBingoGame = async (
         ]),
       ),
     );
-    await game.save();
+    await saveWithRetry(game);
 
     return {
       game,
@@ -406,7 +424,48 @@ export const joinBingoGame = async (
     0,
   );
 
-  const savedGame = await game.save();
+  let savedGame;
+  let retries = 3;
+  while (retries > 0) {
+    try {
+      savedGame = await game.save();
+      break;
+    } catch (error) {
+      if (error.name === "VersionError" && retries > 1) {
+        // Re-fetch the game and retry
+        const freshGame = await BingoGame.findOne({ gameId });
+        if (!freshGame) throw new Error("Game not found during retry");
+
+        // Reapply the changes to the fresh document
+        freshGame.players.push({
+          telegramId: normalizedTelegramId,
+          username: user.username || user.firstName,
+          firstName: user.firstName,
+          card,
+          markedNumbers: [],
+          selectedLuckyNumbers:
+            normalizedLuckyNumber !== null &&
+            Number.isFinite(normalizedLuckyNumber)
+              ? [normalizedLuckyNumber]
+              : [],
+          betAmount,
+        });
+        freshGame.playerCount = freshGame.players.length;
+        freshGame.roundSummary.playerCount = freshGame.players.length;
+        freshGame.roundSummary.selectedNumbersCount =
+          freshGame.selectedNumbers.length;
+        freshGame.roundSummary.totalBetAmount = freshGame.players.reduce(
+          (sum, player) => sum + (player.betAmount || 0),
+          0,
+        );
+
+        game = freshGame;
+        retries--;
+      } else {
+        throw error;
+      }
+    }
+  }
 
   return {
     game: savedGame,
@@ -455,7 +514,7 @@ export const joinAsSpectator = async (gameId, telegramId) => {
       isSpectator: true,
     });
     game.playerCount = game.players.length;
-    await game.save();
+    await saveWithRetry(game);
   }
 
   return {

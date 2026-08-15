@@ -15,7 +15,7 @@ const bingoGameSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["waiting", "active", "completed"],
+      enum: ["waiting", "ready", "active", "completed"],
       default: "waiting",
     },
 
@@ -144,4 +144,3 @@ const BingoGame =
   mongoose.model.BingoGame || mongoose.model("BingoGame", bingoGameSchema);
 
 export default BingoGame;
-
