@@ -1,4 +1,4 @@
-import {
+﻿import {
   createBingoGame,
   joinBingoGame,
   startGame,
@@ -7,16 +7,286 @@ import {
   getGameState,
   getPlayerCard,
 } from "../services/bingo/bingoService.js";
+import BingoGame from "../models/BingoGame.js";
 
-// Store active game timers (intervals) to stop them when a game ends
+const ROUND_SELECTION_SECONDS = 30;
+const CALL_INTERVAL_MS = 5000;
+const selectionTimers = new Map();
 const gameTimers = new Map();
-// Store start countdown timers for games (before automatic start)
-const startCountdowns = new Map();
 
-/**
- * Initialize Bingo Socket Handlers
- * @param {SocketIO.Server | SocketIO.Namespace} io - The Socket.IO instance or namespace
- */
+const normalizeStatus = (status) => {
+  const value = String(status || "").toUpperCase();
+  if (value === "WAITING") return "WAITING";
+  if (value === "ACTIVE" || value === "PLAYING" || value === "LIVE") return "PLAYING";
+  if (value === "COMPLETED" || value === "FINISHED" || value === "ENDED") return "FINISHED";
+  return "WAITING";
+};
+
+const getPlayerSummary = (players = []) =>
+  (players || []).map((player) => ({
+    telegramId: player.telegramId,
+    username: player.username || player.firstName || "Player",
+    firstName: player.firstName || "Player",
+  }));
+
+const getRemainingSelectionSeconds = (selectionEndsAt) => {
+  if (!selectionEndsAt) return 0;
+  return Math.max(0, Math.ceil((new Date(selectionEndsAt).getTime() - Date.now()) / 1000));
+};
+
+const buildRoundState = (game, extra = {}) => {
+  if (!game) return { status: "WAITING", remainingSeconds: 0 };
+
+  const playerCount = Number(game.playerCount ?? game.players?.length ?? 0);
+  const selectedNumbers = Array.isArray(game.selectedNumbers) ? game.selectedNumbers : [];
+  const calledNumbers = Array.isArray(game.calledNumbers) ? game.calledNumbers : [];
+  const remainingSeconds =
+    typeof extra.remainingSeconds === "number"
+      ? extra.remainingSeconds
+      : game.status === "waiting"
+        ? getRemainingSelectionSeconds(game.selectionEndsAt)
+        : 0;
+
+  return {
+    gameId: game.gameId,
+    roomId: game.roomId,
+    roundNumber: game.roundNumber,
+    status: normalizeStatus(game.status),
+    playerCount,
+    participants: playerCount,
+    players: getPlayerSummary(game.players),
+    selectedNumbers,
+    calledNumbers,
+    currentNumber: game.currentNumber ?? null,
+    winner: game.winner || null,
+    selectionEndsAt: game.selectionEndsAt || null,
+    remainingSeconds,
+    ...extra,
+  };
+};
+
+const emitRoundState = (io, roomId, game, extra = {}) => {
+  if (!io || typeof io.to !== "function" || !roomId || !game) return;
+
+  const state = buildRoundState(game, extra);
+  io.to(roomId).emit("bingo:roundState", state);
+  io.to(roomId).emit("bingo:participantCount", {
+    playerCount: state.playerCount,
+    participants: state.playerCount,
+    selectedNumbers: state.selectedNumbers,
+    status: state.status,
+  });
+};
+
+const stopSelectionTimer = (gameId) => {
+  if (selectionTimers.has(gameId)) {
+    const entry = selectionTimers.get(gameId);
+    if (entry && entry.intervalId) clearInterval(entry.intervalId);
+    selectionTimers.delete(gameId);
+  }
+};
+
+const stopCallerTimer = (gameId) => {
+  if (gameTimers.has(gameId)) {
+    const entry = gameTimers.get(gameId);
+    if (entry && entry.intervalId) clearInterval(entry.intervalId);
+    gameTimers.delete(gameId);
+  }
+};
+
+const startSelectionCountdown = async (io, gameId, roomId) => {
+  stopSelectionTimer(gameId);
+  stopCallerTimer(gameId);
+
+  const game = await getGameState(gameId).catch(() => null);
+  if (!game) return;
+
+  game.status = "waiting";
+  game.selectionEndsAt = new Date(Date.now() + ROUND_SELECTION_SECONDS * 1000);
+  game.currentNumber = null;
+  game.calledNumbers = [];
+  game.winner = null;
+  game.playerCount = game.players.length;
+  await game.save();
+
+  emitRoundState(io, roomId, game, {
+    remainingSeconds: ROUND_SELECTION_SECONDS,
+    status: "WAITING",
+  });
+
+  const intervalId = setInterval(async () => {
+    try {
+      const latest = await getGameState(gameId).catch(() => null);
+      if (!latest) {
+        stopSelectionTimer(gameId);
+        return;
+      }
+
+      const remainingSeconds = getRemainingSelectionSeconds(latest.selectionEndsAt);
+      emitRoundState(io, roomId, latest, {
+        remainingSeconds,
+        status: "WAITING",
+      });
+
+      if (remainingSeconds <= 0) {
+        clearInterval(intervalId);
+        stopSelectionTimer(gameId);
+
+        latest.status = "active";
+        latest.selectionEndsAt = null;
+        latest.roundStartedAt = new Date();
+        latest.playerCount = latest.players.length;
+        await latest.save();
+
+        emitRoundState(io, roomId, latest, {
+          remainingSeconds: 0,
+          status: "PLAYING",
+        });
+
+        startNumberCalling(io, latest.gameId, latest.roomId);
+      }
+    } catch (error) {
+      console.error("Selection countdown error:", error.message || error);
+      clearInterval(intervalId);
+      stopSelectionTimer(gameId);
+    }
+  }, 1000);
+
+  selectionTimers.set(gameId, { intervalId });
+};
+
+const startNumberCalling = (io, gameId, roomId) => {
+  stopCallerTimer(gameId);
+
+  const intervalId = setInterval(async () => {
+    try {
+      const currentGame = await getGameState(gameId).catch(() => null);
+      if (!currentGame || currentGame.status !== "active") {
+        stopCallerTimer(gameId);
+        return;
+      }
+
+      const result = await callNumber(gameId);
+      if (!result || !result.number) {
+        stopCallerTimer(gameId);
+        const finishedGame = await getGameState(gameId).catch(() => null);
+        if (finishedGame) {
+          finishedGame.status = "completed";
+          finishedGame.selectionEndsAt = null;
+          finishedGame.roundEndedAt = new Date();
+          await finishedGame.save();
+
+          emitRoundState(io, roomId, finishedGame, {
+            remainingSeconds: 0,
+            status: "FINISHED",
+          });
+          io.to(roomId).emit("bingo:roundFinished", {
+            gameId: finishedGame.gameId,
+            roomId: finishedGame.roomId,
+            status: "FINISHED",
+            winner: finishedGame.winner || null,
+          });
+        }
+        return;
+      }
+
+      const refreshedGame = await getGameState(gameId).catch(() => null);
+      if (refreshedGame) {
+        emitRoundState(io, roomId, refreshedGame, {
+          remainingSeconds: 0,
+          status: "PLAYING",
+          currentNumber: result.number,
+          calledNumbers: result.calledNumbers || refreshedGame.calledNumbers,
+        });
+      }
+
+      io.to(roomId).emit("bingo:numberCalled", {
+        number: result.number,
+        currentNumber: result.number,
+        calledNumbers: result.calledNumbers,
+        remaining: Math.max(0, 75 - result.calledNumbers.length),
+      });
+
+      if (result.gameEnded && Array.isArray(result.winners) && result.winners.length > 0) {
+        stopCallerTimer(gameId);
+        const winnerGame = await getGameState(gameId).catch(() => null);
+
+        if (winnerGame) {
+          winnerGame.status = "completed";
+          winnerGame.selectionEndsAt = null;
+          winnerGame.roundEndedAt = new Date();
+          await winnerGame.save();
+
+          emitRoundState(io, roomId, winnerGame, {
+            remainingSeconds: 0,
+            status: "FINISHED",
+            winner: winnerGame.winner,
+            winners: result.winners,
+          });
+
+          io.to(roomId).emit("bingo:winner", {
+            gameId: winnerGame.gameId,
+            roomId: winnerGame.roomId,
+            winner: winnerGame.winner,
+            winners: result.winners,
+            status: "FINISHED",
+          });
+          io.to(roomId).emit("bingo:roundFinished", {
+            gameId: winnerGame.gameId,
+            roomId: winnerGame.roomId,
+            winner: winnerGame.winner,
+            winners: result.winners,
+            status: "FINISHED",
+          });
+
+          setTimeout(async () => {
+            try {
+              const nextGame = await createBingoGame(
+                roomId,
+                winnerGame.maxPlayers,
+                winnerGame.minBet,
+                winnerGame.maxBet,
+              );
+
+              io.to(roomId).emit("bingo:nextRound", {
+                gameId: nextGame.gameId,
+                roomId: nextGame.roomId,
+                status: "WAITING",
+                selectedNumbers: [],
+                calledNumbers: [],
+                currentNumber: null,
+                players: [],
+                playerCount: 0,
+                remainingSeconds: ROUND_SELECTION_SECONDS,
+              });
+
+              await startSelectionCountdown(io, nextGame.gameId, nextGame.roomId);
+            } catch (error) {
+              console.error("Next round setup error:", error.message || error);
+            }
+          }, 4000);
+        }
+      }
+    } catch (error) {
+      console.error("Number calling interval error:", error.message || error);
+      stopCallerTimer(gameId);
+    }
+  }, CALL_INTERVAL_MS);
+
+  gameTimers.set(gameId, { intervalId });
+};
+
+const emitCurrentRoundState = async (socket) => {
+  try {
+    const game = await BingoGame.findOne({ status: { $in: ["waiting", "active"] } }).sort({ updatedAt: -1 }).lean();
+    if (game) {
+      socket.emit("bingo:roundState", buildRoundState(game));
+    }
+  } catch (error) {
+    console.warn("Unable to fetch current round state:", error.message || error);
+  }
+};
+
 export const initBingoSocket = (io) => {
   console.log("🎮 Initializing Bingo Socket Handlers...");
   try {
@@ -25,17 +295,10 @@ export const initBingoSocket = (io) => {
     console.warn("Unable to set global io reference:", e.message || e);
   }
 
-  io.on("connection", (socket) => {
+  io.on("connection", async (socket) => {
     console.log(`\n🎯 [BINGO CLIENT CONNECTED] ${socket.id}`);
-    console.log("📊 [Socket connection details]", {
-      socketId: socket.id,
-      timestamp: new Date().toISOString(),
-      transport: socket.conn?.transport?.name || "unknown",
-    });
+    await emitCurrentRoundState(socket);
 
-    // ------------------------------------------------------------------
-    // 1. CREATE ROOM
-    // ------------------------------------------------------------------
     socket.on("createRoom", async (data) => {
       try {
         const { roomId, maxPlayers = 10, minBet = 1, maxBet = 100 } = data;
@@ -49,43 +312,14 @@ export const initBingoSocket = (io) => {
           message: `Room "${roomId}" created successfully!`,
         });
 
-        const waitingState = {
-          gameId: game.gameId,
-          roomId: game.roomId,
-          players: (game.players || []).map((player) => ({
-            telegramId: player.telegramId,
-            username: player.username || player.firstName || "Player",
-          })),
-          playerCount: (game.players || []).length,
-          status: game.status,
-          maxPlayers: game.maxPlayers,
-          selectedNumbers: game.selectedNumbers || [],
-        };
-
-        io.to(roomId).emit("gameUpdate", { type: "roomCreated", ...waitingState });
-        io.to(roomId).emit("bingo:roundState", { ...waitingState, status: "waiting" });
-
-        scheduleAutoStart(game.gameId, game.roomId, 30);
+        await startSelectionCountdown(io, game.gameId, game.roomId);
       } catch (error) {
         console.error("Create Room Error:", error.message);
         socket.emit("error", { success: false, message: error.message || "Failed to create room" });
       }
     });
 
-    // ------------------------------------------------------------------
-    // 2. JOIN ROOM
-    // ------------------------------------------------------------------
     socket.on("joinRoom", async (data, callback) => {
-      const socketJoinStartTime = new Date();
-      console.log("\n" + "=".repeat(70));
-      console.log("🚪 [JOINROOM EVENT RECEIVED]", {
-        timestamp: socketJoinStartTime.toISOString(),
-        socketId: socket.id,
-        dataReceived: data,
-        hasCallback: typeof callback === "function",
-      });
-      console.log("=".repeat(70));
-
       try {
         const { gameId, telegramId, betAmount, luckyNumber = null } = data;
 
@@ -95,19 +329,8 @@ export const initBingoSocket = (io) => {
           return socket.emit("error", response);
         }
 
-        console.log("📞 [CALLING joinBingoGame SERVICE]", { gameId, telegramId, betAmount, luckyNumber });
         const result = await joinBingoGame(gameId, telegramId, betAmount, luckyNumber);
-
-        console.log("✅ [SERVICE RETURNED]", {
-          gameId,
-          telegramId,
-          playerCount: result?.game?.players?.length,
-          selectedNumbers: result?.game?.selectedNumbers,
-          ticketId: result?.ticket?.ticketId,
-        });
-
         socket.join(result.game.roomId);
-        console.log("✅ [SOCKET JOINED]", { socketId: socket.id, roomId: result.game.roomId });
 
         socket.emit("joinedRoom", {
           success: true,
@@ -118,100 +341,45 @@ export const initBingoSocket = (io) => {
           balance: result.user.balance,
           currentPlayers: result.game.players.length,
           playerCount: result.game.players.length,
-          players: (result.game.players || []).map((player) => ({
-            telegramId: player.telegramId,
-            username: player.username || player.firstName || "Player",
-          })),
+          players: getPlayerSummary(result.game.players),
           selectedNumbers: result.game.selectedNumbers || [],
         });
 
-        const countdownRemaining = startCountdowns.has(result.game.gameId)
-          ? startCountdowns.get(result.game.gameId).remaining
-          : gameTimers.has(result.game.gameId)
-            ? gameTimers.get(result.game.gameId).remaining
-            : undefined;
-
-        const joinedRoomState = {
-          gameId: result.game.gameId,
-          roomId: result.game.roomId,
-          player: { telegramId, username: result.user.firstName || "Player" },
-          playerCount: result.game.players.length,
-          players: (result.game.players || []).map((player) => ({
-            telegramId: player.telegramId,
-            username: player.username || player.firstName || "Player",
-          })),
-          totalPlayers: result.game.maxPlayers,
-          selectedNumbers: result.game.selectedNumbers || [],
-          countdownRemaining,
-          status: result.game.status,
-        };
-
-        io.to(result.game.roomId).emit("gameUpdate", { type: "playerJoined", ...joinedRoomState });
-        io.to(result.game.roomId).emit("bingo:roundState", { ...joinedRoomState, status: "waiting" });
+        const currentGame = await getGameState(result.game.gameId);
+        emitRoundState(io, result.game.roomId, currentGame);
 
         if (typeof callback === "function") {
           callback({
             success: true,
             gameId: result.game.gameId,
             roomId: result.game.roomId,
-            selectedNumbers: result.game.selectedNumbers || [],
-            playerCount: result.game.players.length,
+            selectedNumbers: currentGame.selectedNumbers || [],
+            playerCount: currentGame.players.length,
           });
         }
-
-        const currentGame = await getGameState(result.game.gameId);
-        if (currentGame.status === "waiting") {
-          if (typeof countdownRemaining === "number") {
-            socket.emit("countdownRemaining", countdownRemaining);
-          }
-          scheduleAutoStart(currentGame.gameId, currentGame.roomId, 30, true);
-        }
-
-        console.log("\n✅ [SOCKET JOIN COMPLETE]", {
-          socketId: socket.id,
-          gameId: result.game.gameId,
-          telegramId,
-          finalPlayerCount: result.game.players.length,
-        });
       } catch (error) {
-        console.error("❌ [JOIN ROOM ERROR]", { message: error.message, timestamp: new Date().toISOString() });
+        console.error("JOIN ROOM ERROR:", error.message);
         const response = { success: false, message: error.message || "Failed to join room" };
         if (typeof callback === "function") return callback(response);
         socket.emit("error", response);
       }
     });
 
-    // ------------------------------------------------------------------
-    // 3. START GAME
-    // ------------------------------------------------------------------
     socket.on("startGame", async (data) => {
       try {
         const { gameId } = data;
         if (!gameId) return socket.emit("error", { success: false, message: "Game ID is required" });
 
-        if (startCountdowns.has(gameId)) {
-          const s = startCountdowns.get(gameId);
-          try { clearInterval(s.intervalId); } catch (e) { try { clearTimeout(s); } catch (_) {} }
-          startCountdowns.delete(gameId);
-        }
-
         const game = await startGame(gameId);
-        const startedState = {
-          gameId: game.gameId,
-          roomId: game.roomId,
-          playerCount: game.players.length,
-          players: (game.players || []).map((player) => ({
-            telegramId: player.telegramId,
-            username: player.username || player.firstName || "Player",
-          })),
-          selectedNumbers: game.selectedNumbers || [],
-          status: "active",
-          message: "🚀 Game started! Numbers will be called every 5 seconds.",
-          startTime: game.startTime,
-        };
+        game.status = "active";
+        game.selectionEndsAt = null;
+        game.roundStartedAt = new Date();
+        await game.save();
 
-        io.to(game.roomId).emit("gameUpdate", { type: "gameStarted", ...startedState });
-        io.to(game.roomId).emit("bingo:roundState", startedState);
+        emitRoundState(io, game.roomId, game, {
+          remainingSeconds: 0,
+          status: "PLAYING",
+        });
 
         startNumberCalling(io, game.gameId, game.roomId);
       } catch (error) {
@@ -220,9 +388,6 @@ export const initBingoSocket = (io) => {
       }
     });
 
-    // ------------------------------------------------------------------
-    // 4. MARK A NUMBER
-    // ------------------------------------------------------------------
     socket.on("markNumber", async (data) => {
       try {
         const { gameId, telegramId, number } = data;
@@ -242,76 +407,60 @@ export const initBingoSocket = (io) => {
           markedNumbers: result.markedNumbers,
         });
 
-        // ✅ IF BINGO IS DETECTED
         if (result.bingo) {
-          console.log(`🏆 BINGO DETECTED! Winner: ${result.winner.username}`);
-          
-          // 1. Stop the number timer immediately
-          stopNumberCalling(gameId);
-
-          // 2. Broadcast the winner to the room
-          io.to(game.roomId).emit("gameUpdate", {
-            type: "bingo",
+          stopCallerTimer(gameId);
+          emitRoundState(io, game.roomId, game, {
+            status: "FINISHED",
+            remainingSeconds: 0,
             winner: result.winner,
+          });
+
+          io.to(game.roomId).emit("bingo:winner", {
             gameId: game.gameId,
-            message: `🎉 ${result.winner.username} got BINGO! Won ${result.winner.winAmount} coins!`,
-          });
-          io.to(game.roomId).emit("gameUpdate", {
-            type: "gameEnded",
-            message: "Game has ended. Thanks for playing!",
+            roomId: game.roomId,
             winner: result.winner,
+            status: "FINISHED",
+          });
+          io.to(game.roomId).emit("bingo:roundFinished", {
+            gameId: game.gameId,
+            roomId: game.roomId,
+            winner: result.winner,
+            status: "FINISHED",
           });
 
-          // 3. Wait 5 seconds, then reset and start a new round
-          console.log("⏳ [WAITING 5 SECONDS BEFORE RESETTING GAME]");
           setTimeout(async () => {
             try {
-              // Create the new game
               const nextGame = await createBingoGame(
                 game.roomId,
                 game.maxPlayers,
                 game.minBet,
-                game.maxBet
+                game.maxBet,
               );
 
-              // Broadcast the new round state to all clients so they reset their UI
-              io.to(game.roomId).emit("gameUpdate", {
-                type: "roomCreated",
+              io.to(game.roomId).emit("bingo:nextRound", {
                 gameId: nextGame.gameId,
                 roomId: nextGame.roomId,
+                status: "WAITING",
+                selectedNumbers: [],
+                calledNumbers: [],
+                currentNumber: null,
                 players: [],
                 playerCount: 0,
-                status: "waiting",
-                selectedNumbers: [],
-                message: "New round started! Select your lucky numbers.",
-              });
-              
-              io.to(game.roomId).emit("bingo:roundState", {
-                gameId: nextGame.gameId,
-                roomId: nextGame.roomId,
-                players: [],
-                playerCount: 0,
-                status: "waiting",
-                selectedNumbers: [],
+                remainingSeconds: ROUND_SELECTION_SECONDS,
               });
 
-              // Start a new 30-second countdown for the next round
-              scheduleAutoStart(nextGame.gameId, nextGame.roomId, 30);
-              console.log("✅ [NEW ROUND CREATED AND COUNTDOWN STARTED]");
+              await startSelectionCountdown(io, nextGame.gameId, nextGame.roomId);
             } catch (err) {
               console.error("Failed to create next round:", err.message || err);
             }
-          }, 5000); // 5-second delay
+          }, 4000);
         }
       } catch (error) {
         console.error("Mark Number Error:", error.message);
-        socket.emit("error", { success: false, message: error.message || "Failed to mark number" });
+        socket.emit("error", { success: false, message: "Failed to mark number" });
       }
     });
 
-    // ------------------------------------------------------------------
-    // 5. GET CURRENT GAME STATE
-    // ------------------------------------------------------------------
     socket.on("getGameState", async (data) => {
       try {
         const { gameId } = data;
@@ -337,9 +486,6 @@ export const initBingoSocket = (io) => {
       }
     });
 
-    // ------------------------------------------------------------------
-    // 6. GET PLAYER'S CARD
-    // ------------------------------------------------------------------
     socket.on("getCard", async (data) => {
       try {
         const { gameId, telegramId } = data;
@@ -351,9 +497,6 @@ export const initBingoSocket = (io) => {
       }
     });
 
-    // ------------------------------------------------------------------
-    // 7. LEAVE ROOM
-    // ------------------------------------------------------------------
     socket.on("leaveRoom", (data) => {
       const { roomId } = data;
       if (roomId) {
@@ -363,201 +506,10 @@ export const initBingoSocket = (io) => {
       }
     });
 
-    // ------------------------------------------------------------------
-    // 8. DISCONNECT
-    // ------------------------------------------------------------------
     socket.on("disconnect", () => {
       console.log(`🎯 Bingo client disconnected: ${socket.id}`);
     });
   });
 };
 
-// =========================================================================
-// HELPER: SCHEDULE AUTO-START
-// =========================================================================
-const scheduleAutoStart = (gameId, roomId, seconds = 30, force = false) => {
-  if (startCountdowns.has(gameId) && !force) {
-    const existing = startCountdowns.get(gameId);
-    if (existing && typeof existing.remaining === "number" && existing.remaining <= seconds) {
-      return;
-    }
-    try {
-      clearInterval(existing.intervalId);
-    } catch (e) {
-      try { clearTimeout(existing); } catch (_) {}
-    }
-    startCountdowns.delete(gameId);
-  }
-
-  console.log(`⏳ Scheduling auto-start for game ${gameId} in ${seconds}s`);
-
-  if (globalThis.io && typeof globalThis.io.to === "function") {
-    globalThis.io.to(roomId).emit("gameUpdate", {
-      type: "countdownStarted",
-      seconds,
-      message: `Game will auto-start in ${seconds} seconds if enough players join.`,
-    });
-  }
-
-  let remaining = seconds;
-  const intervalId = setInterval(async () => {
-    try {
-      if (globalThis.io && typeof globalThis.io.to === "function") {
-        globalThis.io.to(roomId).emit("countdownTick", { remaining });
-      }
-      remaining -= 1;
-
-      if (remaining < 0) {
-        clearInterval(intervalId);
-        startCountdowns.delete(gameId);
-
-        const game = await getGameState(gameId);
-        if (!game) return;
-
-        if (game.status === "waiting" && game.players.length >= 1) {
-          console.log("⏳ [WAITING 500ms FOR DB TO FINISH SAVING SELECTIONS]");
-          await new Promise((resolve) => setTimeout(resolve, 500));
-
-          const refreshedGame = await getGameState(gameId);
-          console.log("🚀 [AUTO-START CHECK AFTER DELAY]", {
-            selectedNumbers: refreshedGame.selectedNumbers,
-            count: refreshedGame.selectedNumbers?.length || 0,
-            players: refreshedGame.players.length,
-          });
-
-          const started = await startGame(refreshedGame.gameId);
-          if (globalThis.io && typeof globalThis.io.to === "function") {
-            const autoStartedState = {
-              gameId: started.gameId,
-              roomId: started.roomId,
-              playerCount: started.players.length,
-              players: (started.players || []).map((player) => ({
-                telegramId: player.telegramId,
-                username: player.username || player.firstName || "Player",
-              })),
-              selectedNumbers: started.selectedNumbers || [],
-              status: "active",
-              message: `🚀 Game auto-started with ${started.players.length} players.`,
-              startTime: started.startTime,
-            };
-
-            globalThis.io.to(roomId).emit("gameUpdate", { type: "gameStarted", ...autoStartedState });
-            globalThis.io.to(roomId).emit("bingo:roundState", autoStartedState);
-          }
-          if (globalThis.io && typeof globalThis.io.to === "function") {
-            startNumberCalling(globalThis.io, started.gameId, started.roomId);
-          }
-        } else {
-          if (globalThis.io && typeof globalThis.io.to === "function") {
-            globalThis.io.to(roomId).emit("gameUpdate", {
-              type: "notEnoughPlayers",
-              message: "Not enough players to start the game — waiting for more players.",
-              playerCount: game.players.length,
-            });
-          }
-        }
-      }
-    } catch (err) {
-      console.error("Countdown tick error:", err.message || err);
-      clearInterval(intervalId);
-      startCountdowns.delete(gameId);
-    }
-  }, 1000);
-
-  startCountdowns.set(gameId, { intervalId, remaining });
-};
-
-// =========================================================================
-// HELPER: START NUMBER CALLING
-// =========================================================================
-const startNumberCalling = (io, gameId, roomId) => {
-  stopNumberCalling(gameId);
-  console.log(`⏰ Starting number calling for game: ${gameId}`);
-
-  let remaining = 5;
-  const interval = setInterval(async () => {
-    try {
-      if (io && typeof io.to === "function") {
-        io.to(roomId).emit("countdownTick", { remaining });
-        io.to(roomId).emit("bingo:countdownTick", { remaining });
-      }
-
-      if (gameTimers.has(gameId)) {
-        const entry = gameTimers.get(gameId);
-        if (entry && typeof entry === "object") entry.remaining = remaining;
-      }
-
-      if (remaining > 0) {
-        remaining -= 1;
-        return;
-      }
-
-      const result = await callNumber(gameId);
-
-      if (!result) {
-        clearInterval(interval);
-        gameTimers.delete(gameId);
-        io.to(roomId).emit("gameUpdate", { type: "gameEnded", message: "All numbers called! Game ended." });
-
-        setTimeout(async () => {
-          const nextGame = await createBingoGame(roomId);
-          io.to(roomId).emit("gameUpdate", {
-            type: "roomCreated",
-            gameId: nextGame.gameId,
-            roomId: nextGame.roomId,
-            players: [],
-            status: nextGame.status,
-            maxPlayers: nextGame.maxPlayers,
-            selectedNumbers: nextGame.selectedNumbers || [],
-          });
-          scheduleAutoStart(nextGame.gameId, nextGame.roomId, 30);
-        }, 5000);
-        return;
-      }
-
-      io.to(roomId).emit("numberCalled", {
-        number: result.number,
-        calledNumbers: result.calledNumbers,
-        remaining: 75 - result.calledNumbers.length,
-      });
-      io.to(roomId).emit("bingo:numberCalled", {
-        number: result.number,
-        calledNumbers: result.calledNumbers,
-        remaining: 75 - result.calledNumbers.length,
-      });
-
-      remaining = 5;
-      if (gameTimers.has(gameId)) {
-        const entry = gameTimers.get(gameId);
-        if (entry && typeof entry === "object") entry.remaining = remaining;
-      }
-    } catch (error) {
-      console.error("Number Calling Interval Error:", error.message);
-      clearInterval(interval);
-      gameTimers.delete(gameId);
-      io.to(roomId).emit("error", { success: false, message: "Error calling numbers. Game stopping." });
-    }
-  }, 1000);
-
-  gameTimers.set(gameId, { intervalId: interval, remaining });
-};
-
-// =========================================================================
-// HELPER: STOP NUMBER CALLING
-// =========================================================================
-const stopNumberCalling = (gameId) => {
-  if (gameTimers.has(gameId)) {
-    const entry = gameTimers.get(gameId);
-    try {
-      if (entry && entry.intervalId) clearInterval(entry.intervalId);
-      else clearInterval(entry);
-    } catch (e) {
-      try { clearTimeout(entry.intervalId || entry); } catch (_) {}
-    }
-    gameTimers.delete(gameId);
-    console.log(`⏹️ Stopped number calling for game: ${gameId}`);
-  }
-};
-
-// Export the timer map for potential external use
 export { gameTimers };

@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+﻿import mongoose from "mongoose";
 
 const bingoGameSchema = new mongoose.Schema(
   {
@@ -63,6 +63,8 @@ const bingoGameSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+
+    selectionEndsAt: Date,
 
     lastCalledAt: Date,
 
@@ -142,3 +144,4 @@ const BingoGame =
   mongoose.model.BingoGame || mongoose.model("BingoGame", bingoGameSchema);
 
 export default BingoGame;
+
