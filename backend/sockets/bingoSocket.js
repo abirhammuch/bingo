@@ -376,8 +376,16 @@ export const initBingoSocket = (io) => {
 
     socket.on("createRoom", async (data) => {
       try {
+        console.log(
+          `📢 [CREATE ROOM] Received createRoom event with data:`,
+          data,
+        );
         const { roomId, maxPlayers = 10, minBet = 1, maxBet = 100 } = data;
         const game = await createBingoGame(roomId, maxPlayers, minBet, maxBet);
+        console.log(
+          `📢 [CREATE ROOM] Game created: gameId=${game.gameId}, roomId=${game.roomId}`,
+        );
+
         socket.join(roomId);
 
         socket.emit("roomCreated", {
@@ -387,6 +395,9 @@ export const initBingoSocket = (io) => {
           message: `Room "${roomId}" created successfully!`,
         });
 
+        console.log(
+          `📢 [CREATE ROOM] Starting countdown for gameId=${game.gameId}`,
+        );
         await startSelectionCountdown(io, game.gameId, game.roomId);
       } catch (error) {
         console.error("Create Room Error:", error.message);
