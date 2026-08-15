@@ -4,7 +4,7 @@ import User from "../../models/User.js";
 import { v4 as uuidv4 } from "uuid";
 
 // Retry helper for handling Mongoose version conflicts
-const saveWithRetry = async (document, maxRetries = 3) => {
+export const saveWithRetry = async (document, maxRetries = 3) => {
   let retries = maxRetries;
   while (retries > 0) {
     try {

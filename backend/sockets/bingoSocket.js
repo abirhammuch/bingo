@@ -7,6 +7,7 @@
   markNumber,
   getGameState,
   getPlayerCard,
+  saveWithRetry,
 } from "../services/bingo/bingoService.js";
 import BingoGame from "../models/BingoGame.js";
 
@@ -121,7 +122,7 @@ const startSelectionCountdown = async (io, gameId, roomId) => {
   game.calledNumbers = [];
   game.winner = null;
   game.playerCount = game.players.length;
-  await game.save();
+  await saveWithRetry(game);
 
   emitRoundState(io, roomId, game, {
     remainingSeconds: ROUND_SELECTION_SECONDS,
@@ -157,7 +158,7 @@ const startSelectionCountdown = async (io, gameId, roomId) => {
         freshGame.selectionEndsAt = null;
         freshGame.roundStartedAt = new Date();
         freshGame.playerCount = freshGame.players.length;
-        await freshGame.save();
+        await saveWithRetry(freshGame);
 
         // 2. Broadcast that the game is now LIVE
         emitRoundState(io, roomId, freshGame, {
@@ -200,7 +201,7 @@ const startNumberCalling = (io, gameId, roomId) => {
           finishedGame.status = "completed";
           finishedGame.selectionEndsAt = null;
           finishedGame.roundEndedAt = new Date();
-          await finishedGame.save();
+          await saveWithRetry(finishedGame);
 
           emitRoundState(io, roomId, finishedGame, {
             remainingSeconds: 0,
@@ -245,7 +246,7 @@ const startNumberCalling = (io, gameId, roomId) => {
           winnerGame.status = "completed";
           winnerGame.selectionEndsAt = null;
           winnerGame.roundEndedAt = new Date();
-          await winnerGame.save();
+          await saveWithRetry(winnerGame);
 
           emitRoundState(io, roomId, winnerGame, {
             remainingSeconds: 0,
