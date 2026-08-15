@@ -105,6 +105,9 @@ const stopCallerTimer = (gameId) => {
   }
 };
 
+// =========================================================================
+// ✅ startSelectionCountdown now transitions to PLAYING correctly
+// =========================================================================
 const startSelectionCountdown = async (io, gameId, roomId) => {
   stopSelectionTimer(gameId);
   stopCallerTimer(gameId);
@@ -145,16 +148,25 @@ const startSelectionCountdown = async (io, gameId, roomId) => {
         clearInterval(intervalId);
         stopSelectionTimer(gameId);
 
-        latest.status = "ready";
-        latest.selectionEndsAt = null;
-        latest.roundStartedAt = new Date();
-        latest.playerCount = latest.players.length;
-        await latest.save();
+        // ✅ CRITICAL FIX: Fetch the fresh game and start the game immediately
+        const freshGame = await getGameState(gameId).catch(() => null);
+        if (!freshGame) return;
 
-        emitRoundState(io, roomId, latest, {
+        // 1. Set the game to active
+        freshGame.status = "active";
+        freshGame.selectionEndsAt = null;
+        freshGame.roundStartedAt = new Date();
+        freshGame.playerCount = freshGame.players.length;
+        await freshGame.save();
+
+        // 2. Broadcast that the game is now LIVE
+        emitRoundState(io, roomId, freshGame, {
           remainingSeconds: 0,
-          status: "READY",
+          status: "PLAYING",
         });
+
+        // 3. Start calling numbers immediately
+        startNumberCalling(io, gameId, roomId);
       }
     } catch (error) {
       console.error("Selection countdown error:", error.message || error);
@@ -166,6 +178,9 @@ const startSelectionCountdown = async (io, gameId, roomId) => {
   selectionTimers.set(gameId, { intervalId });
 };
 
+// =========================================================================
+// startNumberCalling
+// =========================================================================
 const startNumberCalling = (io, gameId, roomId) => {
   stopCallerTimer(gameId);
 
@@ -452,11 +467,8 @@ export const initBingoSocket = (io) => {
             message: "Game ID is required",
           });
 
+        // ✅ startGame() already sets status to "active" and saves the game
         const game = await startGame(gameId);
-        game.status = "active";
-        game.selectionEndsAt = null;
-        game.roundStartedAt = new Date();
-        await game.save();
 
         emitRoundState(io, game.roomId, game, {
           remainingSeconds: 0,
@@ -604,12 +616,10 @@ export const initBingoSocket = (io) => {
           success: true,
           message: `Left room ${roomId}`,
         });
-        socket
-          .to(roomId)
-          .emit("gameUpdate", {
-            type: "playerLeft",
-            message: "A player has left the room.",
-          });
+        socket.to(roomId).emit("gameUpdate", {
+          type: "playerLeft",
+          message: "A player has left the room.",
+        });
       }
     });
 

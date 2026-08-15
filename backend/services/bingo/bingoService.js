@@ -175,6 +175,8 @@ export const createBingoGame = async (
     calledNumbers: [],
     selectedNumbers: [],
     playerCount: 0,
+    // ✅ NEW: Add selectionEndsAt for the countdown timer
+    selectionEndsAt: new Date(Date.now() + 30000),
     roundSummary: {
       playerCount: 0,
       maxPlayers,
