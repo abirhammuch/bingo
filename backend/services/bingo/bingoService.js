@@ -415,6 +415,56 @@ export const joinBingoGame = async (
   };
 };
 
+// Spectate a game (join as spectator during playing phase)
+export const joinAsSpectator = async (gameId, telegramId) => {
+  const normalizedTelegramId = normalizeTelegramId(telegramId);
+
+  if (!normalizedTelegramId) {
+    throw new Error("Telegram ID is required");
+  }
+
+  const game = await BingoGame.findOne({ gameId });
+  if (!game) {
+    throw new Error("Game not found");
+  }
+
+  // Allow spectating during READY or ACTIVE phases
+  if (game.status !== "ready" && game.status !== "active") {
+    throw new Error("Cannot spectate this round. Game is not in progress.");
+  }
+
+  const user = await User.findOne({ telegramId: normalizedTelegramId });
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  // Check if already a spectator or player
+  const existingPlayerIndex = game.players.findIndex(
+    (player) => normalizeTelegramId(player.telegramId) === normalizedTelegramId,
+  );
+
+  if (existingPlayerIndex === -1) {
+    // Add as spectator (no bet, no lucky number)
+    game.players.push({
+      telegramId: normalizedTelegramId,
+      username: user.username || "",
+      firstName: user.firstName || "Spectator",
+      lastName: user.lastName || "",
+      betAmount: 0,
+      selectedLuckyNumbers: [],
+      isSpectator: true,
+    });
+    game.playerCount = game.players.length;
+    await game.save();
+  }
+
+  return {
+    game,
+    user: { balance: user.balance, firstName: user.firstName },
+    isSpectator: true,
+  };
+};
+
 // Call a number
 export const callNumber = async (gameId) => {
   const game = await BingoGame.findOne({ gameId });

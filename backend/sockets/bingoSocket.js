@@ -1,6 +1,7 @@
 ﻿import {
   createBingoGame,
   joinBingoGame,
+  joinAsSpectator,
   startGame,
   callNumber,
   markNumber,
@@ -17,8 +18,11 @@ const gameTimers = new Map();
 const normalizeStatus = (status) => {
   const value = String(status || "").toUpperCase();
   if (value === "WAITING") return "WAITING";
-  if (value === "ACTIVE" || value === "PLAYING" || value === "LIVE") return "PLAYING";
-  if (value === "COMPLETED" || value === "FINISHED" || value === "ENDED") return "FINISHED";
+  if (value === "READY") return "READY";
+  if (value === "ACTIVE" || value === "PLAYING" || value === "LIVE")
+    return "PLAYING";
+  if (value === "COMPLETED" || value === "FINISHED" || value === "ENDED")
+    return "FINISHED";
   return "WAITING";
 };
 
@@ -31,15 +35,22 @@ const getPlayerSummary = (players = []) =>
 
 const getRemainingSelectionSeconds = (selectionEndsAt) => {
   if (!selectionEndsAt) return 0;
-  return Math.max(0, Math.ceil((new Date(selectionEndsAt).getTime() - Date.now()) / 1000));
+  return Math.max(
+    0,
+    Math.ceil((new Date(selectionEndsAt).getTime() - Date.now()) / 1000),
+  );
 };
 
 const buildRoundState = (game, extra = {}) => {
   if (!game) return { status: "WAITING", remainingSeconds: 0 };
 
   const playerCount = Number(game.playerCount ?? game.players?.length ?? 0);
-  const selectedNumbers = Array.isArray(game.selectedNumbers) ? game.selectedNumbers : [];
-  const calledNumbers = Array.isArray(game.calledNumbers) ? game.calledNumbers : [];
+  const selectedNumbers = Array.isArray(game.selectedNumbers)
+    ? game.selectedNumbers
+    : [];
+  const calledNumbers = Array.isArray(game.calledNumbers)
+    ? game.calledNumbers
+    : [];
   const remainingSeconds =
     typeof extra.remainingSeconds === "number"
       ? extra.remainingSeconds
@@ -122,7 +133,9 @@ const startSelectionCountdown = async (io, gameId, roomId) => {
         return;
       }
 
-      const remainingSeconds = getRemainingSelectionSeconds(latest.selectionEndsAt);
+      const remainingSeconds = getRemainingSelectionSeconds(
+        latest.selectionEndsAt,
+      );
       emitRoundState(io, roomId, latest, {
         remainingSeconds,
         status: "WAITING",
@@ -132,7 +145,7 @@ const startSelectionCountdown = async (io, gameId, roomId) => {
         clearInterval(intervalId);
         stopSelectionTimer(gameId);
 
-        latest.status = "active";
+        latest.status = "ready";
         latest.selectionEndsAt = null;
         latest.roundStartedAt = new Date();
         latest.playerCount = latest.players.length;
@@ -140,10 +153,8 @@ const startSelectionCountdown = async (io, gameId, roomId) => {
 
         emitRoundState(io, roomId, latest, {
           remainingSeconds: 0,
-          status: "PLAYING",
+          status: "READY",
         });
-
-        startNumberCalling(io, latest.gameId, latest.roomId);
       }
     } catch (error) {
       console.error("Selection countdown error:", error.message || error);
@@ -207,7 +218,11 @@ const startNumberCalling = (io, gameId, roomId) => {
         remaining: Math.max(0, 75 - result.calledNumbers.length),
       });
 
-      if (result.gameEnded && Array.isArray(result.winners) && result.winners.length > 0) {
+      if (
+        result.gameEnded &&
+        Array.isArray(result.winners) &&
+        result.winners.length > 0
+      ) {
         stopCallerTimer(gameId);
         const winnerGame = await getGameState(gameId).catch(() => null);
 
@@ -260,7 +275,11 @@ const startNumberCalling = (io, gameId, roomId) => {
                 remainingSeconds: ROUND_SELECTION_SECONDS,
               });
 
-              await startSelectionCountdown(io, nextGame.gameId, nextGame.roomId);
+              await startSelectionCountdown(
+                io,
+                nextGame.gameId,
+                nextGame.roomId,
+              );
             } catch (error) {
               console.error("Next round setup error:", error.message || error);
             }
@@ -278,12 +297,19 @@ const startNumberCalling = (io, gameId, roomId) => {
 
 const emitCurrentRoundState = async (socket) => {
   try {
-    const game = await BingoGame.findOne({ status: { $in: ["waiting", "active"] } }).sort({ updatedAt: -1 }).lean();
+    const game = await BingoGame.findOne({
+      status: { $in: ["waiting", "active"] },
+    })
+      .sort({ updatedAt: -1 })
+      .lean();
     if (game) {
       socket.emit("bingo:roundState", buildRoundState(game));
     }
   } catch (error) {
-    console.warn("Unable to fetch current round state:", error.message || error);
+    console.warn(
+      "Unable to fetch current round state:",
+      error.message || error,
+    );
   }
 };
 
@@ -315,7 +341,10 @@ export const initBingoSocket = (io) => {
         await startSelectionCountdown(io, game.gameId, game.roomId);
       } catch (error) {
         console.error("Create Room Error:", error.message);
-        socket.emit("error", { success: false, message: error.message || "Failed to create room" });
+        socket.emit("error", {
+          success: false,
+          message: error.message || "Failed to create room",
+        });
       }
     });
 
@@ -323,13 +352,57 @@ export const initBingoSocket = (io) => {
       try {
         const { gameId, telegramId, betAmount, luckyNumber = null } = data;
 
-        if (!gameId || !telegramId || !betAmount || betAmount < 1) {
-          const response = { success: false, message: "Invalid data. GameId, TelegramId, and a valid bet are required." };
+        if (!gameId || !telegramId) {
+          const response = {
+            success: false,
+            message: "GameId and TelegramId are required.",
+          };
           if (typeof callback === "function") return callback(response);
           return socket.emit("error", response);
         }
 
-        const result = await joinBingoGame(gameId, telegramId, betAmount, luckyNumber);
+        let result;
+        let isSpectator = false;
+
+        // Try to join as a player first (during WAITING phase)
+        if (betAmount && betAmount >= 1) {
+          try {
+            result = await joinBingoGame(
+              gameId,
+              telegramId,
+              betAmount,
+              luckyNumber,
+            );
+          } catch (playerJoinError) {
+            // If player join fails, try to spectate instead
+            try {
+              result = await joinAsSpectator(gameId, telegramId);
+              isSpectator = true;
+            } catch (spectateError) {
+              throw playerJoinError;
+            }
+          }
+        } else {
+          // No bet provided, try to spectate
+          try {
+            result = await joinAsSpectator(gameId, telegramId);
+            isSpectator = true;
+          } catch (spectateError) {
+            // If spectate fails, try normal join anyway
+            if (!betAmount || betAmount < 1) {
+              throw new Error(
+                "Invalid data. GameId, TelegramId, and a valid bet are required.",
+              );
+            }
+            result = await joinBingoGame(
+              gameId,
+              telegramId,
+              betAmount,
+              luckyNumber,
+            );
+          }
+        }
+
         socket.join(result.game.roomId);
 
         socket.emit("joinedRoom", {
@@ -343,6 +416,7 @@ export const initBingoSocket = (io) => {
           playerCount: result.game.players.length,
           players: getPlayerSummary(result.game.players),
           selectedNumbers: result.game.selectedNumbers || [],
+          isSpectator: isSpectator,
         });
 
         const currentGame = await getGameState(result.game.gameId);
@@ -355,11 +429,15 @@ export const initBingoSocket = (io) => {
             roomId: result.game.roomId,
             selectedNumbers: currentGame.selectedNumbers || [],
             playerCount: currentGame.players.length,
+            isSpectator: isSpectator,
           });
         }
       } catch (error) {
         console.error("JOIN ROOM ERROR:", error.message);
-        const response = { success: false, message: error.message || "Failed to join room" };
+        const response = {
+          success: false,
+          message: error.message || "Failed to join room",
+        };
         if (typeof callback === "function") return callback(response);
         socket.emit("error", response);
       }
@@ -368,7 +446,11 @@ export const initBingoSocket = (io) => {
     socket.on("startGame", async (data) => {
       try {
         const { gameId } = data;
-        if (!gameId) return socket.emit("error", { success: false, message: "Game ID is required" });
+        if (!gameId)
+          return socket.emit("error", {
+            success: false,
+            message: "Game ID is required",
+          });
 
         const game = await startGame(gameId);
         game.status = "active";
@@ -384,7 +466,10 @@ export const initBingoSocket = (io) => {
         startNumberCalling(io, game.gameId, game.roomId);
       } catch (error) {
         console.error("Start Game Error:", error.message);
-        socket.emit("error", { success: false, message: error.message || "Failed to start game" });
+        socket.emit("error", {
+          success: false,
+          message: error.message || "Failed to start game",
+        });
       }
     });
 
@@ -392,7 +477,10 @@ export const initBingoSocket = (io) => {
       try {
         const { gameId, telegramId, number } = data;
         if (!gameId || !telegramId || !number) {
-          return socket.emit("error", { success: false, message: "GameId, TelegramId, and Number are required" });
+          return socket.emit("error", {
+            success: false,
+            message: "GameId, TelegramId, and Number are required",
+          });
         }
 
         const result = await markNumber(gameId, telegramId, number);
@@ -449,7 +537,11 @@ export const initBingoSocket = (io) => {
                 remainingSeconds: ROUND_SELECTION_SECONDS,
               });
 
-              await startSelectionCountdown(io, nextGame.gameId, nextGame.roomId);
+              await startSelectionCountdown(
+                io,
+                nextGame.gameId,
+                nextGame.roomId,
+              );
             } catch (err) {
               console.error("Failed to create next round:", err.message || err);
             }
@@ -457,7 +549,10 @@ export const initBingoSocket = (io) => {
         }
       } catch (error) {
         console.error("Mark Number Error:", error.message);
-        socket.emit("error", { success: false, message: "Failed to mark number" });
+        socket.emit("error", {
+          success: false,
+          message: "Failed to mark number",
+        });
       }
     });
 
@@ -490,7 +585,11 @@ export const initBingoSocket = (io) => {
       try {
         const { gameId, telegramId } = data;
         const card = await getPlayerCard(gameId, telegramId);
-        socket.emit("playerCard", { success: true, card: card.card, markedNumbers: card.markedNumbers });
+        socket.emit("playerCard", {
+          success: true,
+          card: card.card,
+          markedNumbers: card.markedNumbers,
+        });
       } catch (error) {
         console.error("Get Card Error:", error.message);
         socket.emit("error", { success: false, message: error.message });
@@ -501,8 +600,16 @@ export const initBingoSocket = (io) => {
       const { roomId } = data;
       if (roomId) {
         socket.leave(roomId);
-        socket.emit("leftRoom", { success: true, message: `Left room ${roomId}` });
-        socket.to(roomId).emit("gameUpdate", { type: "playerLeft", message: "A player has left the room." });
+        socket.emit("leftRoom", {
+          success: true,
+          message: `Left room ${roomId}`,
+        });
+        socket
+          .to(roomId)
+          .emit("gameUpdate", {
+            type: "playerLeft",
+            message: "A player has left the room.",
+          });
       }
     });
 
