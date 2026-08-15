@@ -5,7 +5,10 @@ import User from "../../models/User.js";
 dotenv.config();
 
 const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
-const rawWebAppUrl = process.env.TELEGRAM_WEBAPP_URL || "";
+const rawWebAppUrl =
+  process.env.TELEGRAM_WEBAPP_URL ||
+  process.env.FRONTEND_URL ||
+  "https://bingo-zeta-livid.vercel.app";
 const telegramWebAppUrl = rawWebAppUrl
   .replace(/\/login\/?$/, "")
   .replace(/\/$/, "");
