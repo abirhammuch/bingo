@@ -1,4 +1,3 @@
-
 import { io } from "socket.io-client";
 
 const normalizeUrl = (rawUrl) =>
@@ -29,15 +28,28 @@ const socket = io(URL, {
 });
 
 socket.on("connect", () => {
-  console.log("Socket connected to", URL);
+  console.log("✅ Socket connected to", URL);
 });
 
 socket.on("connect_error", (err) => {
-  console.error("Socket connect error:", err);
+  console.error("❌ Socket connect error:", err);
 });
 
 socket.on("disconnect", (reason) => {
-  console.warn("Socket disconnected:", reason);
+  console.warn("⚠️ Socket disconnected:", reason);
 });
+
+// ✅ EXPORT THIS FUNCTION TO SEND TELEGRAM INITDATA
+export const authenticateTelegram = (initData) => {
+  if (!initData) {
+    console.warn("⚠️ No initData found");
+    return;
+  }
+
+  // Always decode the initData before sending
+  const decodedInitData = decodeURIComponent(initData);
+  console.log("📤 [SENDING INITDATA TO BACKEND]");
+  socket.emit("auth", { initData: decodedInitData });
+};
 
 export default socket;

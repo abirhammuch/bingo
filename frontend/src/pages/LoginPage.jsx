@@ -10,6 +10,7 @@ const LoginPage = () => {
   const [loginCode, setLoginCode] = useState("");
   const [error, setError] = useState(null);
   const [isTelegramWebApp, setIsTelegramWebApp] = useState(false);
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -39,24 +40,33 @@ const LoginPage = () => {
     }
 
     setIsTelegramWebApp(true);
+    setIsAuthenticating(true);
 
     const doWebAppLogin = async () => {
       setError(null);
       try {
-        const result = await loginWithTelegramInitData({ initData });
-        console.log("✅ LoginPage WebApp login successful", result);
-        // Add small delay to ensure auth context updates
+        // ✅ FIX 1: Decode the initData before sending
+        const decodedInitData = decodeURIComponent(initData);
+        console.log("🔐 [LoginPage] Sending decoded initData to backend...");
+
+        const result = await loginWithTelegramInitData({
+          initData: decodedInitData,
+        });
+        console.log("✅ [LoginPage] WebApp login successful", result);
+
+        // ✅ FIX 2: Only navigate on success
         setTimeout(() => {
           navigate("/bingopage", { replace: true });
         }, 500);
       } catch (err) {
-        console.warn("Telegram WebApp login failed:", err);
+        console.warn("❌ [LoginPage] Telegram WebApp login failed:", err);
         setError(err.message || "Login failed");
+
+        // Prompt user to share contact as fallback
         promptTelegramShareContact();
-        // Navigate anyway so user sees the game loading screen
-        setTimeout(() => {
-          navigate("/bingopage", { replace: true });
-        }, 1000);
+
+        // ✅ FIX 3: Do NOT navigate on failure — let the user stay and retry
+        setIsAuthenticating(false);
       }
     };
 
@@ -73,16 +83,21 @@ const LoginPage = () => {
           Use the Telegram bot to generate a login code, then enter your
           Telegram ID and the code here.
         </p>
+
         {isTelegramWebApp && (
           <div className="mb-4 rounded-2xl border border-emerald-600 bg-emerald-950/80 px-4 py-3 text-emerald-200">
-            Telegram WebApp detected. Logging in automatically...
+            {isAuthenticating
+              ? "Logging in automatically..."
+              : "Telegram WebApp detected."}
           </div>
         )}
+
         {error && (
           <div className="mb-4 rounded-2xl border border-rose-600 bg-rose-950/80 px-4 py-3 text-rose-200">
             {error}
           </div>
         )}
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <label className="block">
             <span className="text-slate-300 text-sm">Telegram ID</span>
@@ -92,7 +107,7 @@ const LoginPage = () => {
               className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100 outline-none focus:border-emerald-500"
               placeholder="123456789"
               required
-              disabled={isTelegramWebApp}
+              disabled={isTelegramWebApp || isAuthenticating}
             />
           </label>
 
@@ -104,7 +119,7 @@ const LoginPage = () => {
               className="mt-2 w-full rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100 outline-none focus:border-emerald-500"
               placeholder="Enter code from Telegram bot"
               required
-              disabled={isTelegramWebApp}
+              disabled={isTelegramWebApp || isAuthenticating}
             />
           </label>
           <div className="text-xs text-slate-500">
@@ -114,10 +129,12 @@ const LoginPage = () => {
 
           <button
             type="submit"
-            disabled={loading || isTelegramWebApp}
+            disabled={loading || isTelegramWebApp || isAuthenticating}
             className="w-full rounded-2xl bg-emerald-500 px-4 py-3 text-slate-950 font-semibold hover:bg-emerald-400 disabled:opacity-70"
           >
-            {loading ? "Logging in..." : "Login with Telegram"}
+            {loading || isAuthenticating
+              ? "Logging in..."
+              : "Login with Telegram"}
           </button>
         </form>
       </div>

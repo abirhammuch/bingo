@@ -19,10 +19,26 @@ import { useAuth } from "../../context/AuthContext";
 
 const Bingo = ({ theme }) => {
   const themeMap = {
-    green: { accentText: "text-emerald-300", accentBg: "bg-emerald-600/20", accentIcon: "text-emerald-400" },
-    yellow: { accentText: "text-amber-300", accentBg: "bg-amber-600/20", accentIcon: "text-amber-400" },
-    blue: { accentText: "text-sky-300", accentBg: "bg-sky-600/20", accentIcon: "text-sky-400" },
-    red: { accentText: "text-rose-300", accentBg: "bg-rose-600/20", accentIcon: "text-rose-400" },
+    green: {
+      accentText: "text-emerald-300",
+      accentBg: "bg-emerald-600/20",
+      accentIcon: "text-emerald-400",
+    },
+    yellow: {
+      accentText: "text-amber-300",
+      accentBg: "bg-amber-600/20",
+      accentIcon: "text-amber-400",
+    },
+    blue: {
+      accentText: "text-sky-300",
+      accentBg: "bg-sky-600/20",
+      accentIcon: "text-sky-400",
+    },
+    red: {
+      accentText: "text-rose-300",
+      accentBg: "bg-rose-600/20",
+      accentIcon: "text-rose-400",
+    },
   };
 
   const accent = themeMap[theme] || themeMap.green;
@@ -51,15 +67,24 @@ const Bingo = ({ theme }) => {
     if (!payload) return;
 
     const nextStatus = String(payload.status || "WAITING").toUpperCase();
-    const nextPhase = nextStatus === "WAITING" ? "selection" : nextStatus === "PLAYING" ? "live" : "finished";
+    const nextPhase =
+      nextStatus === "WAITING"
+        ? "selection"
+        : nextStatus === "PLAYING"
+          ? "live"
+          : "finished";
 
     setRoundStatus(nextStatus);
     setPhase(nextPhase);
     setRemainingSeconds(
-      typeof payload.remainingSeconds === "number" ? payload.remainingSeconds : 30,
+      typeof payload.remainingSeconds === "number"
+        ? payload.remainingSeconds
+        : 30,
     );
     setSelectionCountdown(
-      typeof payload.remainingSeconds === "number" ? payload.remainingSeconds : 30,
+      typeof payload.remainingSeconds === "number"
+        ? payload.remainingSeconds
+        : 30,
     );
     setParticipantCount(
       typeof payload.playerCount === "number"
@@ -70,8 +95,12 @@ const Bingo = ({ theme }) => {
             ? payload.players.length
             : 0,
     );
-    setSelectedNumbersGlobal(Array.isArray(payload.selectedNumbers) ? payload.selectedNumbers : []);
-    setCalledNumbers(Array.isArray(payload.calledNumbers) ? payload.calledNumbers : []);
+    setSelectedNumbersGlobal(
+      Array.isArray(payload.selectedNumbers) ? payload.selectedNumbers : [],
+    );
+    setCalledNumbers(
+      Array.isArray(payload.calledNumbers) ? payload.calledNumbers : [],
+    );
     setCurrentNumber(payload.currentNumber ?? null);
     setWinner(payload.winner ?? null);
     if (payload.gameId) setRoundId(payload.gameId);
@@ -98,7 +127,28 @@ const Bingo = ({ theme }) => {
       setPhase("finished");
     };
 
+    // ✅ Connect the socket
     if (!socket.connected) socket.connect();
+
+    // ✅ Send Telegram initData as soon as the socket connects
+    const handleConnect = () => {
+      console.log("✅ Socket connected! Checking Telegram initData...");
+      if (typeof window !== "undefined" && window.Telegram?.WebApp) {
+        const initData = window.Telegram.WebApp.initData;
+        if (initData) {
+          // Decode and send initData
+          const decodedInitData = decodeURIComponent(initData);
+          console.log("📤 SENDING INITDATA TO BACKEND");
+          socket.emit("auth", { initData: decodedInitData });
+        } else {
+          console.warn("⚠️ Telegram WebApp exists but no initData found.");
+        }
+      } else {
+        console.warn("⚠️ Not running inside Telegram WebApp.");
+      }
+    };
+
+    socket.on("connect", handleConnect);
 
     socket.on("bingo:roundState", handleRoundState);
     socket.on("bingo:winner", handleWinner);
@@ -119,9 +169,11 @@ const Bingo = ({ theme }) => {
     });
 
     return () => {
+      socket.off("connect", handleConnect);
       socket.off("bingo:roundState", handleRoundState);
       socket.off("bingo:winner", handleWinner);
       socket.off("bingo:roundFinished", handleWinner);
+      socket.off("bingo:nextRound");
     };
   }, []);
 
@@ -137,7 +189,11 @@ const Bingo = ({ theme }) => {
   const toggleLuckyNumber = (number) => {
     if (roundStatus !== "WAITING") return;
     if (mySelections.includes(number)) return;
-    if (selectedNumbersGlobal.includes(number) && !mySelections.includes(number)) return;
+    if (
+      selectedNumbersGlobal.includes(number) &&
+      !mySelections.includes(number)
+    )
+      return;
     if (!authUser?.telegramId || !roundId) return;
 
     if (!socket.connected) socket.connect();
@@ -170,8 +226,10 @@ const Bingo = ({ theme }) => {
     });
   };
 
-  const joinButtonDisabled = roundStatus !== "WAITING" || mySelections.length >= 2;
-  const joinButtonLabel = roundStatus === "WAITING" ? "Tap to select" : "Waiting...";
+  const joinButtonDisabled =
+    roundStatus !== "WAITING" || mySelections.length >= 2;
+  const joinButtonLabel =
+    roundStatus === "WAITING" ? "Tap to select" : "Waiting...";
 
   return (
     <div className="min-h-screen bg-linear-to-b from-slate-950 to-slate-900 flex flex-col">
