@@ -38,11 +38,11 @@ const LoginPage = () => {
       setError(null);
       try {
         await loginWithTelegramInitData({ initData });
-        navigate("/bingopage", { replace: true });
+        navigate("/", { replace: true });
       } catch (err) {
         console.warn("Telegram WebApp registration check failed:", err);
         promptTelegramShareContact();
-        navigate("/bingopage", { replace: true });
+        navigate("/", { replace: true });
       }
     };
 
