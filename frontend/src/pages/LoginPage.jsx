@@ -56,7 +56,7 @@ const LoginPage = () => {
 
         // ✅ Restore the correct route that exists in the app
         setTimeout(() => {
-          navigate("/", { replace: true });
+          navigate("/bingopage", { replace: true });
         }, 500);
       } catch (err) {
         console.warn("❌ [LoginPage] Telegram WebApp login failed:", err);
