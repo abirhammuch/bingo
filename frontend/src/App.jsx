@@ -54,6 +54,7 @@ const App = () => {
           <Routes>
             <Route path="/" element={<LobbyPage theme={theme} />} />
             <Route path="/lobby" element={<LobbyPage theme={theme} />} />
+            <Route path="/bingopage" element={<LobbyPage theme={theme} />} />
             <Route path="/history" element={<HistoryPage />} />
             <Route path="/profile" element={<ProfilePage />} />
             <Route path="/referral" element={<Invite />} />
