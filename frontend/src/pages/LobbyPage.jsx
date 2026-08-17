@@ -3,10 +3,13 @@ import BingoPage from "./bingopage/BingoPage";
 import Footer from "../components/footer/Footer";
 
 const LobbyPage = () => {
+  // Don't show Footer in Telegram WebApp
+  const hasTelegram = !!window?.Telegram?.WebApp;
+
   return (
-    <div className="pb-16">
+    <div className={hasTelegram ? "" : "pb-16"}>
       <BingoPage />
-      <Footer />
+      {!hasTelegram && <Footer />}
     </div>
   );
 };
