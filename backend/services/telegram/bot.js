@@ -26,16 +26,6 @@ const telegramWebAppUrl = rawWebAppUrl
   .replace(/\/login\/?$/, "")
   .replace(/\/$/, "");
 
-const playGameButton = () => {
-  if (!telegramWebAppUrl) {
-    return null;
-  }
-
-  return Markup.inlineKeyboard([
-    [Markup.button.webApp("🎮 Play Game", telegramWebAppUrl)],
-  ]).resize();
-};
-
 const launchBot = async () => {
   if (!TELEGRAM_BOT_TOKEN) {
     console.warn(
@@ -43,7 +33,6 @@ const launchBot = async () => {
     );
     return false;
   }
-  
 
   if (TELEGRAM_BOT_LAUNCH_DISABLED) {
     console.warn(
@@ -85,11 +74,9 @@ const needsPhoneRegistration = (user) => {
 };
 
 const sendLoginPrompt = async (ctx, user) => {
-  const keyboard =
-    playGameButton() ||
-    Markup.keyboard([["🎮 Play Game"], ["👤 My Profile", "💰 Wallet"]])
-      .resize()
-      .oneTime();
+  const keyboard = Markup.keyboard([["👤 My Profile", "💰 Wallet"]])
+    .resize()
+    .oneTime();
 
   await ctx.reply(
     user && needsPhoneRegistration(user)
@@ -133,35 +120,6 @@ bot.hears(/🔑 Login|Login/i, async (ctx) => {
   return bot.handleUpdate({
     message: { text: "/login", chat: ctx.chat, from: ctx.from },
   });
-});
-
-bot.hears("🎮 Play Game", async (ctx) => {
-  try {
-    const telegramId = ctx.from.id.toString();
-    const user = await User.findOne({ telegramId });
-
-    if (!user) {
-      return ctx.reply("Please start the bot first with /start.");
-    }
-
-    if (needsPhoneRegistration(user)) {
-      return ctx.reply(
-        "Your phone number is required to play games. Please share your contact now to complete registration.",
-        registrationKeyboard(),
-      );
-    }
-
-    if (!telegramWebAppUrl) {
-      return ctx.reply(
-        "Game is not configured yet. Please contact the admin or try again later.",
-      );
-    }
-
-    await ctx.reply("Opening Marshal Game...", playGameButton());
-  } catch (error) {
-    console.error("Play Game error:", error);
-    await ctx.reply("❌ Could not open the game. Please try again.");
-  }
 });
 
 bot.hears("👤 My Profile", async (ctx) => {
@@ -266,12 +224,9 @@ bot.start(async (ctx) => {
       return;
     }
 
-    const keyboard = playGameButton();
-    const replyMarkup =
-      keyboard ||
-      Markup.keyboard([["🎮 Play Game"], ["👤 My Profile", "💰 Wallet"]])
-        .resize()
-        .oneTime();
+    const replyMarkup = Markup.keyboard([["👤 My Profile", "💰 Wallet"]])
+      .resize()
+      .oneTime();
 
     await ctx.reply(
       `You are all set! Use the button below to continue.`,
@@ -315,11 +270,9 @@ bot.on("contact", async (ctx) => {
       await user.save();
     }
 
-    const keyboard =
-      playGameButton() ||
-      Markup.keyboard([["🎮 Play Game"], ["👤 My Profile", "💰 Wallet"]])
-        .resize()
-        .oneTime();
+    const keyboard = Markup.keyboard([["👤 My Profile", "💰 Wallet"]])
+      .resize()
+      .oneTime();
 
     await ctx.reply(
       `🎉 Registration successful!\n\n` +
