@@ -118,8 +118,18 @@ const startServer = async () => {
   }
 };
 
-const shutdown = () => {
+const shutdown = async () => {
   console.log("Shutting down server...");
+
+  try {
+    if (bot && typeof bot.stop === "function") {
+      await bot.stop("SIGTERM");
+      console.log("Telegram bot stopped cleanly.");
+    }
+  } catch (error) {
+    console.warn("Telegram bot stop warning:", error.message);
+  }
+
   server.close(() => process.exit(0));
   setTimeout(() => process.exit(1), 5000);
 };
