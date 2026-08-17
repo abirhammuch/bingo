@@ -43,6 +43,7 @@ const launchBot = async () => {
     );
     return false;
   }
+  
 
   if (TELEGRAM_BOT_LAUNCH_DISABLED) {
     console.warn(
