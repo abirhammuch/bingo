@@ -41,7 +41,7 @@ const LoginPage = () => {
         console.log("✅ LoginPage WebApp login successful", result);
         // Add small delay to ensure auth context updates
         setTimeout(() => {
-          navigate("/", { replace: true });
+          navigate("/bingopage", { replace: true });
         }, 500);
       } catch (err) {
         console.warn("Telegram WebApp login failed:", err);
@@ -49,7 +49,7 @@ const LoginPage = () => {
         promptTelegramShareContact();
         // Navigate anyway so user sees the game loading screen
         setTimeout(() => {
-          navigate("/", { replace: true });
+          navigate("/bingopage", { replace: true });
         }, 1000);
       }
     };
