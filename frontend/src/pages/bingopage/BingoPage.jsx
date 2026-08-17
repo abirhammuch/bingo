@@ -8,6 +8,7 @@ const BingoPage = () => {
   const navigate = useNavigate();
   const { user: authUser, loginWithTelegramInitData } = useAuth();
   const [showDevMode, setShowDevMode] = useState(false);
+  const [authError, setAuthError] = useState(null);
 
   useEffect(() => {
     const telegram = window?.Telegram?.WebApp;
@@ -66,6 +67,7 @@ const BingoPage = () => {
             error: err.message,
             stack: err.stack,
           });
+          setAuthError(err.message);
           promptTelegramShareContact();
         });
       return;
@@ -119,13 +121,34 @@ const BingoPage = () => {
           flexDirection: "column",
           justifyContent: "center",
           alignItems: "center",
+          backgroundColor: "#0f172a",
         }}
       >
         <div style={{ marginBottom: "20px", fontSize: "18px" }}>
           ⏳ Loading your profile...
         </div>
 
-        {!hasTelegram && (
+        {authError && (
+          <div
+            style={{
+              fontSize: "14px",
+              color: "#ffcccc",
+              maxWidth: "400px",
+              margin: "20px auto",
+              padding: "15px",
+              backgroundColor: "rgba(255,0,0,0.1)",
+              borderRadius: "8px",
+              lineHeight: "1.6",
+            }}
+          >
+            <p>
+              ❌ <strong>Authentication Error</strong>
+            </p>
+            <p>{authError}</p>
+          </div>
+        )}
+
+        {!hasTelegram && !authError && (
           <div
             style={{
               fontSize: "14px",
@@ -180,7 +203,7 @@ const BingoPage = () => {
           </div>
         )}
 
-        {hasTelegram && (
+        {hasTelegram && !authError && (
           <div
             style={{
               fontSize: "12px",
@@ -192,7 +215,7 @@ const BingoPage = () => {
               borderRadius: "8px",
             }}
           >
-            <p>Telegram WebApp detected, waiting for authentication...</p>
+            <p>✅ Telegram WebApp detected, waiting for authentication...</p>
             <p style={{ fontSize: "11px", marginTop: "10px" }}>
               If this takes too long, refresh the page.
             </p>
@@ -204,7 +227,7 @@ const BingoPage = () => {
 
   return (
     <div>
-      <Bingo />
+      <Bingo theme="green" />
     </div>
   );
 };

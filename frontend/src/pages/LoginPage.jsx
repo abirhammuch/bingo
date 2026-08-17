@@ -37,12 +37,20 @@ const LoginPage = () => {
     const doWebAppLogin = async () => {
       setError(null);
       try {
-        await loginWithTelegramInitData({ initData });
-        navigate("/", { replace: true });
+        const result = await loginWithTelegramInitData({ initData });
+        console.log("✅ LoginPage WebApp login successful", result);
+        // Add small delay to ensure auth context updates
+        setTimeout(() => {
+          navigate("/", { replace: true });
+        }, 500);
       } catch (err) {
-        console.warn("Telegram WebApp registration check failed:", err);
+        console.warn("Telegram WebApp login failed:", err);
+        setError(err.message || "Login failed");
         promptTelegramShareContact();
-        navigate("/", { replace: true });
+        // Navigate anyway so user sees the game loading screen
+        setTimeout(() => {
+          navigate("/", { replace: true });
+        }, 1000);
       }
     };
 
