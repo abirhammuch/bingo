@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 
 const Countdown = ({
   seconds = 30,
@@ -6,9 +6,14 @@ const Countdown = ({
   selectedCardsCount = 0,
 }) => {
   const [timeLeft, setTimeLeft] = useState(seconds);
+  const prevSecondsRef = useRef(seconds);
 
   useEffect(() => {
-    setTimeLeft(seconds);
+    // Only reset the timer if seconds increased (new round), not on every update
+    if (seconds > prevSecondsRef.current) {
+      setTimeLeft(seconds);
+      prevSecondsRef.current = seconds;
+    }
 
     const interval = setInterval(() => {
       setTimeLeft((prev) => {

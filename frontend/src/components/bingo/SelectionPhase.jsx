@@ -1,4 +1,5 @@
 import React, { memo } from "react";
+import Countdown from "./Countdown";
 
 const SelectionPhase = ({
   selectionCountdown,
@@ -87,6 +88,13 @@ const SelectionPhase = ({
           Select Card 2
         </button>
       </div>
+
+      {/* Countdown Timer */}
+      <Countdown
+        seconds={selectionCountdown}
+        label="Time To Close Selection"
+        selectedCardsCount={mySelections.length}
+      />
     </div>
   );
 };

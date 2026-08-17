@@ -13,7 +13,7 @@ import BingoGame from "../models/BingoGame.js";
 
 const ROUND_SELECTION_SECONDS = 30;
 const CALL_INTERVAL_MS = 5000;
-const selectionTimers = new Map();
+const selectionTimers = new Map(); // Maps gameId -> { intervalId, startTime, endTime }
 const gameTimers = new Map();
 
 const normalizeStatus = (status) => {
@@ -123,7 +123,9 @@ const startSelectionCountdown = async (io, gameId, roomId) => {
   }
 
   game.status = "waiting";
-  game.selectionEndsAt = new Date(Date.now() + ROUND_SELECTION_SECONDS * 1000);
+  const startTime = Date.now();
+  const endTime = startTime + ROUND_SELECTION_SECONDS * 1000;
+  game.selectionEndsAt = new Date(endTime);
   game.currentNumber = null;
   game.calledNumbers = [];
   game.winner = null;
@@ -134,34 +136,37 @@ const startSelectionCountdown = async (io, gameId, roomId) => {
     `✅ [TIMER START] Game saved with selectionEndsAt: ${game.selectionEndsAt}`,
   );
 
+  // Calculate initial remaining seconds
+  let remainingSeconds = ROUND_SELECTION_SECONDS;
+
   emitRoundState(io, roomId, game, {
-    remainingSeconds: ROUND_SELECTION_SECONDS,
+    remainingSeconds,
     status: "WAITING",
   });
 
+  let lastEmittedSeconds = ROUND_SELECTION_SECONDS;
+
   const intervalId = setInterval(async () => {
     try {
-      const latest = await getGameState(gameId).catch(() => null);
-      if (!latest) {
-        console.warn(
-          `⚠️ [TIMER TICK] Game not found, stopping timer: ${gameId}`,
-        );
-        clearInterval(intervalId);
-        stopSelectionTimer(gameId);
-        return;
+      const now = Date.now();
+      remainingSeconds = Math.max(0, Math.ceil((endTime - now) / 1000));
+
+      // Only emit if the remaining seconds have changed
+      if (remainingSeconds !== lastEmittedSeconds) {
+        lastEmittedSeconds = remainingSeconds;
+
+        const latest = await getGameState(gameId).catch(() => null);
+        if (latest) {
+          console.log(
+            `⏱️ [TIMER TICK] gameId: ${gameId}, remaining: ${remainingSeconds}s, status: ${latest.status}`,
+          );
+
+          emitRoundState(io, roomId, latest, {
+            remainingSeconds,
+            status: "WAITING",
+          });
+        }
       }
-
-      const remainingSeconds = getRemainingSelectionSeconds(
-        latest.selectionEndsAt,
-      );
-      console.log(
-        `⏱️ [TIMER TICK] gameId: ${gameId}, remaining: ${remainingSeconds}s, status: ${latest.status}`,
-      );
-
-      emitRoundState(io, roomId, latest, {
-        remainingSeconds,
-        status: "WAITING",
-      });
 
       if (remainingSeconds <= 0) {
         console.log(
@@ -206,7 +211,7 @@ const startSelectionCountdown = async (io, gameId, roomId) => {
     }
   }, 1000);
 
-  selectionTimers.set(gameId, { intervalId });
+  selectionTimers.set(gameId, { intervalId, startTime, endTime });
   console.log(
     `✅ [TIMER REGISTERED] Interval ID registered for gameId: ${gameId}`,
   );
