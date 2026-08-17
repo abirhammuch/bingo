@@ -9,57 +9,60 @@ const BingoPage = () => {
   const [debugInfo, setDebugInfo] = useState("Loading...");
   const [telegramFound, setTelegramFound] = useState(false);
 
-  console.log(
-    "🎮 [BingoPage] RENDER - authUser:",
-    !!authUser,
-    "debugInfo:",
-    debugInfo,
-  );
+  console.log("🎮 [BingoPage] RENDER CALLED - authUser:", !!authUser);
 
   useEffect(() => {
-    console.log("🎮 [BingoPage] Mounted");
+    console.log("🎮 [BingoPage] useEffect - MOUNTING");
 
-    // Check if user is authenticated
     if (authUser) {
-      console.log("✅ [BingoPage] Already authenticated");
+      console.log("✅ Already authenticated");
       return;
     }
 
-    // Check Telegram immediately
     const hasTelegram = !!window?.Telegram?.WebApp;
     setTelegramFound(hasTelegram);
-    console.log("🔍 Telegram found:", hasTelegram);
+    console.log("📱 Telegram SDK found:", hasTelegram);
 
     if (!hasTelegram) {
       setDebugInfo("Open from Telegram bot");
       return;
     }
 
-    // Small delay for SDK
     const timer = setTimeout(() => {
-      const telegram = window.Telegram.WebApp;
+      try {
+        const telegram = window.Telegram.WebApp;
 
-      if (telegram.ready) {
-        telegram.ready();
+        if (telegram.ready) {
+          telegram.ready();
+          console.log("✅ Telegram ready() called");
+        }
+
+        const initData = telegram.initData || telegram.initDataUnsafe?.initData;
+        console.log("🔐 initData exists:", !!initData);
+
+        if (!initData) {
+          setDebugInfo("No initData - refresh page");
+          return;
+        }
+
+        setDebugInfo("Authenticating...");
+
+        loginWithTelegramInitData({ initData })
+          .then(() => {
+            console.log("✅ Login successful!");
+            setDebugInfo("Login success!");
+          })
+          .catch((err) => {
+            console.error("❌ Login failed:", err);
+            setAuthError(err.message || "Login failed");
+            setDebugInfo("Login failed - " + (err.message || "Unknown error"));
+            promptTelegramShareContact();
+          });
+      } catch (error) {
+        console.error("❌ Exception:", error);
+        setAuthError(error.message);
+        setDebugInfo("Exception: " + error.message);
       }
-
-      const initData = telegram.initData || telegram.initDataUnsafe?.initData;
-
-      if (!initData) {
-        setDebugInfo("No initData - refresh page");
-        return;
-      }
-
-      setDebugInfo("Logging in...");
-
-      loginWithTelegramInitData({ initData })
-        .then(() => {
-          setDebugInfo("Login success!");
-        })
-        .catch((err) => {
-          setAuthError(err.message || "Login failed");
-          setDebugInfo("Login failed");
-        });
     }, 100);
 
     return () => clearTimeout(timer);
@@ -69,74 +72,79 @@ const BingoPage = () => {
 
   // Show game if authenticated
   if (authUser) {
-    return (
-      <div style={{ width: "100%", minHeight: "100vh" }}>
-        <Bingo theme="green" />
-      </div>
-    );
+    console.log("🎮 RENDERING GAME");
+    return <Bingo theme="green" />;
   }
 
-  // Show loading screen - use absolute positioning for Telegram compatibility
+  // Show loading screen
+  console.log("⏳ RENDERING LOADING SCREEN");
+
+  const loaderStyle = {
+    width: "100%",
+    minHeight: "100vh",
+    backgroundColor: "#0f172a",
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "center",
+    alignItems: "center",
+    color: "white",
+    fontFamily: "system-ui, -apple-system, sans-serif",
+    textAlign: "center",
+    padding: "20px",
+    boxSizing: "border-box",
+  };
+
   return (
-    <div
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        width: "100%",
-        height: "100%",
-        backgroundColor: "#0f172a",
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "center",
-        alignItems: "center",
-        color: "white",
-        fontFamily: "Arial, sans-serif",
-        textAlign: "center",
-        padding: "20px",
-        boxSizing: "border-box",
-        zIndex: 9999,
-      }}
-    >
-      <div style={{ fontSize: "48px", marginBottom: "20px" }}>🎮</div>
+    <div style={loaderStyle}>
+      <div style={{ fontSize: "56px", marginBottom: "25px", lineHeight: 1 }}>
+        🎮
+      </div>
+
       <h1
-        style={{ fontSize: "28px", marginBottom: "15px", fontWeight: "bold" }}
+        style={{
+          fontSize: "32px",
+          marginBottom: "15px",
+          fontWeight: "bold",
+          margin: "0 0 15px 0",
+        }}
       >
         BINGO GAME
       </h1>
+
       <div
         style={{
-          fontSize: "18px",
-          marginBottom: "30px",
+          fontSize: "20px",
+          marginBottom: "25px",
           color: "#aaffaa",
           fontWeight: "bold",
         }}
       >
         {authError ? "⚠️ ERROR" : "⏳ LOADING"}
       </div>
+
       <div
         style={{
-          fontSize: "16px",
-          color: "#fff",
+          fontSize: "18px",
+          color: "#ccc",
           marginBottom: "20px",
-          fontWeight: "500",
           minHeight: "24px",
+          fontWeight: "500",
         }}
       >
         {debugInfo}
       </div>
+
       <div
         style={{
-          fontSize: "14px",
+          fontSize: "16px",
           color: telegramFound ? "#00ff00" : "#ffcc00",
-          marginTop: "20px",
+          marginTop: "25px",
           fontWeight: "bold",
         }}
       >
-        {telegramFound ? "✓ Telegram OK" : "! Open from Bot"}
+        {telegramFound ? "✓ Telegram Detected" : "! Open from Bot"}
       </div>
+
       {authError && (
         <>
           <div
