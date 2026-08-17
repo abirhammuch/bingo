@@ -9,100 +9,75 @@ const BingoPage = () => {
   const { user: authUser, loginWithTelegramInitData } = useAuth();
   const [showDevMode, setShowDevMode] = useState(false);
   const [authError, setAuthError] = useState(null);
+  const [debugInfo, setDebugInfo] = useState("");
 
   useEffect(() => {
-    const telegram = window?.Telegram?.WebApp;
-    console.log("🔐 [BingoPage] Checking Telegram WebApp availability", {
-      hasTelegram: !!telegram,
-      telegramKeys: telegram ? Object.keys(telegram).slice(0, 10) : null,
-    });
+    // Wait a bit for Telegram SDK to fully load
+    const timer = setTimeout(() => {
+      const telegram = window?.Telegram?.WebApp;
 
-    // Try multiple ways to get initData
-    let initData = null;
-    if (telegram) {
-      initData = telegram.initData || null;
-      if (!initData && telegram.initDataUnsafe) {
-        initData = telegram.initDataUnsafe.initData || null;
+      if (!telegram) {
+        setDebugInfo("Telegram WebApp SDK not found");
+        console.log("⚠️ [BingoPage] Telegram WebApp SDK not found");
+        return;
       }
-      // Also check all properties for any that might contain initData
-      if (!initData) {
-        console.log(
-          "🔐 [BingoPage] Looking for initData in Telegram WebApp properties",
-        );
-        for (const key in telegram) {
-          if (
-            typeof telegram[key] === "string" &&
-            telegram[key].includes("hash=")
-          ) {
-            console.log(
-              `🔐 [BingoPage] Found initData-like string in telegram.${key}`,
-            );
-            initData = telegram[key];
-            break;
-          }
-        }
+
+      // Make sure Telegram WebApp is ready
+      if (telegram.ready && typeof telegram.ready === "function") {
+        telegram.ready();
       }
-    }
 
-    console.log("🔐 [BingoPage] WebApp initData check", {
-      hasInitData: !!initData,
-      initDataLength: initData?.length || 0,
-      initDataPreview: initData ? initData.substring(0, 50) + "..." : "none",
-      authUserExists: !!authUser,
-    });
-
-    if (!authUser && initData) {
-      console.log("🔐 [BingoPage] Attempting WebApp login with initData...");
-      loginWithTelegramInitData({ initData })
-        .then((result) => {
-          console.log("✅ [BingoPage] WebApp login returned", {
-            hasResult: !!result,
-            telegramId: result?.user?.telegramId,
-            firstName: result?.user?.firstName,
-            hasToken: !!result?.token,
-          });
-        })
-        .catch((err) => {
-          console.error("❌ [BingoPage] WebApp login API call failed", {
-            error: err.message,
-            stack: err.stack,
-          });
-          setAuthError(err.message);
-          promptTelegramShareContact();
-        });
-      return;
-    }
-
-    if (!authUser && !initData) {
-      console.log(
-        "⚠️ [BingoPage] No authUser and no initData - checking localStorage...",
-      );
-      const storedToken = localStorage.getItem("authToken");
-      const storedUser = localStorage.getItem("authUser");
-      console.log("📦 [BingoPage] LocalStorage check", {
-        hasStoredToken: !!storedToken,
-        hasStoredUser: !!storedUser,
+      console.log("✅ [BingoPage] Telegram WebApp SDK loaded", {
+        hasReady: !!telegram.ready,
+        hasInitData: !!telegram.initData,
       });
-      return;
-    }
 
-    if (!authUser) {
-      console.log("⏳ [BingoPage] Waiting for authUser...");
-      return;
-    }
+      // Try multiple ways to get initData
+      let initData = null;
+      if (telegram.initData) {
+        initData = telegram.initData;
+        setDebugInfo("Got initData from telegram.initData");
+      } else if (telegram.initDataUnsafe?.initData) {
+        initData = telegram.initDataUnsafe.initData;
+        setDebugInfo("Got initData from telegram.initDataUnsafe.initData");
+      }
 
-    console.log("👤 [BingoPage] authUser available", {
-      telegramId: authUser.telegramId,
-      firstName: authUser.firstName,
-      isRegistered: authUser.isRegistered,
-    });
+      console.log("🔐 [BingoPage] WebApp initData check", {
+        hasInitData: !!initData,
+        initDataLength: initData?.length || 0,
+        authUserExists: !!authUser,
+      });
 
-    if (authUser.isRegistered === false) {
-      console.log(
-        "📱 [BingoPage] User not registered, prompting contact share",
-      );
-      promptTelegramShareContact();
-    }
+      // If we have initData and no authUser, try to login
+      if (initData && !authUser) {
+        console.log("🔐 [BingoPage] Attempting WebApp login with initData...");
+        setDebugInfo("Authenticating with Telegram...");
+
+        loginWithTelegramInitData({ initData })
+          .then((result) => {
+            console.log("✅ [BingoPage] WebApp login successful", {
+              telegramId: result?.user?.telegramId,
+              firstName: result?.user?.firstName,
+            });
+            setDebugInfo("Authentication successful!");
+          })
+          .catch((err) => {
+            console.error("❌ [BingoPage] WebApp login failed", {
+              error: err.message,
+              status: err.response?.status,
+              data: err.response?.data,
+            });
+            setAuthError(err.message || "Authentication failed");
+            setDebugInfo(`Auth error: ${err.message}`);
+            promptTelegramShareContact();
+          });
+      } else if (!initData && !authUser) {
+        setDebugInfo("No initData available");
+        console.log("⚠️ [BingoPage] No initData found in Telegram WebApp");
+      }
+    }, 500); // Wait 500ms for SDK to load
+
+    return () => clearTimeout(timer);
   }, [authUser, loginWithTelegramInitData]);
 
   // Fallback for testing outside Telegram
@@ -125,8 +100,25 @@ const BingoPage = () => {
         }}
       >
         <div style={{ marginBottom: "20px", fontSize: "18px" }}>
-          ⏳ Loading your profile...
+          ⏳{" "}
+          {hasTelegram
+            ? "Authenticating with Telegram..."
+            : "Loading your profile..."}
         </div>
+
+        {debugInfo && (
+          <div
+            style={{
+              fontSize: "11px",
+              color: "#aaa",
+              marginBottom: "15px",
+              fontFamily: "monospace",
+              maxWidth: "400px",
+            }}
+          >
+            {debugInfo}
+          </div>
+        )}
 
         {authError && (
           <div
@@ -145,6 +137,20 @@ const BingoPage = () => {
               ❌ <strong>Authentication Error</strong>
             </p>
             <p>{authError}</p>
+            <button
+              onClick={() => window.location.reload()}
+              style={{
+                marginTop: "10px",
+                padding: "8px 16px",
+                backgroundColor: "rgba(255,255,255,0.2)",
+                color: "#fff",
+                border: "1px solid #fff",
+                borderRadius: "4px",
+                cursor: "pointer",
+              }}
+            >
+              Retry
+            </button>
           </div>
         )}
 
@@ -166,25 +172,8 @@ const BingoPage = () => {
             </p>
             <p>This app must be opened from inside the Telegram bot.</p>
             <p style={{ fontSize: "12px", marginTop: "10px", color: "#ccc" }}>
-              If you're in the bot, refresh the page (swipe down).
+              If you're in the bot, try refreshing the page.
             </p>
-            {showDevMode && (
-              <div
-                style={{
-                  marginTop: "15px",
-                  padding: "10px",
-                  backgroundColor: "rgba(0,0,0,0.3)",
-                  borderRadius: "4px",
-                  fontSize: "11px",
-                }}
-              >
-                <p>
-                  Debug: window.Telegram is{" "}
-                  {hasTelegram ? "available" : "NOT available"}
-                </p>
-                <p>Dev Info: Check browser console for detailed logs</p>
-              </div>
-            )}
             <button
               onClick={() => setShowDevMode(!showDevMode)}
               style={{
@@ -200,6 +189,24 @@ const BingoPage = () => {
             >
               {showDevMode ? "Hide" : "Show"} Debug Info
             </button>
+            {showDevMode && (
+              <div
+                style={{
+                  marginTop: "15px",
+                  padding: "10px",
+                  backgroundColor: "rgba(0,0,0,0.3)",
+                  borderRadius: "4px",
+                  fontSize: "11px",
+                  textAlign: "left",
+                  fontFamily: "monospace",
+                  color: "#0f0",
+                }}
+              >
+                <p>Telegram SDK: {hasTelegram ? "Found" : "NOT found"}</p>
+                <p>Debug: {debugInfo || "Checking..."}</p>
+                <p>Auth User: {authUser ? "Yes" : "No"}</p>
+              </div>
+            )}
           </div>
         )}
 
@@ -215,9 +222,9 @@ const BingoPage = () => {
               borderRadius: "8px",
             }}
           >
-            <p>✅ Telegram WebApp detected, waiting for authentication...</p>
+            <p>✅ Telegram WebApp detected</p>
             <p style={{ fontSize: "11px", marginTop: "10px" }}>
-              If this takes too long, refresh the page.
+              {debugInfo || "Waiting for authentication..."}
             </p>
           </div>
         )}
