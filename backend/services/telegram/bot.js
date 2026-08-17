@@ -4,7 +4,20 @@ import User from "../../models/User.js";
 
 dotenv.config();
 
-const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const TELEGRAM_BOT_LAUNCH_DISABLED =
+  String(process.env.TELEGRAM_BOT_LAUNCH_DISABLED || "")
+    .trim()
+    .toLowerCase() === "true";
+
+const bot = new Telegraf(TELEGRAM_BOT_TOKEN || "");
+
+if (!TELEGRAM_BOT_TOKEN) {
+  console.warn(
+    "⚠️ TELEGRAM_BOT_TOKEN is not set. Bot commands will not start.",
+  );
+}
+
 const rawWebAppUrl =
   process.env.TELEGRAM_WEBAPP_URL ||
   process.env.FRONTEND_URL ||
@@ -21,6 +34,41 @@ const playGameButton = () => {
   return Markup.inlineKeyboard([
     [Markup.button.webApp("🎮 Play Game", telegramWebAppUrl)],
   ]).resize();
+};
+
+const launchBot = async () => {
+  if (!TELEGRAM_BOT_TOKEN) {
+    console.warn(
+      "⚠️ Telegram bot startup skipped because no token is configured.",
+    );
+    return false;
+  }
+
+  if (TELEGRAM_BOT_LAUNCH_DISABLED) {
+    console.warn(
+      "⚠️ Telegram bot startup disabled via TELEGRAM_BOT_LAUNCH_DISABLED=true",
+    );
+    return false;
+  }
+
+  if (globalThis.__telegramBotStarted) {
+    console.warn("⚠️ Telegram bot startup already attempted in this process.");
+    return false;
+  }
+
+  globalThis.__telegramBotStarted = true;
+
+  try {
+    await bot.launch({ dropPendingUpdates: true });
+    console.log(
+      "🤖 Telegram bot is running",
+      bot.botInfo?.username || "Telegram bot",
+    );
+    return true;
+  } catch (error) {
+    console.error("Telegram bot failed to launch:", error.message);
+    return false;
+  }
 };
 
 const registrationKeyboard = () =>
@@ -286,4 +334,5 @@ bot.on("contact", async (ctx) => {
   }
 });
 
+export { launchBot };
 export default bot;

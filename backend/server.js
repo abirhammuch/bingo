@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 import cors from "cors";
 import http from "http";
 import connectDB from "./config/db.js";
-import bot from "./services/telegram/bot.js";
+import bot, { launchBot } from "./services/telegram/bot.js";
 import { setupCommands } from "./services/telegram/commands.js";
 import userRouter from "./routes/userRoute.js";
 import bingoRouter from "./routes/bingoRoute.js";
@@ -111,17 +111,7 @@ const startServer = async () => {
     await connectDB();
 
     await setupCommands(bot);
-    bot
-      .launch()
-      .then(() => {
-        console.log(
-          "🤖 Telegram bot is running",
-          bot.botInfo?.username || "Telegram bot",
-        );
-      })
-      .catch((error) => {
-        console.error("Telegram bot failed to launch:", error.message);
-      });
+    await launchBot();
   } catch (error) {
     console.error("Failed to start services:", error.message);
     process.exit(1);
