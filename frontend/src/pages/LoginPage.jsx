@@ -28,7 +28,13 @@ const LoginPage = () => {
     const initData =
       telegram?.initData || telegram?.initDataUnsafe?.initData || null;
 
-    if (!telegram || !initData) {
+    if (!telegram) {
+      return;
+    }
+
+    if (!initData) {
+      setError("This page must be opened from the Telegram bot.");
+      setIsTelegramWebApp(true);
       return;
     }
 

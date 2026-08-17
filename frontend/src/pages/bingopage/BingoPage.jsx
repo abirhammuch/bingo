@@ -39,6 +39,10 @@ const BingoPage = () => {
     const timer = setTimeout(() => {
       const telegram = window.Telegram.WebApp;
 
+      if (telegram.expand) {
+        telegram.expand();
+      }
+
       if (telegram.ready) {
         telegram.ready();
       }
@@ -46,7 +50,7 @@ const BingoPage = () => {
       const initData = telegram.initData || telegram.initDataUnsafe?.initData;
 
       if (!initData) {
-        setDebugInfo("No initData - refresh page");
+        setDebugInfo("No initData - open this page from the Telegram bot");
         return;
       }
 
