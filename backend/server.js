@@ -25,12 +25,10 @@ const FRONTEND_URL =
 // Configure CORS for Express
 const corsOptions = {
   origin: [
-    "https://bingo-zeta-livid.vercel.app",
+    
     "https://bingo-e9bw.onrender.com",
     "https://marshal-bingo.onrender.com",
-    "http://localhost:5173",
-    "http://localhost:3000",
-    "http://localhost:5000",
+    
   ],
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
