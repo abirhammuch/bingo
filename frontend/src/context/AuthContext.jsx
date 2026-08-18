@@ -13,6 +13,8 @@ import {
   telegramWebAppLogin as apiTelegramWebAppLogin,
 } from "../services/userService";
 
+import { authenticateTelegram } from "../socket/socket";
+
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
@@ -125,6 +127,12 @@ export const AuthProvider = ({ children }) => {
       setToken(data.token);
 
       setUser(data.user);
+
+      // ========================================================
+      // AUTHENTICATE SOCKET FOR TELEGRAM
+      // ========================================================
+
+      authenticateTelegram(initData);
 
       return data;
     } finally {
