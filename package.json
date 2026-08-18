@@ -1,0 +1,22 @@
+{
+  "name": "bingo-app",
+  "version": "1.0.0",
+  "description": "Bingo Game Application with Backend and Frontend",
+  "private": true,
+  "type": "module",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "node backend/server.js",
+    "server": "nodemon backend/server.js",
+    "dev": "nodemon backend/server.js",
+    "build": "echo 'No build needed for backend'",
+    "install-backend": "cd backend && npm install",
+    "install-frontend": "cd frontend && npm install"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

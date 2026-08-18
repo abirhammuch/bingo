@@ -4,7 +4,7 @@ import {
   normalizeTelegramId,
   getGameState,
   createBingoGame,
-} from "../bingo/bingoService.js";
+} from "./bingoService.js";
 
 const ROUND_SELECTION_SECONDS = 30;
 const CALL_INTERVAL_MS = 5000;

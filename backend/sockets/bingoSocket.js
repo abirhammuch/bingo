@@ -1,8 +1,8 @@
-﻿import BingoGame from "../../models/BingoGame.js";
-import BingoTicket from "../../models/BingoTicket.js";
-import User from "../../models/User.js";
+﻿import BingoGame from "../models/BingoGame.js";
+import BingoTicket from "../models/BingoTicket.js";
+import User from "../models/User.js";
 import { v4 as uuidv4 } from "uuid";
-import BingoRoundManager from "../../services/bingo/BingoRoundManager.js";
+import BingoRoundManager from "../services/bingo/BingoRoundManager.js";
 
 /* ============================================================
    CONSTANTS
