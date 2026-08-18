@@ -8,6 +8,36 @@ import WinnerModal from "./WinnerModal";
 import socket from "../../socket/socket";
 import { useAuth } from "../../context/AuthContext";
 
+const createBingoGame = async (roomId = "default-room") => {
+  try {
+    const response = await fetch("/api/bingo/create", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        roomId,
+        maxPlayers: 100,
+        minBet: 1,
+        maxBet: 100,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!data.success) {
+      console.error("❌ Failed to create bingo game:", data.message);
+      return null;
+    }
+
+    console.log("✅ Bingo game created:", data.game.gameId);
+    return data.game;
+  } catch (error) {
+    console.error("❌ Error creating bingo game:", error);
+    return null;
+  }
+};
+
 const MAX_LUCKY_NUMBERS = 3;
 const DEFAULT_SELECTION_TIME = 30;
 
@@ -131,6 +161,26 @@ const Bingo = ({ theme }) => {
   useEffect(() => {
     isSpectatorRef.current = isSpectator;
   }, [isSpectator]);
+
+  // ============================================================
+  // AUTO-CREATE GAME ON LOAD
+  // ============================================================
+
+  useEffect(() => {
+    if (!authUser?.telegramId || roundId) {
+      return; // User not authenticated or game already exists
+    }
+
+    const initializeGame = async () => {
+      console.log(
+        "🎮 [INIT] Creating new Bingo game for user:",
+        authUser.telegramId,
+      );
+      await createBingoGame("default-bingo-room");
+    };
+
+    initializeGame();
+  }, [authUser?.telegramId, roundId]);
 
   // ============================================================
   // SYNC ROUND STATE

@@ -96,7 +96,7 @@ const normalizeIncomingSelectionValues = (value) => {
       source
         .flatMap((item) => (Array.isArray(item) ? item : [item]))
         .map((item) => Number(item))
-        .filter((item) => Number.isInteger(item) && item >= 1 && item <= 75),
+        .filter((item) => Number.isInteger(item) && item >= 1 && item <= 300),
     ),
   ].sort((a, b) => a - b);
 };

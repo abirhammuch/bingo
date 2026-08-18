@@ -421,7 +421,7 @@ export const joinBingoGame = async (
         .flatMap((value) => (Array.isArray(value) ? value : [value]))
         .map((value) => Number(value))
         .filter(
-          (value) => Number.isInteger(value) && value >= 1 && value <= 75,
+          (value) => Number.isInteger(value) && value >= 1 && value <= 300,
         ),
     ),
   ].sort((a, b) => a - b);

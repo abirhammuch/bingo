@@ -1,6 +1,8 @@
 import React, { memo } from "react";
 import Countdown from "./Countdown";
 
+// IMPORTANT: Users select lucky numbers from 1-300 pool
+// Calling numbers during live phase are 1-75 (traditional bingo)
 const TOTAL_LUCKY_NUMBERS = 300;
 
 const SelectionPage = ({
@@ -155,7 +157,7 @@ const SelectionPage = ({
             }`}
           >
             {showSelectionPanel
-              ? `AVAILABLE (${TOTAL_LUCKY_NUMBERS - selectedNumbersGlobal.length})`
+              ? `SELECT LUCKY NUMBERS 1-${TOTAL_LUCKY_NUMBERS}`
               : "WAITING FOR NEXT SELECTION"}
           </h2>
 
@@ -199,9 +201,16 @@ const SelectionPage = ({
         </div>
 
         <div className="text-xs text-slate-500">
-          {selectionCountdown > 0
-            ? `${selectionCountdown}s remaining`
-            : "Selection closed"}
+          {selectionCountdown > 0 ? (
+            <>
+              <span className="text-emerald-400 font-bold text-sm">
+                {selectionCountdown}s
+              </span>
+              <span className="text-xs"> remaining</span>
+            </>
+          ) : (
+            "Selection closed"
+          )}
         </div>
       </div>
 

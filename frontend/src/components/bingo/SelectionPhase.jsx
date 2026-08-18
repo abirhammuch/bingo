@@ -1,6 +1,10 @@
 import React, { memo } from "react";
 import Countdown from "./Countdown";
 
+// IMPORTANT: Users select lucky numbers from 1-300 pool
+// Calling numbers during live phase are 1-75 (traditional bingo)
+const TOTAL_LUCKY_NUMBERS = 300;
+
 const SelectionPhase = ({
   selectionCountdown,
   calledNumbers = [],
@@ -226,23 +230,24 @@ const SelectionPhase = ({
         "
       >
         <div className="grid grid-cols-8 gap-2">
-          {Array.from({ length: 300 }, (_, index) => index + 1).map(
-            (number) => {
-              const disabled = isNumberDisabled(number);
+          {Array.from(
+            { length: TOTAL_LUCKY_NUMBERS },
+            (_, index) => index + 1,
+          ).map((number) => {
+            const disabled = isNumberDisabled(number);
 
-              return (
-                <button
-                  key={number}
-                  type="button"
-                  onClick={() => !disabled && toggleLuckyNumber(number)}
-                  disabled={disabled}
-                  className={getNumberClasses(number)}
-                >
-                  {number}
-                </button>
-              );
-            },
-          )}
+            return (
+              <button
+                key={number}
+                type="button"
+                onClick={() => !disabled && toggleLuckyNumber(number)}
+                disabled={disabled}
+                className={getNumberClasses(number)}
+              >
+                {number}
+              </button>
+            );
+          })}
         </div>
       </div>
 
