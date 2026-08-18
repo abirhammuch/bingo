@@ -90,7 +90,7 @@ export const initBingoSocket = (io) => {
     // JOIN BINGO GAME
     // ============================================================
 
-    socket.on("joinBingo", async (data, callback) => {
+    const handleJoinRequest = async (data, callback) => {
       try {
         const { gameId, telegramId, betAmount, spectator = false } = data;
 
@@ -221,7 +221,10 @@ export const initBingoSocket = (io) => {
           message: error.message,
         });
       }
-    });
+    };
+
+    socket.on("joinBingo", handleJoinRequest);
+    socket.on("joinRoom", handleJoinRequest);
 
     // ============================================================
     // SELECT CARD / LUCKY NUMBERS
