@@ -8,13 +8,13 @@ import {
   createBingoGame,
   saveWithRetry,
   resetEmptyRound,
-} from "../../services/bingo/bingoService.js";
+} from "../services/bingo/bingoService.js";
 
 import {
   startSelectionTimer,
   startCallingNumbers,
   stopBingoTimers,
-} from "./bingoTimers.js";
+} from "./bingoTimer.js";
 
 const getPlayerSummary = (players = []) =>
   players.map((player) => ({
