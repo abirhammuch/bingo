@@ -1,105 +1,356 @@
 import React, { memo } from "react";
 import Countdown from "./Countdown";
 
+const TOTAL_LUCKY_NUMBERS = 300;
+
 const SelectionPage = ({
   selectionCountdown,
-  calledNumbers,
-  selectedNumbersGlobal,
-  mySelections,
+  calledNumbers = [],
+  selectedNumbersGlobal = [],
+  mySelections = [],
   canSelectMore,
   showSelectionPanel,
   toggleLuckyNumber,
   joinButtonDisabled,
   handleJoin,
 }) => {
+  // ============================================================
+  // NUMBER DISABLED
+  // ============================================================
+
   const isNumberDisabled = (number) => {
     const isMySelected = mySelections.includes(number);
+
     const isReservedByOther =
       selectedNumbersGlobal.includes(number) && !isMySelected;
 
-    return (
-      !showSelectionPanel ||
-      isMySelected ||
-      isReservedByOther ||
-      (!isMySelected && !canSelectMore)
-    );
+    /*
+     * IMPORTANT:
+     *
+     * Do NOT disable isMySelected.
+     *
+     * The user needs to click their selected number again
+     * to deselect it.
+     */
+
+    if (!showSelectionPanel) {
+      return true;
+    }
+
+    // Selected by another player
+    if (isReservedByOther) {
+      return true;
+    }
+
+    // User has reached maximum selections
+    if (!isMySelected && !canSelectMore) {
+      return true;
+    }
+
+    return false;
   };
+
+  // ============================================================
+  // NUMBER STYLE
+  // ============================================================
 
   const getNumberClasses = (number) => {
     const isCalled = calledNumbers.includes(number);
+
     const isMySelected = mySelections.includes(number);
+
     const isReservedByOther =
       selectedNumbersGlobal.includes(number) && !isMySelected;
 
+    // ----------------------------------------------------------
+    // My selected number
+    // ----------------------------------------------------------
+
+    if (isMySelected) {
+      return `
+        aspect-square
+        rounded-lg
+        text-sm
+        font-bold
+        transition-all
+        border
+        border-emerald-400
+        bg-emerald-600/50
+        text-emerald-100
+        ring-2
+        ring-emerald-400/30
+        cursor-pointer
+        hover:bg-emerald-500/60
+        active:scale-95
+      `;
+    }
+
+    // ----------------------------------------------------------
+    // Reserved by another player
+    // ----------------------------------------------------------
+
+    if (isReservedByOther) {
+      return `
+        aspect-square
+        rounded-lg
+        text-sm
+        font-semibold
+        transition-all
+        border
+        border-rose-400/50
+        bg-rose-600/30
+        text-rose-100
+        opacity-60
+        cursor-not-allowed
+      `;
+    }
+
+    // ----------------------------------------------------------
+    // Called number
+    // ----------------------------------------------------------
+
+    if (isCalled) {
+      return `
+        aspect-square
+        rounded-lg
+        text-sm
+        font-semibold
+        transition-all
+        border
+        border-emerald-400/40
+        bg-emerald-500/10
+        text-emerald-200
+        cursor-not-allowed
+      `;
+    }
+
+    // ----------------------------------------------------------
+    // Normal available number
+    // ----------------------------------------------------------
+
     return `
-      aspect-square rounded-lg text-sm font-semibold transition-all border
-      ${isCalled ? "border-emerald-400/50 bg-emerald-500/20 text-emerald-100" : ""}
-      ${isMySelected && !isCalled ? "border-emerald-400 bg-emerald-600/30 text-emerald-100" : ""}
-      ${isReservedByOther && !isCalled ? "border-rose-400 bg-rose-600/30 text-rose-100 opacity-70 cursor-not-allowed" : ""}
-      ${!isCalled && !isMySelected && !isReservedByOther ? "border-slate-700 bg-slate-900 text-slate-300 hover:border-slate-600 hover:bg-slate-800" : ""}
-      ${isMySelected || isReservedByOther ? "cursor-not-allowed" : ""}
+      aspect-square
+      rounded-lg
+      text-sm
+      font-semibold
+      transition-all
+      border
+      border-slate-700
+      bg-slate-900
+      text-slate-300
+      cursor-pointer
+      hover:border-emerald-500
+      hover:bg-slate-800
+      hover:text-white
+      active:scale-95
     `;
   };
 
+  // ============================================================
+  // SELECTED COUNT
+  // ============================================================
+
+  const selectedCount = mySelections.length;
+
+  // ============================================================
+  // RENDER
+  // ============================================================
+
   return (
-    <div className="max-w-4xl mx-auto">
-      {/* Available Numbers Label */}
+    <div className="max-w-4xl mx-auto w-full">
+      {/* ======================================================
+          HEADER
+      ====================================================== */}
+
       <div className="flex justify-between items-center mb-4">
-        <h2
-          className={`text-sm font-semibold uppercase tracking-wide ${
-            showSelectionPanel ? "text-emerald-400" : "text-amber-400"
-          }`}
-        >
-          {showSelectionPanel
-            ? `AVAILABLE (${300 - calledNumbers.length})`
-            : "WAITING FOR NEXT SELECTION"}
-        </h2>
+        <div>
+          <h2
+            className={`text-sm font-semibold uppercase tracking-wide ${
+              showSelectionPanel ? "text-emerald-400" : "text-amber-400"
+            }`}
+          >
+            {showSelectionPanel
+              ? `AVAILABLE (${TOTAL_LUCKY_NUMBERS - selectedNumbersGlobal.length})`
+              : "WAITING FOR NEXT SELECTION"}
+          </h2>
+
+          <p className="text-xs text-slate-500 mt-1">
+            Select up to 3 lucky numbers
+          </p>
+        </div>
+
+        {/* ====================================================
+            JOIN BUTTON
+        ==================================================== */}
+
         <button
+          type="button"
           onClick={handleJoin}
           disabled={joinButtonDisabled || !showSelectionPanel}
-          className={`text-xs px-3 py-1 rounded transition ${
+          className={`text-xs px-4 py-2 rounded-lg transition ${
             joinButtonDisabled || !showSelectionPanel
-              ? "text-slate-500 cursor-not-allowed"
-              : "text-emerald-400 hover:text-emerald-300"
+              ? "text-slate-500 bg-slate-800/40 cursor-not-allowed"
+              : "text-emerald-300 bg-emerald-600/10 border border-emerald-500/30 hover:bg-emerald-600/20"
           }`}
         >
-          {showSelectionPanel ? "Tap to select" : "Waiting..."}
+          {joinButtonDisabled
+            ? selectedCount > 0
+              ? "Selected"
+              : "Select Number"
+            : "Join Game"}
         </button>
       </div>
 
-      {/* Bingo Grid - Scrollable with 8 rows visible */}
-      <div className="h-96 overflow-y-auto bg-slate-950/30 p-4 rounded-lg mb-8 border border-slate-700">
+      {/* ======================================================
+          SELECTION STATUS
+      ====================================================== */}
+
+      <div className="mb-4 flex items-center justify-between">
+        <div className="text-sm text-slate-400">
+          Your selections:
+          <span className="ml-2 font-bold text-emerald-400">
+            {selectedCount}/3
+          </span>
+        </div>
+
+        <div className="text-xs text-slate-500">
+          {selectionCountdown > 0
+            ? `${selectionCountdown}s remaining`
+            : "Selection closed"}
+        </div>
+      </div>
+
+      {/* ======================================================
+          SELECTED NUMBERS
+      ====================================================== */}
+
+      <div className="mb-4 flex gap-2 flex-wrap">
+        {mySelections.length === 0 && (
+          <div className="text-xs text-slate-500">
+            Tap a number below to select it.
+          </div>
+        )}
+
+        {mySelections.map((number) => (
+          <div
+            key={number}
+            className="
+              px-3
+              py-1.5
+              rounded-lg
+              bg-emerald-600/20
+              border
+              border-emerald-500/40
+              text-emerald-300
+              text-xs
+              font-bold
+            "
+          >
+            #{number}
+          </div>
+        ))}
+      </div>
+
+      {/* ======================================================
+          NUMBER GRID
+      ====================================================== */}
+
+      <div
+        className="
+          h-96
+          overflow-y-auto
+          bg-slate-950/30
+          p-4
+          rounded-lg
+          mb-8
+          border
+          border-slate-700
+        "
+      >
         <div className="grid grid-cols-8 gap-2">
-          {Array.from({ length: 300 }, (_, index) => index + 1).map(
-            (number) => (
+          {Array.from(
+            { length: TOTAL_LUCKY_NUMBERS },
+            (_, index) => index + 1,
+          ).map((number) => {
+            const disabled = isNumberDisabled(number);
+
+            return (
               <button
                 key={number}
-                onClick={() => toggleLuckyNumber(number)}
-                disabled={isNumberDisabled(number)}
+                type="button"
+                onClick={() => {
+                  if (!disabled) {
+                    toggleLuckyNumber(number);
+                  }
+                }}
+                disabled={disabled}
+                aria-label={`Lucky number ${number}`}
+                aria-pressed={mySelections.includes(number)}
                 className={getNumberClasses(number)}
               >
                 {number}
               </button>
-            ),
-          )}
+            );
+          })}
         </div>
       </div>
 
-      {/* Select Card Buttons */}
+      {/* ======================================================
+          CARD SELECTION
+      ====================================================== */}
+
       <div className="flex gap-4 mb-8">
-        <button className="flex-1 py-4 bg-slate-800/60 border border-slate-700 rounded-lg text-slate-300 font-semibold hover:bg-slate-800 transition">
+        <button
+          type="button"
+          disabled={mySelections.length === 0}
+          className="
+            flex-1
+            py-4
+            bg-slate-800/60
+            border
+            border-slate-700
+            rounded-lg
+            text-slate-300
+            font-semibold
+            hover:bg-slate-800
+            transition
+            disabled:opacity-40
+            disabled:cursor-not-allowed
+          "
+        >
           Select Card 1
         </button>
-        <button className="flex-1 py-4 bg-slate-800/60 border border-slate-700 rounded-lg text-slate-300 font-semibold hover:bg-slate-800 transition">
+
+        <button
+          type="button"
+          disabled={mySelections.length === 0}
+          className="
+            flex-1
+            py-4
+            bg-slate-800/60
+            border
+            border-slate-700
+            rounded-lg
+            text-slate-300
+            font-semibold
+            hover:bg-slate-800
+            transition
+            disabled:opacity-40
+            disabled:cursor-not-allowed
+          "
+        >
           Select Card 2
         </button>
       </div>
 
-      {/* Countdown Timer */}
+      {/* ======================================================
+          COUNTDOWN
+      ====================================================== */}
+
       <Countdown
         seconds={selectionCountdown}
         label="Time To Close Selection"
-        selectedCardsCount={mySelections.length}
+        selectedCardsCount={selectedCount}
       />
     </div>
   );

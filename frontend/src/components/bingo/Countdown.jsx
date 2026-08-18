@@ -1,33 +1,11 @@
-import React, { useEffect, useState, useRef } from "react";
+import React from "react";
 
 const Countdown = ({
   seconds = 30,
   label = "Next Number In",
   selectedCardsCount = 0,
 }) => {
-  const [timeLeft, setTimeLeft] = useState(seconds);
-  const prevSecondsRef = useRef(seconds);
-
-  useEffect(() => {
-    // Only reset the timer if seconds increased (new round), not on every update
-    if (seconds > prevSecondsRef.current) {
-      setTimeLeft(seconds);
-      prevSecondsRef.current = seconds;
-    }
-
-    const interval = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          return 0;
-        }
-
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [seconds]);
+  const timeLeft = Math.max(0, Number(seconds) || 0);
 
   return (
     <div className="flex items-center justify-between gap-4 rounded-lg border border-slate-700 bg-slate-900 p-3">
