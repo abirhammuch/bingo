@@ -92,7 +92,13 @@ export const initBingoSocket = (io) => {
 
     const handleJoinRequest = async (data, callback) => {
       try {
-        const { gameId, telegramId, betAmount, spectator = false } = data;
+        const {
+          gameId,
+          telegramId,
+          betAmount,
+          luckyNumber,
+          spectator = false,
+        } = data;
 
         if (!gameId || !telegramId) {
           const response = {
@@ -151,7 +157,12 @@ export const initBingoSocket = (io) => {
             return;
           }
 
-          result = await joinBingoGame(gameId, telegramId, Number(betAmount));
+          result = await joinBingoGame(
+            gameId,
+            telegramId,
+            Number(betAmount),
+            luckyNumber,
+          );
         }
 
         const updatedGame = await getGameState(gameId);
@@ -201,6 +212,9 @@ export const initBingoSocket = (io) => {
             roomId: updatedGame.roomId,
             isSpectator,
             card: result?.ticket?.card || null,
+            selectedNumbers: updatedGame.selectedNumbers || [],
+            playerCount: updatedGame.players.filter((p) => !p.isSpectator)
+              .length,
             remainingSeconds:
               updatedGame.status === "waiting"
                 ? getRemainingSeconds(updatedGame.selectionEndsAt)
