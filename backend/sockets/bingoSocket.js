@@ -80,6 +80,27 @@ const emitRoundState = (io, game) => {
   io.to(`bingo:${game.gameId}`).emit("bingo:roundState", buildRoundState(game));
 };
 
+const normalizeIncomingSelectionValues = (value) => {
+  const source = Array.isArray(value)
+    ? value
+    : Array.isArray(value?.selectedNumbers)
+      ? value.selectedNumbers
+      : Array.isArray(value?.luckyNumbers)
+        ? value.luckyNumbers
+        : value === null || value === undefined || value === ""
+          ? []
+          : [value];
+
+  return [
+    ...new Set(
+      source
+        .flatMap((item) => (Array.isArray(item) ? item : [item]))
+        .map((item) => Number(item))
+        .filter((item) => Number.isInteger(item) && item >= 1 && item <= 75),
+    ),
+  ].sort((a, b) => a - b);
+};
+
 export const initBingoSocket = (io) => {
   console.log("🎮 Bingo Socket Initialized");
 
@@ -97,8 +118,16 @@ export const initBingoSocket = (io) => {
           telegramId,
           betAmount,
           luckyNumber,
+          luckyNumbers,
+          selectedNumbers,
           spectator = false,
         } = data;
+
+        const normalizedSelectionNumbers = normalizeIncomingSelectionValues({
+          luckyNumbers,
+          selectedNumbers,
+          value: luckyNumber,
+        });
 
         if (!gameId || !telegramId) {
           const response = {
@@ -161,7 +190,7 @@ export const initBingoSocket = (io) => {
             gameId,
             telegramId,
             Number(betAmount),
-            luckyNumber,
+            normalizedSelectionNumbers,
           );
         }
 
@@ -171,7 +200,7 @@ export const initBingoSocket = (io) => {
         // SEND JOIN RESPONSE
         // ========================================================
 
-        socket.emit("bingo:joined", {
+        const joinPayload = {
           success: true,
 
           gameId: updatedGame.gameId,
@@ -193,11 +222,16 @@ export const initBingoSocket = (io) => {
 
           selectionEndsAt: updatedGame.selectionEndsAt,
 
+          selectedNumbers: updatedGame.selectedNumbers || [],
+
           remainingSeconds:
             updatedGame.status === "waiting"
               ? getRemainingSeconds(updatedGame.selectionEndsAt)
               : 0,
-        });
+        };
+
+        socket.emit("bingo:joined", joinPayload);
+        socket.emit("joinedRoom", joinPayload);
 
         // ========================================================
         // SEND CURRENT GLOBAL STATE
@@ -243,6 +277,139 @@ export const initBingoSocket = (io) => {
     // ============================================================
     // SELECT CARD / LUCKY NUMBERS
     // ============================================================
+
+    const saveSelectionUpdate = async (
+      data,
+      callback,
+      { isDeselect = false } = {},
+    ) => {
+      try {
+        const { gameId, telegramId, number, numbers, selectedNumbers } = data;
+
+        const incomingNumbers = normalizeIncomingSelectionValues({
+          selectedNumbers: Array.isArray(selectedNumbers)
+            ? selectedNumbers
+            : Array.isArray(numbers)
+              ? numbers
+              : number !== undefined && number !== null
+                ? [number]
+                : [],
+        });
+
+        if (!gameId || !telegramId) {
+          throw new Error("gameId and telegramId are required");
+        }
+
+        if (incomingNumbers.length === 0) {
+          throw new Error("Select at least one number");
+        }
+
+        const game = await BingoGame.findOne({ gameId });
+
+        if (!game) {
+          throw new Error("Game not found");
+        }
+
+        if (game.status !== "waiting") {
+          throw new Error("Card selection time has ended");
+        }
+
+        if (
+          game.selectionEndsAt &&
+          new Date(game.selectionEndsAt).getTime() <= Date.now()
+        ) {
+          throw new Error("Selection time has ended");
+        }
+
+        const player = game.players.find(
+          (entry) =>
+            String(entry.telegramId) === String(telegramId) &&
+            !entry.isSpectator,
+        );
+
+        if (!player) {
+          throw new Error("You are not a player in this round");
+        }
+
+        const currentSelected = Array.isArray(player.selectedLuckyNumbers)
+          ? player.selectedLuckyNumbers
+          : [];
+
+        const finalSelected = isDeselect
+          ? currentSelected.filter(
+              (value) => !incomingNumbers.includes(Number(value)),
+            )
+          : [...new Set([...currentSelected, ...incomingNumbers])].sort(
+              (a, b) => a - b,
+            );
+
+        if (finalSelected.length > 3) {
+          throw new Error("You can select maximum 3 numbers");
+        }
+
+        player.selectedLuckyNumbers = finalSelected;
+        player.cardsSelected = finalSelected.length;
+
+        const allSelected = [
+          ...new Set(
+            game.players
+              .filter((entry) => !entry.isSpectator)
+              .flatMap((entry) =>
+                Array.isArray(entry.selectedLuckyNumbers)
+                  ? entry.selectedLuckyNumbers
+                  : [],
+              ),
+          ),
+        ].sort((a, b) => a - b);
+
+        game.selectedNumbers = allSelected;
+        game.playerCount = game.players.filter((p) => !p.isSpectator).length;
+
+        await saveWithRetry(game);
+
+        const response = {
+          success: true,
+          selectedNumbers: finalSelected,
+          selectedNumbersGlobal: game.selectedNumbers,
+          playerCount: game.playerCount,
+          gameId,
+        };
+
+        io.to(`bingo:${gameId}`).emit("bingo:cardSelected", {
+          gameId,
+          telegramId,
+          selectedNumbers: finalSelected,
+          selectedNumbersGlobal: game.selectedNumbers,
+          playerCount: game.playerCount,
+          status: "WAITING",
+        });
+
+        emitRoundState(io, game);
+
+        socket.emit("bingo:cardSelectionSuccess", response);
+
+        if (callback) callback(response);
+      } catch (error) {
+        console.error("❌ Card selection error:", error);
+
+        const response = {
+          success: false,
+          message: error.message || "Failed to select card",
+        };
+
+        socket.emit("bingo:cardSelectionError", response);
+
+        if (callback) callback(response);
+      }
+    };
+
+    socket.on("selectLuckyNumber", (data, callback) =>
+      saveSelectionUpdate(data, callback, { isDeselect: false }),
+    );
+
+    socket.on("deselectLuckyNumber", (data, callback) =>
+      saveSelectionUpdate(data, callback, { isDeselect: true }),
+    );
 
     socket.on("bingo:selectCard", async (data, callback) => {
       try {

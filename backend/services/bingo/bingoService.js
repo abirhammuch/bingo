@@ -409,6 +409,27 @@ export const joinBingoGame = async (
   betAmount,
   luckyNumber = null,
 ) => {
+  const incomingSelections = Array.isArray(luckyNumber)
+    ? luckyNumber
+    : luckyNumber === null || luckyNumber === undefined || luckyNumber === ""
+      ? []
+      : [luckyNumber];
+
+  const normalizedLuckyNumbers = [
+    ...new Set(
+      incomingSelections
+        .flatMap((value) => (Array.isArray(value) ? value : [value]))
+        .map((value) => Number(value))
+        .filter(
+          (value) => Number.isInteger(value) && value >= 1 && value <= 75,
+        ),
+    ),
+  ].sort((a, b) => a - b);
+
+  if (normalizedLuckyNumbers.length > 3) {
+    throw new Error("You can select maximum 3 numbers");
+  }
+
   const normalizedTelegramId = normalizeTelegramId(telegramId);
 
   if (!normalizedTelegramId) {
@@ -472,46 +493,36 @@ export const joinBingoGame = async (
       game.players[existingPlayerIndex] = existingPlayer;
     }
 
-    let normalizedLuckyNumber = null;
-
-    if (
-      luckyNumber !== null &&
-      luckyNumber !== undefined &&
-      luckyNumber !== ""
-    ) {
-      const parsed = Number(luckyNumber);
-
-      if (Number.isInteger(parsed) && parsed >= 1 && parsed <= 75) {
-        normalizedLuckyNumber = parsed;
-      }
-    }
-
-    if (normalizedLuckyNumber !== null) {
-      const alreadySelected = (game.selectedNumbers || []).includes(
-        normalizedLuckyNumber,
+    if (normalizedLuckyNumbers.length > 0) {
+      const alreadyTakenNumbers = normalizedLuckyNumbers.filter((number) =>
+        (game.selectedNumbers || []).includes(number),
       );
 
-      if (alreadySelected) {
-        const playerAlreadyHas = existingPlayer.selectedLuckyNumbers?.includes(
-          normalizedLuckyNumber,
+      const numbersAlreadyOwnedByPlayer = (
+        existingPlayer.selectedLuckyNumbers || []
+      ).filter((number) => normalizedLuckyNumbers.includes(number));
+
+      if (alreadyTakenNumbers.length > 0) {
+        const duplicateNumbers = alreadyTakenNumbers.filter(
+          (number) => !numbersAlreadyOwnedByPlayer.includes(number),
         );
 
-        if (!playerAlreadyHas) {
+        if (duplicateNumbers.length > 0) {
           throw new Error("This card number has already been selected.");
         }
-      } else {
-        existingPlayer.selectedLuckyNumbers = normalizeSelectedNumbers([
-          ...(existingPlayer.selectedLuckyNumbers || []),
-          normalizedLuckyNumber,
-        ]);
-
-        game.selectedNumbers = normalizeSelectedNumbers([
-          ...(game.selectedNumbers || []),
-          normalizedLuckyNumber,
-        ]);
-
-        game.players[existingPlayerIndex] = existingPlayer;
       }
+
+      existingPlayer.selectedLuckyNumbers = normalizeSelectedNumbers([
+        ...(existingPlayer.selectedLuckyNumbers || []),
+        ...normalizedLuckyNumbers,
+      ]);
+
+      game.selectedNumbers = normalizeSelectedNumbers([
+        ...(game.selectedNumbers || []),
+        ...normalizedLuckyNumbers,
+      ]);
+
+      game.players[existingPlayerIndex] = existingPlayer;
     }
 
     game.playerCount = getRealPlayers(game).length;
@@ -552,22 +563,12 @@ export const joinBingoGame = async (
   // LUCKY NUMBER
   // ========================================================
 
-  let normalizedLuckyNumber = null;
-
-  if (luckyNumber !== null && luckyNumber !== undefined && luckyNumber !== "") {
-    const parsed = Number(luckyNumber);
-
-    if (Number.isInteger(parsed) && parsed >= 1 && parsed <= 75) {
-      normalizedLuckyNumber = parsed;
-    }
-  }
-
-  if (normalizedLuckyNumber !== null) {
-    const alreadySelected = (game.selectedNumbers || []).includes(
-      normalizedLuckyNumber,
+  if (normalizedLuckyNumbers.length > 0) {
+    const alreadySelectedNumbers = normalizedLuckyNumbers.filter((number) =>
+      (game.selectedNumbers || []).includes(number),
     );
 
-    if (alreadySelected) {
+    if (alreadySelectedNumbers.length > 0) {
       throw new Error("This card number has already been selected.");
     }
   }
@@ -584,9 +585,12 @@ export const joinBingoGame = async (
   // CREATE CARD
   // ========================================================
 
+  const primaryLuckyNumber =
+    normalizedLuckyNumbers.length > 0 ? normalizedLuckyNumbers[0] : null;
+
   const card =
-    normalizedLuckyNumber !== null
-      ? generateCardWithLuckyNumber(normalizedLuckyNumber)
+    primaryLuckyNumber !== null
+      ? generateCardWithLuckyNumber(primaryLuckyNumber)
       : generateBingoCard();
 
   // ========================================================
@@ -634,10 +638,9 @@ export const joinBingoGame = async (
 
     markedNumbers: [],
 
-    selectedLuckyNumbers:
-      normalizedLuckyNumber !== null ? [normalizedLuckyNumber] : [],
+    selectedLuckyNumbers: normalizedLuckyNumbers,
 
-    cardsSelected: 1,
+    cardsSelected: normalizedLuckyNumbers.length || 0,
 
     hasBingo: false,
 
@@ -650,10 +653,10 @@ export const joinBingoGame = async (
   // GLOBAL SELECTED NUMBER
   // ========================================================
 
-  if (normalizedLuckyNumber !== null) {
+  if (normalizedLuckyNumbers.length > 0) {
     game.selectedNumbers = normalizeSelectedNumbers([
       ...(game.selectedNumbers || []),
-      normalizedLuckyNumber,
+      ...normalizedLuckyNumbers,
     ]);
   }
 

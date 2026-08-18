@@ -955,6 +955,7 @@ const Bingo = ({ theme }) => {
 
         if (Array.isArray(response.selectedNumbers)) {
           setSelectedNumbersGlobal(response.selectedNumbers);
+          setMySelections(response.selectedNumbers);
         }
 
         // ------------------------------------------------------
