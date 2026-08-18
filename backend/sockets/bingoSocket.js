@@ -1,600 +1,447 @@
-﻿import BingoGame from "../models/BingoGame.js";
-
+﻿import BingoGame from "../../models/BingoGame.js";
 import {
-  createBingoGame,
+  SELECTION_TIME_SECONDS,
   joinBingoGame,
   joinAsSpectator,
   markNumber,
   getGameState,
-  getPlayerCard,
-  normalizeTelegramId,
-} from "../services/bingo/bingoService.js";
+  createBingoGame,
+  saveWithRetry,
+  resetEmptyRound,
+} from "../../services/bingo/bingoService.js";
 
 import {
   startSelectionTimer,
   startCallingNumbers,
   stopBingoTimers,
-  emitRoundState,
-  buildRoundState,
-  getBingoRoom,
-} from "./bingoTimer.js";
+} from "./bingoTimers.js";
 
-// ============================================================
-// HELPER
-// ============================================================
-
-const getPlayerSummary = (players = []) => {
-  return players.map((player) => ({
+const getPlayerSummary = (players = []) =>
+  players.map((player) => ({
     telegramId: player.telegramId,
-
-    username: player.username || player.firstName || "Player",
-
-    firstName: player.firstName || "Player",
-
-    isSpectator: player.isSpectator === true,
-
-    hasBingo: player.hasBingo === true,
-
-    cardsSelected: player.cardsSelected || 0,
+    username: player.username || "",
+    firstName: player.firstName || "",
+    isSpectator: Boolean(player.isSpectator),
+    cardsSelected: player.cardsSelected || 1,
   }));
+
+const getRemainingSeconds = (selectionEndsAt) => {
+  if (!selectionEndsAt) return 0;
+
+  return Math.max(
+    0,
+    Math.ceil((new Date(selectionEndsAt).getTime() - Date.now()) / 1000),
+  );
 };
 
-// ============================================================
-// FIND CURRENT GAME FOR ROOM
-// ============================================================
+const buildRoundState = (game) => {
+  const realPlayers = (game.players || []).filter(
+    (player) => !player.isSpectator,
+  );
 
-const getCurrentGameForRoom = async (roomId) => {
-  return BingoGame.findOne({
-    roomId,
+  const spectators = (game.players || []).filter(
+    (player) => player.isSpectator,
+  );
 
-    status: {
-      $in: ["waiting", "active"],
-    },
-  }).sort({
-    roundNumber: -1,
-  });
+  return {
+    gameId: game.gameId,
+    roomId: game.roomId,
+
+    status:
+      game.status === "waiting"
+        ? "WAITING"
+        : game.status === "active"
+          ? "PLAYING"
+          : "FINISHED",
+
+    playerCount: realPlayers.length,
+    spectatorCount: spectators.length,
+
+    players: getPlayerSummary(game.players),
+
+    selectedNumbers: game.selectedNumbers || [],
+
+    calledNumbers: game.calledNumbers || [],
+
+    currentNumber: game.currentNumber ?? null,
+
+    winner: game.winner || null,
+
+    selectionEndsAt: game.selectionEndsAt || null,
+
+    remainingSeconds:
+      game.status === "waiting" ? getRemainingSeconds(game.selectionEndsAt) : 0,
+
+    roundNumber: game.roundNumber,
+  };
 };
 
-// ============================================================
-// JOIN SOCKET TO BINGO GAME
-// ============================================================
-
-const joinGameSocket = (socket, gameId) => {
-  socket.join(getBingoRoom(gameId));
+const emitRoundState = (io, game) => {
+  io.to(`bingo:${game.gameId}`).emit("bingo:roundState", buildRoundState(game));
 };
-
-// ============================================================
-// INIT
-// ============================================================
 
 export const initBingoSocket = (io) => {
-  console.log("🎮 Bingo Socket initialized");
+  console.log("🎮 Bingo Socket Initialized");
 
   io.on("connection", async (socket) => {
-    console.log(`🎯 Bingo client connected: ${socket.id}`);
+    console.log("🟢 Bingo socket connected:", socket.id);
 
-    // ======================================================
-    // GET CURRENT GAME
-    // ======================================================
+    // ============================================================
+    // JOIN BINGO GAME
+    // ============================================================
 
-    try {
-      const game = await BingoGame.findOne({
-        status: {
-          $in: ["waiting", "active"],
-        },
-      }).sort({
-        updatedAt: -1,
-      });
-
-      if (game) {
-        joinGameSocket(socket, game.gameId);
-
-        socket.emit("bingo:roundState", buildRoundState(game));
-      }
-    } catch (error) {
-      console.error("Initial Bingo state error:", error);
-    }
-
-    // ======================================================
-    // CREATE ROOM / GAME
-    // ======================================================
-
-    socket.on("createRoom", async (data, callback) => {
+    socket.on("joinBingo", async (data, callback) => {
       try {
-        const {
-          roomId,
-          maxPlayers = 10,
-          minBet = 1,
-          maxBet = 100,
-        } = data || {};
-
-        if (!roomId) {
-          throw new Error("Room ID is required");
-        }
-
-        const game = await createBingoGame(roomId, maxPlayers, minBet, maxBet);
-
-        // Join normal room
-        socket.join(roomId);
-
-        // Join Bingo game room
-        joinGameSocket(socket, game.gameId);
-
-        socket.emit("roomCreated", {
-          success: true,
-
-          gameId: game.gameId,
-
-          roomId: game.roomId,
-
-          roundNumber: game.roundNumber,
-
-          selectionEndsAt: game.selectionEndsAt,
-
-          message: "Bingo room created.",
-        });
-
-        // Start GLOBAL timer
-        await startSelectionTimer(io, game.gameId);
-
-        if (typeof callback === "function") {
-          callback({
-            success: true,
-
-            gameId: game.gameId,
-
-            roomId: game.roomId,
-          });
-        }
-      } catch (error) {
-        console.error("Create room error:", error);
-
-        const response = {
-          success: false,
-
-          message: error.message || "Failed to create room",
-        };
-
-        if (typeof callback === "function") {
-          callback(response);
-        } else {
-          socket.emit("error", response);
-        }
-      }
-    });
-
-    // ======================================================
-    // JOIN GAME
-    // ======================================================
-
-    socket.on("joinRoom", async (data, callback) => {
-      try {
-        const {
-          gameId,
-          telegramId,
-          betAmount,
-          luckyNumber = null,
-        } = data || {};
+        const { gameId, telegramId, betAmount, spectator = false } = data;
 
         if (!gameId || !telegramId) {
-          throw new Error("Game ID and Telegram ID are required.");
+          const response = {
+            success: false,
+            message: "gameId and telegramId are required",
+          };
+
+          if (callback) callback(response);
+          return;
         }
+
+        const game = await BingoGame.findOne({ gameId });
+
+        if (!game) {
+          const response = {
+            success: false,
+            message: "Game not found",
+          };
+
+          if (callback) callback(response);
+          return;
+        }
+
+        // ========================================================
+        // IMPORTANT
+        // EVERYONE joins bingo:${gameId}
+        // ========================================================
+
+        socket.join(`bingo:${gameId}`);
+
+        console.log(`👤 ${telegramId} joined Socket.IO room bingo:${gameId}`);
 
         let result;
-
         let isSpectator = false;
 
-        // =================================================
-        // CHECK GAME
-        // =================================================
+        // ========================================================
+        // SPECTATOR
+        // ========================================================
 
-        const game = await getGameState(gameId);
-
-        // =================================================
-        // WAITING = PLAYER JOIN
-        // =================================================
-
-        if (game.status === "waiting") {
-          if (!betAmount || Number(betAmount) <= 0) {
-            throw new Error("Bet amount is required during selection.");
-          }
-
-          result = await joinBingoGame(
-            gameId,
-            telegramId,
-            Number(betAmount),
-            luckyNumber,
-          );
-
-          isSpectator = false;
-        }
-
-        // =================================================
-        // ACTIVE = SPECTATOR
-        // =================================================
-        else if (game.status === "active") {
+        if (spectator || game.status === "active") {
           result = await joinAsSpectator(gameId, telegramId);
-
           isSpectator = true;
         }
 
-        // =================================================
-        // COMPLETED
-        // =================================================
+        // ========================================================
+        // PLAYER
+        // ========================================================
         else {
-          throw new Error(
-            "This round has finished. Please wait for the next round.",
-          );
+          if (!betAmount || Number(betAmount) <= 0) {
+            const response = {
+              success: false,
+              message: "Valid bet amount is required",
+            };
+
+            if (callback) callback(response);
+            return;
+          }
+
+          result = await joinBingoGame(gameId, telegramId, Number(betAmount));
         }
 
-        // =================================================
-        // JOIN SOCKET ROOMS
-        // =================================================
+        const updatedGame = await getGameState(gameId);
 
-        socket.join(result.game.roomId);
+        // ========================================================
+        // SEND JOIN RESPONSE
+        // ========================================================
 
-        joinGameSocket(socket, result.game.gameId);
-
-        // =================================================
-        // RESPONSE
-        // =================================================
-
-        socket.emit("joinedRoom", {
+        socket.emit("bingo:joined", {
           success: true,
 
-          gameId: result.game.gameId,
+          gameId: updatedGame.gameId,
 
-          roomId: result.game.roomId,
-
-          card: result.ticket?.card || null,
-
-          ticketId: result.ticket?.ticketId || null,
-
-          balance: result.user.balance,
-
-          currentPlayers: result.game.players.filter(
-            (p) => p.isSpectator !== true,
-          ).length,
-
-          playerCount: result.game.players.filter((p) => p.isSpectator !== true)
-            .length,
-
-          spectatorCount: result.game.players.filter(
-            (p) => p.isSpectator === true,
-          ).length,
-
-          players: getPlayerSummary(result.game.players),
-
-          selectedNumbers: result.game.selectedNumbers || [],
+          roomId: updatedGame.roomId,
 
           isSpectator,
+
+          card: isSpectator ? null : result?.ticket?.card || null,
+
+          ticketId: result?.ticket?.ticketId || null,
+
+          balance: result?.user?.balance ?? null,
+
+          playerCount: updatedGame.players.filter((p) => !p.isSpectator).length,
+
+          spectatorCount: updatedGame.players.filter((p) => p.isSpectator)
+            .length,
+
+          selectionEndsAt: updatedGame.selectionEndsAt,
+
+          remainingSeconds:
+            updatedGame.status === "waiting"
+              ? getRemainingSeconds(updatedGame.selectionEndsAt)
+              : 0,
         });
 
-        // =================================================
+        // ========================================================
         // SEND CURRENT GLOBAL STATE
-        // =================================================
+        // ========================================================
 
-        const currentGame = await getGameState(result.game.gameId);
+        emitRoundState(io, updatedGame);
 
-        emitRoundState(io, currentGame);
-
-        if (typeof callback === "function") {
+        if (callback) {
           callback({
             success: true,
-
-            gameId: currentGame.gameId,
-
-            roomId: currentGame.roomId,
-
-            selectedNumbers: currentGame.selectedNumbers || [],
-
-            playerCount: currentGame.players.filter(
-              (p) => p.isSpectator !== true,
-            ).length,
-
-            spectatorCount: currentGame.players.filter(
-              (p) => p.isSpectator === true,
-            ).length,
-
+            gameId: updatedGame.gameId,
+            roomId: updatedGame.roomId,
             isSpectator,
+            card: result?.ticket?.card || null,
+            remainingSeconds:
+              updatedGame.status === "waiting"
+                ? getRemainingSeconds(updatedGame.selectionEndsAt)
+                : 0,
           });
         }
       } catch (error) {
-        console.error("Join Bingo error:", error);
+        console.error("❌ joinBingo error:", error);
 
-        const response = {
-          success: false,
-
-          message: error.message || "Failed to join game",
-        };
-
-        if (typeof callback === "function") {
-          callback(response);
-        } else {
-          socket.emit("error", response);
+        if (callback) {
+          callback({
+            success: false,
+            message: error.message,
+          });
         }
+
+        socket.emit("bingo:error", {
+          message: error.message,
+        });
       }
     });
 
-    // ======================================================
-    // SELECT CARD / LUCKY NUMBER
-    // ======================================================
+    // ============================================================
+    // SELECT CARD / LUCKY NUMBERS
+    // ============================================================
 
-    socket.on("selectCard", async (data, callback) => {
+    socket.on("bingo:selectCard", async (data, callback) => {
       try {
-        const { gameId, telegramId, luckyNumber } = data || {};
+        const { gameId, telegramId, selectedNumbers } = data;
 
-        if (
-          !gameId ||
-          !telegramId ||
-          luckyNumber === undefined ||
-          luckyNumber === null
-        ) {
-          throw new Error(
-            "Game ID, Telegram ID and lucky number are required.",
-          );
+        if (!gameId || !telegramId) {
+          throw new Error("gameId and telegramId are required");
         }
 
-        const game = await getGameState(gameId);
+        if (!Array.isArray(selectedNumbers)) {
+          throw new Error("selectedNumbers must be an array");
+        }
 
-        // Only during selection
+        const game = await BingoGame.findOne({ gameId });
+
+        if (!game) {
+          throw new Error("Game not found");
+        }
+
+        // Cannot select after selection phase
         if (game.status !== "waiting") {
-          throw new Error("Card selection has ended.");
+          throw new Error("Card selection time has ended");
         }
 
-        // =================================================
-        // FIND PLAYER
-        // =================================================
-
-        const normalizedId = normalizeTelegramId(telegramId);
-
-        const player = game.players.find(
-          (p) => normalizeTelegramId(p.telegramId) === normalizedId,
-        );
-
-        if (!player) {
-          throw new Error("You have not joined this round.");
-        }
-
-        if (player.isSpectator === true) {
-          throw new Error("Spectators cannot select a card.");
-        }
-
-        // =================================================
-        // CHECK TIMER
-        // =================================================
-
+        // Verify timer has not expired
         if (
           game.selectionEndsAt &&
           new Date(game.selectionEndsAt).getTime() <= Date.now()
         ) {
-          throw new Error("Selection time has ended.");
+          throw new Error("Selection time has ended");
         }
 
-        const number = Number(luckyNumber);
+        const player = game.players.find(
+          (p) => String(p.telegramId) === String(telegramId) && !p.isSpectator,
+        );
 
-        if (!Number.isInteger(number) || number < 1 || number > 75) {
-          throw new Error("Lucky number must be between 1 and 75.");
+        if (!player) {
+          throw new Error("You are not a player in this round");
         }
 
-        // =================================================
-        // CHECK DUPLICATE
-        // =================================================
+        // ========================================================
+        // LIMIT
+        // Change this to whatever your game requires.
+        // ========================================================
 
-        const alreadySelected = (game.selectedNumbers || []).includes(number);
-
-        const playerAlreadySelected = (
-          player.selectedLuckyNumbers || []
-        ).includes(number);
-
-        if (alreadySelected && !playerAlreadySelected) {
-          throw new Error("This number has already been selected.");
+        if (selectedNumbers.length === 0) {
+          throw new Error("Select at least one number");
         }
 
-        if (!playerAlreadySelected) {
-          player.selectedLuckyNumbers.push(number);
-
-          game.selectedNumbers.push(number);
-
-          game.selectedNumbers = [...new Set(game.selectedNumbers)].sort(
-            (a, b) => a - b,
-          );
+        if (selectedNumbers.length > 3) {
+          throw new Error("You can select maximum 3 numbers");
         }
 
-        game.playerCount = game.players.filter(
-          (p) => p.isSpectator !== true,
-        ).length;
+        // Remove duplicates
+        const uniqueNumbers = [...new Set(selectedNumbers.map(Number))];
 
-        game.roundSummary.playerCount = game.playerCount;
+        // ========================================================
+        // SAVE TO PLAYER
+        // ========================================================
 
-        game.roundSummary.selectedNumbersCount = game.selectedNumbers.length;
+        player.selectedLuckyNumbers = uniqueNumbers;
 
-        await game.save();
+        player.cardsSelected = uniqueNumbers.length;
 
-        // =================================================
+        // ========================================================
+        // GLOBAL SELECTED NUMBERS
+        // ========================================================
+
+        const allSelected = [];
+
+        game.players
+          .filter((p) => !p.isSpectator)
+          .forEach((p) => {
+            if (Array.isArray(p.selectedLuckyNumbers)) {
+              allSelected.push(...p.selectedLuckyNumbers);
+            }
+          });
+
+        game.selectedNumbers = [...new Set(allSelected)];
+
+        game.playerCount = game.players.filter((p) => !p.isSpectator).length;
+
+        await saveWithRetry(game);
+
+        // ========================================================
         // BROADCAST TO EVERYONE
-        // =================================================
+        // ========================================================
+
+        io.to(`bingo:${gameId}`).emit("bingo:cardSelected", {
+          gameId,
+
+          telegramId,
+
+          selectedNumbers: uniqueNumbers,
+
+          selectedNumbersGlobal: game.selectedNumbers,
+
+          playerCount: game.playerCount,
+
+          status: "WAITING",
+        });
 
         emitRoundState(io, game);
 
-        io.to(getBingoRoom(gameId)).emit("bingo:cardSelected", {
-          gameId,
-
-          telegramId: normalizedId,
-
-          luckyNumber: number,
-
-          selectedNumbers: game.selectedNumbers,
-
+        const response = {
+          success: true,
+          selectedNumbers: uniqueNumbers,
+          selectedNumbersGlobal: game.selectedNumbers,
           playerCount: game.playerCount,
-        });
+        };
 
-        if (typeof callback === "function") {
-          callback({
-            success: true,
+        socket.emit("bingo:cardSelectionSuccess", response);
 
-            selectedNumbers: game.selectedNumbers,
-
-            luckyNumber: number,
-          });
-        }
+        if (callback) callback(response);
       } catch (error) {
-        console.error("Select card error:", error);
+        console.error("❌ Card selection error:", error);
 
         const response = {
           success: false,
-
           message: error.message || "Failed to select card",
         };
 
-        if (typeof callback === "function") {
-          callback(response);
-        } else {
-          socket.emit("error", response);
-        }
+        socket.emit("bingo:cardSelectionError", response);
+
+        if (callback) callback(response);
       }
     });
 
-    // ======================================================
-    // MARK NUMBER
-    // ======================================================
+    // ============================================================
+    // GET CURRENT GAME
+    // ============================================================
 
-    socket.on("markNumber", async (data) => {
+    socket.on("bingo:getState", async (data) => {
       try {
-        const { gameId, telegramId, number } = data || {};
-
-        if (!gameId || !telegramId || number === undefined) {
-          throw new Error("Game ID, Telegram ID and number are required.");
-        }
-
-        const result = await markNumber(gameId, telegramId, Number(number));
-
-        socket.emit("numberMarked", {
-          success: true,
-
-          number: Number(number),
-
-          marked: result.marked,
-
-          bingo: result.bingo,
-
-          bingoResult: result.bingoResult,
-
-          markedNumbers: result.markedNumbers,
-        });
-      } catch (error) {
-        console.error("Mark number error:", error);
-
-        socket.emit("error", {
-          success: false,
-
-          message: error.message || "Failed to mark number",
-        });
-      }
-    });
-
-    // ======================================================
-    // GET GAME STATE
-    // ======================================================
-
-    socket.on("getGameState", async (data, callback) => {
-      try {
-        const { gameId } = data || {};
-
-        if (!gameId) {
-          throw new Error("Game ID is required.");
-        }
+        const { gameId } = data;
 
         const game = await getGameState(gameId);
 
-        joinGameSocket(socket, gameId);
+        // Make sure socket is in the correct room
+        socket.join(`bingo:${gameId}`);
 
-        const state = buildRoundState(game);
+        socket.emit("bingo:roundState", buildRoundState(game));
+      } catch (error) {
+        socket.emit("bingo:error", {
+          message: error.message,
+        });
+      }
+    });
 
-        socket.emit("bingo:roundState", state);
+    // ============================================================
+    // MARK NUMBER
+    // ============================================================
 
-        if (typeof callback === "function") {
-          callback({
-            success: true,
+    socket.on("bingo:markNumber", async (data) => {
+      try {
+        const { gameId, telegramId, number } = data;
 
-            state,
+        const result = await markNumber(gameId, telegramId, Number(number));
+
+        const game = await getGameState(gameId);
+
+        socket.emit("bingo:numberMarked", {
+          success: true,
+          number,
+          ...result,
+        });
+
+        // ========================================================
+        // WINNER
+        // ========================================================
+
+        if (result.bingo) {
+          stopBingoTimers(gameId);
+
+          const winner = game.winner;
+
+          io.to(`bingo:${gameId}`).emit("bingo:winner", {
+            gameId,
+
+            winner,
+
+            winnerName: winner?.firstName || winner?.username || "Winner",
+
+            winnerCard: winner?.card || [],
+
+            winAmount: winner?.winAmount || 0,
+
+            bingoResult: winner?.bingoResult || null,
+
+            calledNumbers: game.calledNumbers,
+
+            status: "FINISHED",
+          });
+
+          io.to(`bingo:${gameId}`).emit("bingo:roundFinished", {
+            gameId,
+            status: "FINISHED",
+            winner,
+            winnerCard: winner?.card || [],
           });
         }
       } catch (error) {
-        console.error("Get state error:", error);
+        console.error("❌ markNumber error:", error);
 
-        socket.emit("error", {
-          success: false,
-
+        socket.emit("bingo:error", {
           message: error.message,
         });
       }
     });
 
-    // ======================================================
-    // GET PLAYER CARD
-    // ======================================================
-
-    socket.on("getCard", async (data, callback) => {
-      try {
-        const { gameId, telegramId } = data || {};
-
-        const result = await getPlayerCard(gameId, telegramId);
-
-        const response = {
-          success: true,
-
-          card: result.card,
-
-          markedNumbers: result.markedNumbers,
-
-          selectedLuckyNumbers: result.selectedLuckyNumbers,
-        };
-
-        socket.emit("playerCard", response);
-
-        if (typeof callback === "function") {
-          callback(response);
-        }
-      } catch (error) {
-        console.error("Get card error:", error);
-
-        socket.emit("error", {
-          success: false,
-
-          message: error.message,
-        });
-      }
-    });
-
-    // ======================================================
-    // LEAVE
-    // ======================================================
-
-    socket.on("leaveRoom", (data) => {
-      const { roomId, gameId } = data || {};
-
-      if (roomId) {
-        socket.leave(roomId);
-      }
-
-      if (gameId) {
-        socket.leave(getBingoRoom(gameId));
-      }
-
-      socket.emit("leftRoom", {
-        success: true,
-
-        message: "Left Bingo room.",
-      });
-    });
-
-    // ======================================================
+    // ============================================================
     // DISCONNECT
-    // ======================================================
+    // ============================================================
 
     socket.on("disconnect", () => {
-      console.log(`🎯 Bingo client disconnected: ${socket.id}`);
+      console.log("🔴 Bingo socket disconnected:", socket.id);
     });
   });
 };
