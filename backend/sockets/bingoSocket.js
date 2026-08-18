@@ -1,617 +1,1094 @@
-﻿import {
-  createBingoGame,
-  joinBingoGame,
-  joinAsSpectator,
-  startGame,
-  callNumber,
-  markNumber,
-  getGameState,
-  getPlayerCard,
-  saveWithRetry,
-} from "../services/bingo/bingoService.js";
-import BingoGame from "../models/BingoGame.js";
+﻿import BingoGame from "../../models/BingoGame.js";
+import BingoTicket from "../../models/BingoTicket.js";
+import User from "../../models/User.js";
+import { v4 as uuidv4 } from "uuid";
+import BingoRoundManager from "../../services/bingo/BingoRoundManager.js";
 
-const ROUND_SELECTION_SECONDS = 30;
-const CALL_INTERVAL_MS = 5000;
-const selectionTimers = new Map(); // Maps gameId -> { intervalId, startTime, endTime }
-const gameTimers = new Map();
+/* ============================================================
+   CONSTANTS
+============================================================ */
 
-const normalizeStatus = (status) => {
-  const value = String(status || "").toUpperCase();
-  if (value === "WAITING") return "WAITING";
-  if (value === "READY") return "READY";
-  if (value === "ACTIVE" || value === "PLAYING" || value === "LIVE")
-    return "PLAYING";
-  if (value === "COMPLETED" || value === "FINISHED" || value === "ENDED")
-    return "FINISHED";
-  return "WAITING";
+const MAX_BINGO_NUMBER = 75;
+
+/* ============================================================
+   SAVE WITH RETRY
+============================================================ */
+
+export const saveWithRetry = async (document, maxRetries = 3) => {
+  let retries = maxRetries;
+
+  while (retries > 0) {
+    try {
+      return await document.save();
+    } catch (error) {
+      if (error.name === "VersionError" && retries > 1) {
+        retries--;
+
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      } else {
+        throw error;
+      }
+    }
+  }
 };
 
-const getPlayerSummary = (players = []) =>
-  (players || []).map((player) => ({
-    telegramId: player.telegramId,
-    username: player.username || player.firstName || "Player",
-    firstName: player.firstName || "Player",
-  }));
+/* ============================================================
+   TELEGRAM ID
+============================================================ */
 
-const getRemainingSelectionSeconds = (selectionEndsAt) => {
-  if (!selectionEndsAt) return 0;
-  return Math.max(
-    0,
-    Math.ceil((new Date(selectionEndsAt).getTime() - Date.now()) / 1000),
-  );
+export const normalizeTelegramId = (telegramId) => {
+  if (telegramId === null || telegramId === undefined) {
+    return "";
+  }
+
+  return String(telegramId).trim();
 };
 
-const buildRoundState = (game, extra = {}) => {
-  if (!game) return { status: "WAITING", remainingSeconds: 0 };
+/* ============================================================
+   NORMALIZE NUMBERS
+============================================================ */
 
-  const playerCount = Number(game.playerCount ?? game.players?.length ?? 0);
-  const selectedNumbers = Array.isArray(game.selectedNumbers)
-    ? game.selectedNumbers
-    : [];
-  const calledNumbers = Array.isArray(game.calledNumbers)
-    ? game.calledNumbers
-    : [];
-  const remainingSeconds =
-    typeof extra.remainingSeconds === "number"
-      ? extra.remainingSeconds
-      : game.status === "waiting"
-        ? getRemainingSelectionSeconds(game.selectionEndsAt)
-        : 0;
+const normalizeSelectedNumbers = (numbers = []) => {
+  return [
+    ...new Set(
+      numbers
+        .map((value) => Number(value))
+        .filter((value) => Number.isFinite(value) && value >= 1 && value <= 75),
+    ),
+  ].sort((a, b) => a - b);
+};
+
+/* ============================================================
+   SHUFFLE
+============================================================ */
+
+const shuffle = (array) => {
+  const values = [...array];
+
+  for (let i = values.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+
+    [values[i], values[j]] = [values[j], values[i]];
+  }
+
+  return values;
+};
+
+/* ============================================================
+   GENERATE BINGO CARD
+============================================================ */
+
+export const generateBingoCard = (luckyNumber = null) => {
+  const columns = [
+    [1, 15],
+    [16, 30],
+    [31, 45],
+    [46, 60],
+    [61, 75],
+  ];
+
+  const card = Array.from({ length: 5 }, () => Array(5).fill(0));
+
+  let luckyColumn = null;
+
+  if (luckyNumber !== null && Number.isFinite(Number(luckyNumber))) {
+    const value = Number(luckyNumber);
+
+    if (value >= 1 && value <= 15) {
+      luckyColumn = 0;
+    } else if (value >= 16 && value <= 30) {
+      luckyColumn = 1;
+    } else if (value >= 31 && value <= 45) {
+      luckyColumn = 2;
+    } else if (value >= 46 && value <= 60) {
+      luckyColumn = 3;
+    } else if (value >= 61 && value <= 75) {
+      luckyColumn = 4;
+    }
+  }
+
+  for (let col = 0; col < 5; col++) {
+    const [min, max] = columns[col];
+
+    let values = Array.from(
+      {
+        length: max - min + 1,
+      },
+      (_, index) => min + index,
+    );
+
+    // Remove lucky number first
+    if (col === luckyColumn) {
+      values = values.filter((value) => value !== Number(luckyNumber));
+    }
+
+    values = shuffle(values);
+
+    let selected = values.slice(0, 5);
+
+    // If lucky number belongs to this column,
+    // put it into one of the 4 non-center positions.
+    if (col === luckyColumn) {
+      const rowOptions = [0, 1, 3, 4];
+
+      const luckyRow =
+        rowOptions[Math.floor(Math.random() * rowOptions.length)];
+
+      selected[luckyRow] = Number(luckyNumber);
+    }
+
+    for (let row = 0; row < 5; row++) {
+      card[row][col] = selected[row];
+    }
+  }
+
+  // FREE CENTER
+  card[2][2] = 0;
+
+  return card;
+};
+
+/* ============================================================
+   CARD NUMBERS
+============================================================ */
+
+export const getCardNumbers = (card) => {
+  const numbers = [];
+
+  for (let row = 0; row < 5; row++) {
+    for (let col = 0; col < 5; col++) {
+      if (card[row][col] !== 0) {
+        numbers.push(card[row][col]);
+      }
+    }
+  }
+
+  return numbers;
+};
+
+/* ============================================================
+   CHECK NUMBER
+============================================================ */
+
+export const checkNumberOnCard = (card, number) => {
+  for (let row = 0; row < 5; row++) {
+    for (let col = 0; col < 5; col++) {
+      if (Number(card[row][col]) === Number(number)) {
+        return {
+          found: true,
+          row,
+          col,
+        };
+      }
+    }
+  }
 
   return {
-    gameId: game.gameId,
-    roomId: game.roomId,
-    roundNumber: game.roundNumber,
-    status: normalizeStatus(game.status),
-    playerCount,
-    participants: playerCount,
-    players: getPlayerSummary(game.players),
-    selectedNumbers,
-    calledNumbers,
-    currentNumber: game.currentNumber ?? null,
-    winner: game.winner || null,
-    selectionEndsAt: game.selectionEndsAt || null,
-    remainingSeconds,
-    ...extra,
+    found: false,
   };
 };
 
-const emitRoundState = (io, roomId, game, extra = {}) => {
-  if (!io || typeof io.to !== "function" || !roomId || !game) return;
+/* ============================================================
+   CHECK BINGO
+============================================================ */
 
-  const state = buildRoundState(game, extra);
-  io.to(roomId).emit("bingo:roundState", state);
-  io.to(roomId).emit("bingo:participantCount", {
-    playerCount: state.playerCount,
-    participants: state.playerCount,
-    selectedNumbers: state.selectedNumbers,
-    status: state.status,
-  });
-};
-
-const stopSelectionTimer = (gameId) => {
-  if (selectionTimers.has(gameId)) {
-    const entry = selectionTimers.get(gameId);
-    if (entry && entry.intervalId) clearInterval(entry.intervalId);
-    selectionTimers.delete(gameId);
+export const checkBingo = (card, markedNumbers = []) => {
+  if (!Array.isArray(card) || card.length !== 5) {
+    return {
+      bingo: false,
+    };
   }
-};
 
-const stopCallerTimer = (gameId) => {
-  if (gameTimers.has(gameId)) {
-    const entry = gameTimers.get(gameId);
-    if (entry && entry.intervalId) clearInterval(entry.intervalId);
-    gameTimers.delete(gameId);
-  }
-};
+  const markedSet = new Set(markedNumbers.map(Number));
 
-// =========================================================================
-// startNoSelectionsCountdown - Returns to selection if no one selected
-// =========================================================================
-const startNoSelectionsCountdown = async (io, gameId, roomId, game) => {
-  console.log(
-    `⚠️ [NO SELECTIONS] Starting 30-second countdown before returning to selection. gameId: ${gameId}`,
-  );
+  const isMarked = (value) => value === 0 || markedSet.has(Number(value));
 
-  stopSelectionTimer(gameId);
-  stopCallerTimer(gameId);
-
-  // Update game status to indicate no selections
-  game.status = "waiting";
-  game.selectionEndsAt = new Date(Date.now() + 30 * 1000); // 30 seconds from now
-  await saveWithRetry(game);
-
-  const startTime = Date.now();
-  const endTime = startTime + 30 * 1000; // 30 seconds
-
-  let remainingSeconds = 30;
-  let lastEmittedSeconds = 30;
-
-  // Broadcast the "no selections" state with countdown
-  emitRoundState(io, roomId, game, {
-    remainingSeconds: 30,
-    status: "WAITING",
-  });
-
-  io.to(roomId).emit("bingo:noSelections", {
-    message: "No players selected cards. Restarting selection in 30 seconds...",
-    remainingSeconds: 30,
-  });
-
-  const intervalId = setInterval(async () => {
-    try {
-      const now = Date.now();
-      remainingSeconds = Math.max(0, Math.ceil((endTime - now) / 1000));
-
-      // Only emit if the remaining seconds have changed
-      if (remainingSeconds !== lastEmittedSeconds) {
-        lastEmittedSeconds = remainingSeconds;
-
-        const latest = await getGameState(gameId).catch(() => null);
-        if (latest) {
-          console.log(
-            `⏱️ [NO SELECTIONS TICK] gameId: ${gameId}, remaining: ${remainingSeconds}s`,
-          );
-
-          // ✅ CHECK: If someone made a selection during countdown, proceed to PLAYING
-          const hasSelectionsDuringCountdown = latest.players?.some(
-            (player) =>
-              Array.isArray(player.selectedLuckyNumbers) &&
-              player.selectedLuckyNumbers.length > 0,
-          );
-
-          if (hasSelectionsDuringCountdown) {
-            console.log(
-              `✅ [NO SELECTIONS OVERRIDE] Player made a selection during countdown! Proceeding to PLAYING.`,
-            );
-            clearInterval(intervalId);
-            stopSelectionTimer(gameId);
-
-            // Set game to active immediately
-            latest.status = "active";
-            latest.selectionEndsAt = null;
-            latest.roundStartedAt = new Date();
-            latest.playerCount = latest.players.length;
-            await saveWithRetry(latest);
-
-            emitRoundState(io, roomId, latest, {
-              remainingSeconds: 0,
-              status: "PLAYING",
-            });
-
-            startNumberCalling(io, gameId, roomId);
-            return;
-          }
-
-          emitRoundState(io, roomId, latest, {
-            remainingSeconds,
-            status: "WAITING",
-          });
-
-          io.to(roomId).emit("bingo:noSelections", {
-            message: "Restarting selection phase...",
-            remainingSeconds,
-          });
-        }
-      }
-
-      if (remainingSeconds <= 0) {
-        console.log(
-          `✅ [NO SELECTIONS END] Returning to selection phase for gameId: ${gameId}`,
-        );
-        clearInterval(intervalId);
-        stopSelectionTimer(gameId);
-
-        // Reset and restart selection countdown
-        const freshGame = await getGameState(gameId).catch(() => null);
-        if (freshGame) {
-          freshGame.status = "waiting";
-          freshGame.players = freshGame.players.map((player) => ({
-            ...player,
-            selectedLuckyNumbers: [],
-            markedNumbers: [],
-          }));
-          freshGame.selectedNumbers = [];
-          freshGame.calledNumbers = [];
-          freshGame.currentNumber = null;
-          await saveWithRetry(freshGame);
-
-          // Restart the selection countdown
-          await startSelectionCountdown(io, gameId, roomId);
-        }
-      }
-    } catch (error) {
-      console.error("No selections countdown error:", error.message || error);
-      clearInterval(intervalId);
-      stopSelectionTimer(gameId);
+  // ROWS
+  for (let row = 0; row < 5; row++) {
+    if (card[row].every(isMarked)) {
+      return {
+        bingo: true,
+        type: "row",
+        position: row,
+      };
     }
-  }, 1000);
+  }
 
-  selectionTimers.set(gameId, { intervalId, startTime, endTime });
-  console.log(
-    `✅ [NO SELECTIONS REGISTERED] Countdown interval registered for gameId: ${gameId}`,
-  );
+  // COLUMNS
+  for (let col = 0; col < 5; col++) {
+    const column = card.map((row) => row[col]);
+
+    if (column.every(isMarked)) {
+      return {
+        bingo: true,
+        type: "column",
+        position: col,
+      };
+    }
+  }
+
+  // DIAGONAL 1
+  const diagonalOne = card.map((row, index) => row[index]);
+
+  if (diagonalOne.every(isMarked)) {
+    return {
+      bingo: true,
+      type: "diagonal",
+      direction: "top-left to bottom-right",
+    };
+  }
+
+  // DIAGONAL 2
+  const diagonalTwo = card.map((row, index) => row[4 - index]);
+
+  if (diagonalTwo.every(isMarked)) {
+    return {
+      bingo: true,
+      type: "diagonal",
+      direction: "top-right to bottom-left",
+    };
+  }
+
+  return {
+    bingo: false,
+  };
 };
 
-// =========================================================================
-// ✅ startSelectionCountdown now transitions to PLAYING correctly
-// =========================================================================
-const startSelectionCountdown = async (io, gameId, roomId) => {
-  console.log(
-    `⏱️ [TIMER START] Countdown starting for gameId: ${gameId}, roomId: ${roomId}`,
-  );
-  stopSelectionTimer(gameId);
-  stopCallerTimer(gameId);
+/* ============================================================
+   CREATE GAME
+============================================================ */
 
-  const game = await getGameState(gameId).catch(() => null);
+export const createBingoGame = async (
+  roomId,
+  maxPlayers = 100,
+  minBet = 1,
+  maxBet = 100,
+) => {
+  const gameId = uuidv4();
+
+  const previousGames = await BingoGame.countDocuments({ roomId });
+
+  const game = new BingoGame({
+    gameId,
+    roomId,
+
+    status: "waiting",
+
+    roundNumber: previousGames + 1,
+
+    maxPlayers,
+
+    minBet,
+
+    maxBet,
+
+    players: [],
+
+    playerCount: 0,
+
+    selectedNumbers: [],
+
+    calledNumbers: [],
+
+    currentNumber: null,
+
+    winner: null,
+
+    selectionEndsAt: null,
+
+    roundSummary: {
+      playerCount: 0,
+      maxPlayers,
+      totalBetAmount: 0,
+      calledNumbersCount: 0,
+      selectedNumbersCount: 0,
+      endedReason: "waiting",
+    },
+  });
+
+  await game.save();
+
+  return game;
+};
+
+/* ============================================================
+   JOIN BINGO
+============================================================ */
+
+export const joinBingoGame = async (
+  gameId,
+  telegramId,
+  betAmount,
+  luckyNumber = null,
+) => {
+  const normalizedTelegramId = normalizeTelegramId(telegramId);
+
+  if (!normalizedTelegramId) {
+    throw new Error("Telegram ID is required");
+  }
+
+  const game = await BingoGame.findOne({
+    gameId,
+  });
+
   if (!game) {
-    console.error(`❌ [TIMER START] Game not found: ${gameId}`);
-    return;
+    throw new Error("Game not found");
   }
 
-  game.status = "waiting";
-  const startTime = Date.now();
-  const endTime = startTime + ROUND_SELECTION_SECONDS * 1000;
-  game.selectionEndsAt = new Date(endTime);
-  game.currentNumber = null;
-  game.calledNumbers = [];
-  game.winner = null;
-  game.playerCount = game.players.length;
-  await saveWithRetry(game);
-
-  console.log(
-    `✅ [TIMER START] Game saved with selectionEndsAt: ${game.selectionEndsAt}`,
-  );
-
-  // Calculate initial remaining seconds
-  let remainingSeconds = ROUND_SELECTION_SECONDS;
-
-  emitRoundState(io, roomId, game, {
-    remainingSeconds,
-    status: "WAITING",
-  });
-
-  let lastEmittedSeconds = ROUND_SELECTION_SECONDS;
-
-  const intervalId = setInterval(async () => {
-    try {
-      const now = Date.now();
-      remainingSeconds = Math.max(0, Math.ceil((endTime - now) / 1000));
-
-      // Only emit if the remaining seconds have changed
-      if (remainingSeconds !== lastEmittedSeconds) {
-        lastEmittedSeconds = remainingSeconds;
-
-        const latest = await getGameState(gameId).catch(() => null);
-        if (latest) {
-          console.log(
-            `⏱️ [TIMER TICK] gameId: ${gameId}, remaining: ${remainingSeconds}s, status: ${latest.status}`,
-          );
-
-          emitRoundState(io, roomId, latest, {
-            remainingSeconds,
-            status: "WAITING",
-          });
-        }
-      }
-
-      if (remainingSeconds <= 0) {
-        console.log(
-          `✅ [TIMER END] Selection phase ended for gameId: ${gameId}`,
-        );
-        clearInterval(intervalId);
-        stopSelectionTimer(gameId);
-
-        // ✅ CRITICAL FIX: Fetch the fresh game and start the game immediately
-        const freshGame = await getGameState(gameId).catch(() => null);
-        if (!freshGame) {
-          console.error(
-            `❌ [TIMER END] Game not found during transition: ${gameId}`,
-          );
-          return;
-        }
-
-        // ✅ CHECK: Verify if at least one player has selected a card
-        const hasAtLeastOneSelection = freshGame.players?.some(
-          (player) =>
-            Array.isArray(player.selectedLuckyNumbers) &&
-            player.selectedLuckyNumbers.length > 0,
-        );
-
-        if (!hasAtLeastOneSelection) {
-          console.log(
-            `⚠️ [NO SELECTIONS] No players have selected cards. Waiting 30 seconds before returning to selection...`,
-          );
-
-          // Start a 30-second "no selections" countdown before returning to selection
-          startNoSelectionsCountdown(io, gameId, roomId, freshGame);
-          return;
-        }
-
-        // 1. Set the game to active
-        freshGame.status = "active";
-        freshGame.selectionEndsAt = null;
-        freshGame.roundStartedAt = new Date();
-        freshGame.playerCount = freshGame.players.length;
-        await saveWithRetry(freshGame);
-
-        console.log(
-          `✅ [TIMER END] Game transitioned to PLAYING. Starting number calling...`,
-        );
-
-        // 2. Broadcast that the game is now LIVE
-        emitRoundState(io, roomId, freshGame, {
-          remainingSeconds: 0,
-          status: "PLAYING",
-        });
-
-        // 3. Start calling numbers immediately
-        startNumberCalling(io, gameId, roomId);
-      }
-    } catch (error) {
-      console.error("Selection countdown error:", error.message || error);
-      clearInterval(intervalId);
-      stopSelectionTimer(gameId);
-    }
-  }, 1000);
-
-  selectionTimers.set(gameId, { intervalId, startTime, endTime });
-  console.log(
-    `✅ [TIMER REGISTERED] Interval ID registered for gameId: ${gameId}`,
-  );
-};
-
-// =========================================================================
-// startNumberCalling
-// =========================================================================
-const startNumberCalling = (io, gameId, roomId) => {
-  stopCallerTimer(gameId);
-
-  const intervalId = setInterval(async () => {
-    try {
-      const currentGame = await getGameState(gameId).catch(() => null);
-      if (!currentGame || currentGame.status !== "active") {
-        stopCallerTimer(gameId);
-        return;
-      }
-
-      const result = await callNumber(gameId);
-      if (!result || !result.number) {
-        stopCallerTimer(gameId);
-        const finishedGame = await getGameState(gameId).catch(() => null);
-        if (finishedGame) {
-          finishedGame.status = "completed";
-          finishedGame.selectionEndsAt = null;
-          finishedGame.roundEndedAt = new Date();
-          await saveWithRetry(finishedGame);
-
-          emitRoundState(io, roomId, finishedGame, {
-            remainingSeconds: 0,
-            status: "FINISHED",
-          });
-          io.to(roomId).emit("bingo:roundFinished", {
-            gameId: finishedGame.gameId,
-            roomId: finishedGame.roomId,
-            status: "FINISHED",
-            winner: finishedGame.winner || null,
-          });
-        }
-        return;
-      }
-
-      const refreshedGame = await getGameState(gameId).catch(() => null);
-      if (refreshedGame) {
-        emitRoundState(io, roomId, refreshedGame, {
-          remainingSeconds: 0,
-          status: "PLAYING",
-          currentNumber: result.number,
-          calledNumbers: result.calledNumbers || refreshedGame.calledNumbers,
-        });
-      }
-
-      io.to(roomId).emit("bingo:numberCalled", {
-        number: result.number,
-        currentNumber: result.number,
-        calledNumbers: result.calledNumbers,
-        remaining: Math.max(0, 75 - result.calledNumbers.length),
-      });
-
-      if (
-        result.gameEnded &&
-        Array.isArray(result.winners) &&
-        result.winners.length > 0
-      ) {
-        stopCallerTimer(gameId);
-        const winnerGame = await getGameState(gameId).catch(() => null);
-
-        if (winnerGame) {
-          winnerGame.status = "completed";
-          winnerGame.selectionEndsAt = null;
-          winnerGame.roundEndedAt = new Date();
-          await saveWithRetry(winnerGame);
-
-          emitRoundState(io, roomId, winnerGame, {
-            remainingSeconds: 0,
-            status: "FINISHED",
-            winner: winnerGame.winner,
-            winners: result.winners,
-          });
-
-          io.to(roomId).emit("bingo:winner", {
-            gameId: winnerGame.gameId,
-            roomId: winnerGame.roomId,
-            winner: winnerGame.winner,
-            winners: result.winners,
-            status: "FINISHED",
-          });
-          io.to(roomId).emit("bingo:roundFinished", {
-            gameId: winnerGame.gameId,
-            roomId: winnerGame.roomId,
-            winner: winnerGame.winner,
-            winners: result.winners,
-            status: "FINISHED",
-          });
-
-          setTimeout(async () => {
-            try {
-              const nextGame = await createBingoGame(
-                roomId,
-                winnerGame.maxPlayers,
-                winnerGame.minBet,
-                winnerGame.maxBet,
-              );
-
-              io.to(roomId).emit("bingo:nextRound", {
-                gameId: nextGame.gameId,
-                roomId: nextGame.roomId,
-                status: "WAITING",
-                selectedNumbers: [],
-                calledNumbers: [],
-                currentNumber: null,
-                players: [],
-                playerCount: 0,
-                remainingSeconds: ROUND_SELECTION_SECONDS,
-              });
-
-              await startSelectionCountdown(
-                io,
-                nextGame.gameId,
-                nextGame.roomId,
-              );
-            } catch (error) {
-              console.error("Next round setup error:", error.message || error);
-            }
-          }, 8000);
-        }
-      }
-    } catch (error) {
-      console.error("Number calling interval error:", error.message || error);
-      stopCallerTimer(gameId);
-    }
-  }, CALL_INTERVAL_MS);
-
-  gameTimers.set(gameId, { intervalId });
-};
-
-const emitCurrentRoundState = async (socket) => {
-  try {
-    const game = await BingoGame.findOne({
-      status: { $in: ["waiting", "active"] },
-    })
-      .sort({ updatedAt: -1 })
-      .lean();
-    if (game) {
-      socket.emit("bingo:roundState", buildRoundState(game));
-    }
-  } catch (error) {
-    console.warn(
-      "Unable to fetch current round state:",
-      error.message || error,
+  if (game.status !== "waiting") {
+    throw new Error(
+      "Selection phase has ended. You can spectate the live game.",
     );
   }
+
+  const user = await User.findOne({
+    telegramId: normalizedTelegramId,
+  });
+
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  const amount = Number(betAmount);
+
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new Error("Invalid bet amount");
+  }
+
+  if (amount < Number(game.minBet) || amount > Number(game.maxBet)) {
+    throw new Error(`Bet must be between ${game.minBet} and ${game.maxBet}`);
+  }
+
+  if (user.balance < amount) {
+    throw new Error("Insufficient balance");
+  }
+
+  const existingIndex = game.players.findIndex(
+    (player) => normalizeTelegramId(player.telegramId) === normalizedTelegramId,
+  );
+
+  const lucky =
+    luckyNumber === null || luckyNumber === undefined || luckyNumber === ""
+      ? null
+      : Number(luckyNumber);
+
+  if (lucky !== null && (!Number.isInteger(lucky) || lucky < 1 || lucky > 75)) {
+    throw new Error("Lucky number must be between 1 and 75");
+  }
+
+  /* ========================================================
+       EXISTING PLAYER
+    ======================================================== */
+
+  if (existingIndex !== -1) {
+    const player = game.players[existingIndex];
+
+    if (player.isSpectator) {
+      throw new Error(
+        "Spectator cannot become a player after the game has started.",
+      );
+    }
+
+    const existingLucky = Array.isArray(player.selectedLuckyNumbers)
+      ? player.selectedLuckyNumbers
+      : [];
+
+    if (lucky !== null && !existingLucky.includes(lucky)) {
+      if (existingLucky.length >= 2) {
+        throw new Error("You can select maximum 2 lucky numbers");
+      }
+
+      // Make sure another player hasn't selected it
+      const alreadyUsed = game.selectedNumbers.includes(lucky);
+
+      if (alreadyUsed) {
+        throw new Error("Lucky number already selected");
+      }
+
+      player.selectedLuckyNumbers = [...existingLucky, lucky];
+
+      game.selectedNumbers = normalizeSelectedNumbers([
+        ...game.selectedNumbers,
+        lucky,
+      ]);
+    }
+
+    game.players[existingIndex] = player;
+
+    await saveWithRetry(game);
+
+    return {
+      game,
+      ticket: null,
+      user: {
+        balance: user.balance,
+        firstName: user.firstName,
+      },
+    };
+  }
+
+  /* ========================================================
+       NEW PLAYER
+    ======================================================== */
+
+  const selectedLuckyNumbers = lucky !== null ? [lucky] : [];
+
+  if (lucky !== null && game.selectedNumbers.includes(lucky)) {
+    throw new Error("Lucky number already selected");
+  }
+
+  // Deduct bet
+  user.balance -= amount;
+
+  await user.save();
+
+  // Generate card with lucky number
+  const card = generateBingoCard(lucky);
+
+  const ticketId = uuidv4();
+
+  const ticket = new BingoTicket({
+    ticketId,
+    gameId,
+    telegramId: normalizedTelegramId,
+    card,
+    numbers: getCardNumbers(card),
+    markedNumbers: [],
+    betAmount: amount,
+    isWinner: false,
+  });
+
+  await ticket.save();
+
+  game.players.push({
+    telegramId: normalizedTelegramId,
+
+    username: user.username || user.firstName || "Player",
+
+    firstName: user.firstName || "Player",
+
+    card,
+
+    markedNumbers: [],
+
+    selectedLuckyNumbers,
+
+    betAmount: amount,
+
+    isSpectator: false,
+
+    hasBingo: false,
+
+    bingoTime: null,
+  });
+
+  if (lucky !== null) {
+    game.selectedNumbers = normalizeSelectedNumbers([
+      ...game.selectedNumbers,
+      lucky,
+    ]);
+  }
+
+  game.playerCount = game.players.filter(
+    (player) => !player.isSpectator,
+  ).length;
+
+  if (!game.roundSummary) {
+    game.roundSummary = {};
+  }
+
+  game.roundSummary.playerCount = game.playerCount;
+
+  game.roundSummary.selectedNumbersCount = game.selectedNumbers.length;
+
+  game.roundSummary.totalBetAmount = game.players.reduce(
+    (sum, player) => sum + Number(player.betAmount || 0),
+    0,
+  );
+
+  await saveWithRetry(game);
+
+  return {
+    game,
+    ticket,
+    user: {
+      balance: user.balance,
+      firstName: user.firstName,
+    },
+  };
 };
+
+/* ============================================================
+   SPECTATOR
+============================================================ */
+
+export const joinAsSpectator = async (gameId, telegramId) => {
+  const normalizedTelegramId = normalizeTelegramId(telegramId);
+
+  const game = await BingoGame.findOne({
+    gameId,
+  });
+
+  if (!game) {
+    throw new Error("Game not found");
+  }
+
+  if (game.status !== "active") {
+    throw new Error("Spectators can only join during the live game.");
+  }
+
+  const user = await User.findOne({
+    telegramId: normalizedTelegramId,
+  });
+
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  const existing = game.players.find(
+    (player) => normalizeTelegramId(player.telegramId) === normalizedTelegramId,
+  );
+
+  if (!existing) {
+    game.players.push({
+      telegramId: normalizedTelegramId,
+
+      username: user.username || user.firstName || "Spectator",
+
+      firstName: user.firstName || "Spectator",
+
+      card: [],
+
+      markedNumbers: [],
+
+      selectedLuckyNumbers: [],
+
+      betAmount: 0,
+
+      isSpectator: true,
+
+      hasBingo: false,
+    });
+
+    await saveWithRetry(game);
+  }
+
+  return {
+    game,
+    user: {
+      balance: user.balance,
+      firstName: user.firstName,
+    },
+
+    isSpectator: true,
+  };
+};
+
+/* ============================================================
+   CALL NUMBER
+============================================================ */
+
+export const callNumber = async (gameId) => {
+  const game = await BingoGame.findOne({
+    gameId,
+  });
+
+  if (!game) {
+    throw new Error("Game not found");
+  }
+
+  if (game.status !== "active") {
+    throw new Error("Game is not active");
+  }
+
+  // NEVER exceed 75
+  if (game.calledNumbers.length >= MAX_BINGO_NUMBER) {
+    return null;
+  }
+
+  const availableNumbers = [];
+
+  for (let number = 1; number <= 75; number++) {
+    if (!game.calledNumbers.includes(number)) {
+      availableNumbers.push(number);
+    }
+  }
+
+  if (availableNumbers.length === 0) {
+    return null;
+  }
+
+  const number =
+    availableNumbers[Math.floor(Math.random() * availableNumbers.length)];
+
+  game.calledNumbers.push(number);
+
+  game.currentNumber = number;
+
+  game.lastCalledAt = new Date();
+
+  /* ========================================================
+       AUTOMATICALLY MARK ALL PLAYERS
+    ======================================================== */
+
+  const winners = [];
+
+  for (let i = 0; i < game.players.length; i++) {
+    const player = game.players[i];
+
+    // Spectators have no card
+    if (player.isSpectator) {
+      continue;
+    }
+
+    if (!Array.isArray(player.card) || player.card.length !== 5) {
+      continue;
+    }
+
+    const exists = checkNumberOnCard(player.card, number);
+
+    if (exists.found) {
+      if (!player.markedNumbers.includes(number)) {
+        player.markedNumbers.push(number);
+      }
+    }
+
+    const bingoResult = checkBingo(player.card, player.markedNumbers);
+
+    if (bingoResult.bingo && !player.hasBingo) {
+      player.hasBingo = true;
+
+      player.bingoTime = new Date();
+
+      const winAmount = Number(player.betAmount || 0) * 5;
+
+      winners.push({
+        telegramId: player.telegramId,
+
+        username: player.username,
+
+        firstName: player.firstName,
+
+        winAmount,
+
+        bingoResult,
+
+        // ⭐ WINNER CARD
+        card: player.card,
+
+        markedNumbers: player.markedNumbers,
+      });
+    }
+  }
+
+  /* ========================================================
+       WINNER
+    ======================================================== */
+
+  if (winners.length > 0) {
+    const firstWinner = winners[0];
+
+    game.status = "completed";
+
+    game.roundEndedAt = new Date();
+
+    game.endTime = new Date();
+
+    game.winner = {
+      telegramId: firstWinner.telegramId,
+
+      username: firstWinner.username,
+
+      firstName: firstWinner.firstName,
+
+      winAmount: firstWinner.winAmount,
+
+      card: firstWinner.card,
+
+      markedNumbers: firstWinner.markedNumbers,
+    };
+
+    if (!game.roundSummary) {
+      game.roundSummary = {};
+    }
+
+    game.roundSummary.endedReason = "bingo";
+
+    game.roundSummary.calledNumbersCount = game.calledNumbers.length;
+
+    game.roundSummary.winnerTelegramId = firstWinner.telegramId;
+
+    game.roundSummary.winnerUsername = firstWinner.username;
+
+    game.roundSummary.winnerAmount = firstWinner.winAmount;
+
+    // Pay all winners
+    for (const winner of winners) {
+      const user = await User.findOne({
+        telegramId: normalizeTelegramId(winner.telegramId),
+      });
+
+      if (user) {
+        user.balance += winner.winAmount;
+
+        user.bingoGames = Number(user.bingoGames || 0) + 1;
+
+        user.bingoWins = Number(user.bingoWins || 0) + 1;
+
+        user.gamesPlayed = Number(user.gamesPlayed || 0) + 1;
+
+        user.gamesWon = Number(user.gamesWon || 0) + 1;
+
+        await user.save();
+      }
+
+      const ticket = await BingoTicket.findOne({
+        gameId,
+        telegramId: normalizeTelegramId(winner.telegramId),
+      });
+
+      if (ticket) {
+        ticket.isWinner = true;
+
+        ticket.winAmount = winner.winAmount;
+
+        await ticket.save();
+      }
+    }
+  }
+
+  if (!game.roundSummary) {
+    game.roundSummary = {};
+  }
+
+  game.roundSummary.calledNumbersCount = game.calledNumbers.length;
+
+  game.roundSummary.selectedNumbersCount = game.selectedNumbers.length;
+
+  await saveWithRetry(game);
+
+  return {
+    number,
+
+    calledNumbers: game.calledNumbers,
+
+    currentNumber: number,
+
+    winners,
+
+    gameEnded: winners.length > 0,
+  };
+};
+
+/* ============================================================
+   MARK NUMBER
+============================================================ */
+
+export const markNumber = async (gameId, telegramId, number) => {
+  const game = await BingoGame.findOne({
+    gameId,
+  });
+
+  if (!game) {
+    throw new Error("Game not found");
+  }
+
+  const normalizedTelegramId = normalizeTelegramId(telegramId);
+
+  const player = game.players.find(
+    (p) => normalizeTelegramId(p.telegramId) === normalizedTelegramId,
+  );
+
+  if (!player) {
+    throw new Error("Player not in game");
+  }
+
+  if (player.isSpectator) {
+    throw new Error("Spectators cannot mark numbers");
+  }
+
+  if (!game.calledNumbers.includes(Number(number))) {
+    throw new Error("Number has not been called");
+  }
+
+  const result = checkNumberOnCard(player.card, Number(number));
+
+  if (!result.found) {
+    throw new Error("Number not on card");
+  }
+
+  if (player.markedNumbers.includes(Number(number))) {
+    throw new Error("Number already marked");
+  }
+
+  player.markedNumbers.push(Number(number));
+
+  const bingoResult = checkBingo(player.card, player.markedNumbers);
+
+  if (bingoResult.bingo) {
+    const winAmount = Number(player.betAmount || 0) * 5;
+
+    game.status = "completed";
+
+    game.endTime = new Date();
+
+    game.roundEndedAt = new Date();
+
+    game.winner = {
+      telegramId: player.telegramId,
+
+      username: player.username,
+
+      firstName: player.firstName,
+
+      winAmount,
+
+      card: player.card,
+
+      markedNumbers: player.markedNumbers,
+    };
+
+    await saveWithRetry(game);
+
+    const user = await User.findOne({
+      telegramId: normalizedTelegramId,
+    });
+
+    if (user) {
+      user.balance += winAmount;
+
+      user.bingoGames = Number(user.bingoGames || 0) + 1;
+
+      user.bingoWins = Number(user.bingoWins || 0) + 1;
+
+      user.gamesPlayed = Number(user.gamesPlayed || 0) + 1;
+
+      user.gamesWon = Number(user.gamesWon || 0) + 1;
+
+      await user.save();
+    }
+
+    const ticket = await BingoTicket.findOne({
+      gameId,
+      telegramId: normalizedTelegramId,
+    });
+
+    if (ticket) {
+      ticket.isWinner = true;
+
+      ticket.winAmount = winAmount;
+
+      await ticket.save();
+    }
+
+    return {
+      marked: true,
+
+      bingo: true,
+
+      bingoResult,
+
+      winner: game.winner,
+
+      markedNumbers: player.markedNumbers,
+
+      game,
+    };
+  }
+
+  await saveWithRetry(game);
+
+  return {
+    marked: true,
+
+    bingo: false,
+
+    number,
+
+    markedNumbers: player.markedNumbers,
+  };
+};
+
+/* ============================================================
+   START GAME
+============================================================ */
+
+export const startGame = async (gameId) => {
+  const game = await BingoGame.findOne({
+    gameId,
+  });
+
+  if (!game) {
+    throw new Error("Game not found");
+  }
+
+  if (game.status !== "waiting") {
+    throw new Error("Game already started");
+  }
+
+  const realPlayers = game.players.filter((player) => !player.isSpectator);
+
+  if (realPlayers.length === 0) {
+    throw new Error("At least one player must select a card");
+  }
+
+  game.status = "active";
+
+  game.selectionEndsAt = null;
+
+  game.startTime = new Date();
+
+  game.roundStartedAt = new Date();
+
+  game.playerCount = realPlayers.length;
+
+  await saveWithRetry(game);
+
+  return game;
+};
+
+/* ============================================================
+   GET GAME STATE
+============================================================ */
+
+export const getGameState = async (gameId) => {
+  const game = await BingoGame.findOne({
+    gameId,
+  });
+
+  if (!game) {
+    throw new Error("Game not found");
+  }
+
+  return game;
+};
+
+/* ============================================================
+   GET PLAYER CARD
+============================================================ */
+
+export const getPlayerCard = async (gameId, telegramId) => {
+  const game = await BingoGame.findOne({
+    gameId,
+  });
+
+  if (!game) {
+    throw new Error("Game not found");
+  }
+
+  const normalizedTelegramId = normalizeTelegramId(telegramId);
+
+  const player = game.players.find(
+    (p) => normalizeTelegramId(p.telegramId) === normalizedTelegramId,
+  );
+
+  if (!player) {
+    throw new Error("Player not in game");
+  }
+
+  return {
+    card: player.card,
+
+    markedNumbers: player.markedNumbers,
+
+    isSpectator: Boolean(player.isSpectator),
+  };
+};
+
+/* ============================================================
+   SOCKET HANDLERS
+============================================================ */
 
 export const initBingoSocket = (io) => {
   console.log("🎮 Initializing Bingo Socket Handlers...");
-  try {
-    globalThis.io = io;
-  } catch (e) {
-    console.warn("Unable to set global io reference:", e.message || e);
-  }
 
   io.on("connection", async (socket) => {
     console.log(`\n🎯 [BINGO CLIENT CONNECTED] ${socket.id}`);
-    await emitCurrentRoundState(socket);
 
-    socket.on("createRoom", async (data) => {
+    // Emit current round state if one exists
+    try {
+      const currentGame = await BingoGame.findOne({
+        status: { $in: ["waiting", "active"] },
+      })
+        .sort({ updatedAt: -1 })
+        .lean();
+
+      if (currentGame) {
+        const remainingSeconds = BingoRoundManager.getRemainingSeconds(
+          currentGame.selectionEndsAt,
+        );
+        socket.emit("bingo:roundState", {
+          gameId: currentGame.gameId,
+          roomId: currentGame.roomId,
+          status: BingoRoundManager.normalizeStatus(currentGame.status),
+          remainingSeconds,
+          playerCount: currentGame.playerCount ?? 0,
+          selectedNumbers: currentGame.selectedNumbers ?? [],
+          calledNumbers: currentGame.calledNumbers ?? [],
+          currentNumber: currentGame.currentNumber ?? null,
+        });
+      }
+    } catch (error) {
+      console.warn("Unable to fetch current round state:", error.message);
+    }
+
+    // ============================================================
+    // CREATE ROOM (First player starts a new game)
+    // ============================================================
+    socket.on("createRoom", async (data, callback) => {
       try {
-        console.log(
-          `📢 [CREATE ROOM] Received createRoom event with data:`,
-          data,
-        );
-        const { roomId, maxPlayers = 10, minBet = 1, maxBet = 100 } = data;
-        const game = await createBingoGame(roomId, maxPlayers, minBet, maxBet);
-        console.log(
-          `📢 [CREATE ROOM] Game created: gameId=${game.gameId}, roomId=${game.roomId}`,
-        );
+        console.log(`📢 [CREATE ROOM] roomId: ${data?.roomId || "Main"}`);
+
+        const { roomId = "Main Room" } = data;
 
         socket.join(roomId);
+
+        // Initialize new round
+        const game = await BingoRoundManager.initializeNewRound(io, roomId);
 
         socket.emit("roomCreated", {
           success: true,
           gameId: game.gameId,
           roomId: game.roomId,
-          message: `Room "${roomId}" created successfully!`,
+          message: `Room created successfully!`,
         });
 
-        console.log(
-          `📢 [CREATE ROOM] Starting countdown for gameId=${game.gameId}`,
-        );
-        await startSelectionCountdown(io, game.gameId, game.roomId);
+        if (typeof callback === "function") {
+          callback({
+            success: true,
+            gameId: game.gameId,
+            roomId: game.roomId,
+          });
+        }
       } catch (error) {
         console.error("Create Room Error:", error.message);
-        socket.emit("error", {
+        const response = {
           success: false,
           message: error.message || "Failed to create room",
-        });
+        };
+
+        if (typeof callback === "function") return callback(response);
+        socket.emit("error", response);
       }
     });
 
+    // ============================================================
+    // JOIN ROOM (Player joins and selects a lucky number)
+    // ============================================================
     socket.on("joinRoom", async (data, callback) => {
       try {
         const { gameId, telegramId, betAmount, luckyNumber = null } = data;
 
         if (!gameId || !telegramId) {
-          const response = {
-            success: false,
-            message: "GameId and TelegramId are required.",
-          };
-          if (typeof callback === "function") return callback(response);
-          return socket.emit("error", response);
+          throw new Error("GameId and TelegramId are required");
         }
 
-        let result;
-        let isSpectator = false;
-
-        // Try to join as a player first (during WAITING phase)
-        if (betAmount && betAmount >= 1) {
-          try {
-            result = await joinBingoGame(
-              gameId,
-              telegramId,
-              betAmount,
-              luckyNumber,
-            );
-          } catch (playerJoinError) {
-            // If player join fails, try to spectate instead
-            try {
-              result = await joinAsSpectator(gameId, telegramId);
-              isSpectator = true;
-            } catch (spectateError) {
-              throw playerJoinError;
-            }
-          }
-        } else {
-          // No bet provided, try to spectate
-          try {
-            result = await joinAsSpectator(gameId, telegramId);
-            isSpectator = true;
-          } catch (spectateError) {
-            // If spectate fails, try normal join anyway
-            if (!betAmount || betAmount < 1) {
-              throw new Error(
-                "Invalid data. GameId, TelegramId, and a valid bet are required.",
-              );
-            }
-            result = await joinBingoGame(
-              gameId,
-              telegramId,
-              betAmount,
-              luckyNumber,
-            );
-          }
-        }
+        const result = await joinBingoGame(
+          gameId,
+          telegramId,
+          betAmount,
+          luckyNumber,
+        );
 
         socket.join(result.game.roomId);
 
@@ -622,15 +1099,15 @@ export const initBingoSocket = (io) => {
           card: result.ticket?.card || null,
           ticketId: result.ticket?.ticketId || null,
           balance: result.user.balance,
-          currentPlayers: result.game.players.length,
-          playerCount: result.game.players.length,
-          players: getPlayerSummary(result.game.players),
+          currentPlayers: result.game.playerCount,
           selectedNumbers: result.game.selectedNumbers || [],
-          isSpectator: isSpectator,
         });
 
+        // Broadcast updated state to all players in room
         const currentGame = await getGameState(result.game.gameId);
-        emitRoundState(io, result.game.roomId, currentGame);
+        BingoRoundManager.emitRoundState(io, result.game.roomId, currentGame, {
+          status: "WAITING",
+        });
 
         if (typeof callback === "function") {
           callback({
@@ -638,8 +1115,6 @@ export const initBingoSocket = (io) => {
             gameId: result.game.gameId,
             roomId: result.game.roomId,
             selectedNumbers: currentGame.selectedNumbers || [],
-            playerCount: currentGame.players.length,
-            isSpectator: isSpectator,
           });
         }
       } catch (error) {
@@ -648,180 +1123,64 @@ export const initBingoSocket = (io) => {
           success: false,
           message: error.message || "Failed to join room",
         };
+
         if (typeof callback === "function") return callback(response);
         socket.emit("error", response);
       }
     });
 
-    socket.on("startGame", async (data) => {
-      try {
-        const { gameId } = data;
-        if (!gameId)
-          return socket.emit("error", {
-            success: false,
-            message: "Game ID is required",
-          });
-
-        // ✅ startGame() already sets status to "active" and saves the game
-        const game = await startGame(gameId);
-
-        emitRoundState(io, game.roomId, game, {
-          remainingSeconds: 0,
-          status: "PLAYING",
-        });
-
-        startNumberCalling(io, game.gameId, game.roomId);
-      } catch (error) {
-        console.error("Start Game Error:", error.message);
-        socket.emit("error", {
-          success: false,
-          message: error.message || "Failed to start game",
-        });
-      }
-    });
-
-    socket.on("markNumber", async (data) => {
+    // ============================================================
+    // MARK NUMBER (Player marks a number on their card)
+    // ============================================================
+    socket.on("markNumber", async (data, callback) => {
       try {
         const { gameId, telegramId, number } = data;
+
         if (!gameId || !telegramId || !number) {
-          return socket.emit("error", {
-            success: false,
-            message: "GameId, TelegramId, and Number are required",
-          });
+          throw new Error("GameId, TelegramId, and Number are required");
         }
 
         const result = await markNumber(gameId, telegramId, number);
-        const game = await getGameState(gameId);
 
         socket.emit("numberMarked", {
           success: true,
           number,
           marked: result.marked,
           bingo: result.bingo,
-          bingoResult: result.bingoResult,
           markedNumbers: result.markedNumbers,
         });
 
         if (result.bingo) {
-          stopCallerTimer(gameId);
-          emitRoundState(io, game.roomId, game, {
-            status: "FINISHED",
-            remainingSeconds: 0,
-            winner: result.winner,
+          // Game won! Finish the round
+          await BingoRoundManager.finishRound(io, gameId, result.game.roomId);
+        }
+
+        if (typeof callback === "function") {
+          callback({
+            success: true,
+            marked: result.marked,
+            bingo: result.bingo,
           });
-
-          io.to(game.roomId).emit("bingo:winner", {
-            gameId: game.gameId,
-            roomId: game.roomId,
-            winner: result.winner,
-            status: "FINISHED",
-          });
-          io.to(game.roomId).emit("bingo:roundFinished", {
-            gameId: game.gameId,
-            roomId: game.roomId,
-            winner: result.winner,
-            status: "FINISHED",
-          });
-
-          setTimeout(async () => {
-            try {
-              const nextGame = await createBingoGame(
-                game.roomId,
-                game.maxPlayers,
-                game.minBet,
-                game.maxBet,
-              );
-
-              io.to(game.roomId).emit("bingo:nextRound", {
-                gameId: nextGame.gameId,
-                roomId: nextGame.roomId,
-                status: "WAITING",
-                selectedNumbers: [],
-                calledNumbers: [],
-                currentNumber: null,
-                players: [],
-                playerCount: 0,
-                remainingSeconds: ROUND_SELECTION_SECONDS,
-              });
-
-              await startSelectionCountdown(
-                io,
-                nextGame.gameId,
-                nextGame.roomId,
-              );
-            } catch (err) {
-              console.error("Failed to create next round:", err.message || err);
-            }
-          }, 8000);
         }
       } catch (error) {
-        console.error("Mark Number Error:", error.message);
-        socket.emit("error", {
+        console.error("MARK NUMBER ERROR:", error.message);
+        const response = {
           success: false,
-          message: "Failed to mark number",
-        });
+          message: error.message || "Failed to mark number",
+        };
+
+        if (typeof callback === "function") return callback(response);
+        socket.emit("error", response);
       }
     });
 
-    socket.on("getGameState", async (data) => {
-      try {
-        const { gameId } = data;
-        const game = await getGameState(gameId);
-        socket.emit("gameState", {
-          success: true,
-          game: {
-            status: game.status,
-            players: game.players.map((p) => ({
-              telegramId: p.telegramId,
-              username: p.username,
-              markedCount: p.markedNumbers.length,
-              hasBingo: p.hasBingo,
-            })),
-            calledNumbers: game.calledNumbers,
-            currentNumber: game.currentNumber,
-            lastCalledAt: game.lastCalledAt,
-          },
-        });
-      } catch (error) {
-        console.error("Get Game State Error:", error.message);
-        socket.emit("error", { success: false, message: error.message });
-      }
-    });
-
-    socket.on("getCard", async (data) => {
-      try {
-        const { gameId, telegramId } = data;
-        const card = await getPlayerCard(gameId, telegramId);
-        socket.emit("playerCard", {
-          success: true,
-          card: card.card,
-          markedNumbers: card.markedNumbers,
-        });
-      } catch (error) {
-        console.error("Get Card Error:", error.message);
-        socket.emit("error", { success: false, message: error.message });
-      }
-    });
-
-    socket.on("leaveRoom", (data) => {
-      const { roomId } = data;
-      if (roomId) {
-        socket.leave(roomId);
-        socket.emit("leftRoom", {
-          success: true,
-          message: `Left room ${roomId}`,
-        });
-        socket.to(roomId).emit("gameUpdate", {
-          type: "playerLeft",
-          message: "A player has left the room.",
-        });
-      }
-    });
-
-    socket.on("disconnect", () => {
-      console.log(`🎯 Bingo client disconnected: ${socket.id}`);
+    // ============================================================
+    // DISCONNECT
+    // ============================================================
+    socket.on("disconnect", (reason) => {
+      console.log(
+        `❌ [BINGO CLIENT DISCONNECTED] ${socket.id} | Reason: ${reason}`,
+      );
     });
   });
 };
-
-export { gameTimers };

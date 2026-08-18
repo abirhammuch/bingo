@@ -48,6 +48,7 @@ const Bingo = ({ theme }) => {
 
   const [phase, setPhase] = useState("selection");
 
+  // ✅ Server-controlled remaining time (NOT local browser time)
   const [remainingSeconds, setRemainingSeconds] = useState(30);
 
   const [participantCount, setParticipantCount] = useState(0);
@@ -68,8 +69,7 @@ const Bingo = ({ theme }) => {
 
   const [cards, setCards] = useState([]);
 
-  const [selectionCountdown, setSelectionCountdown] = useState(30);
-
+  // ✅ This now comes from server, not local browser
   const [noSelectionsMessage, setNoSelectionsMessage] = useState(null);
 
   const winnerRef = useRef(null);
@@ -77,7 +77,7 @@ const Bingo = ({ theme }) => {
   const roundStatusRef = useRef("WAITING");
 
   /* ======================================================
-     SYNC STATE
+     SYNC STATE - Server is the single source of truth
   ====================================================== */
 
   const syncRoundState = (payload) => {
@@ -85,18 +85,25 @@ const Bingo = ({ theme }) => {
       return;
     }
 
+    // Normalize status to uppercase
     const status = String(payload.status || "WAITING").toUpperCase();
 
     setRoundStatus(status);
 
+    // Determine phase based on status
     if (status === "WAITING") {
       setPhase("selection");
-    } else if (status === "ACTIVE" || status === "PLAYING") {
+    } else if (
+      status === "PLAYING" ||
+      status === "ACTIVE" ||
+      status === "LIVE"
+    ) {
       setPhase("live");
-    } else {
+    } else if (status === "FINISHED" || status === "COMPLETED") {
       setPhase("finished");
     }
 
+    // ✅ Use server-provided remaining seconds (single source of truth)
     const seconds =
       typeof payload.remainingSeconds === "number"
         ? payload.remainingSeconds
@@ -104,8 +111,7 @@ const Bingo = ({ theme }) => {
 
     setRemainingSeconds(Math.max(0, seconds));
 
-    setSelectionCountdown(Math.max(0, seconds));
-
+    // Update participant count
     const players =
       payload.playerCount ??
       payload.participantCount ??
@@ -115,6 +121,7 @@ const Bingo = ({ theme }) => {
 
     setParticipantCount(Number(players) || 0);
 
+    // Update numbers
     setSelectedNumbersGlobal(
       Array.isArray(payload.selectedNumbers) ? payload.selectedNumbers : [],
     );
@@ -125,10 +132,12 @@ const Bingo = ({ theme }) => {
 
     setCurrentNumber(payload.currentNumber ?? null);
 
+    // Update game ID
     if (payload.gameId) {
       setRoundId(payload.gameId);
     }
 
+    // Update winner
     if (payload.winner) {
       setWinner(payload.winner);
     }
@@ -436,7 +445,7 @@ const Bingo = ({ theme }) => {
       <main className="flex-1 overflow-auto p-4">
         {phase === "selection" && (
           <SelectionPage
-            selectionCountdown={selectionCountdown}
+            selectionCountdown={remainingSeconds}
             calledNumbers={calledNumbers}
             selectedNumbersGlobal={selectedNumbersGlobal}
             mySelections={mySelections}
