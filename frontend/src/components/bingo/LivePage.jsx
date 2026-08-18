@@ -11,7 +11,7 @@ const LivePage = ({
   const safeCalledNumbers = Array.isArray(calledNumbers) ? calledNumbers : [];
 
   return (
-    <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div className="max-w-6xl mx-auto grid grid-cols-2 gap-6">
       {/* =================================================
           LEFT - 75 NUMBER BOARD
       ================================================= */}
