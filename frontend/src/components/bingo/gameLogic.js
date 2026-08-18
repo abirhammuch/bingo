@@ -4,13 +4,14 @@ const COLUMN_RANGES = [
   { start: 31, end: 45 },
   { start: 46, end: 60 },
   { start: 61, end: 75 },
-  
 ];
 
 const shuffle = (values) => {
   const nextValues = [...values];
-  for (let index = nextValues.length - 1; index > 0; index -= 1) {
+
+  for (let index = nextValues.length - 1; index > 0; index--) {
     const swapIndex = Math.floor(Math.random() * (index + 1));
+
     [nextValues[index], nextValues[swapIndex]] = [
       nextValues[swapIndex],
       nextValues[index],
@@ -22,55 +23,65 @@ const shuffle = (values) => {
 
 export const createBingoCard = (selectedNumbers = []) => {
   const card = Array.from({ length: 5 }, () => Array(5).fill(null));
+
   const selectedSet = new Set(
-    selectedNumbers.filter((value) => value >= 1 && value <= 75),
+    selectedNumbers.map(Number).filter((number) => number >= 1 && number <= 75),
   );
 
-  const availablePositions = shuffle(
-    card
-      .flatMap((row, rowIndex) =>
-        row.map((_, columnIndex) => [rowIndex, columnIndex]),
-      )
-      .filter(
-        ([rowIndex, columnIndex]) => !(rowIndex === 2 && columnIndex === 2),
-      ),
-  );
-
+  /*
+   * Generate normal BINGO columns.
+   */
   COLUMN_RANGES.forEach((range, columnIndex) => {
-    const values = shuffle(
-      Array.from(
-        { length: range.end - range.start + 1 },
-        (_, index) => range.start + index,
-      ),
-    ).slice(0, 5);
+    const numbers = Array.from(
+      {
+        length: range.end - range.start + 1,
+      },
+      (_, index) => range.start + index,
+    );
+
+    const values = shuffle(numbers).slice(0, 5);
 
     values.forEach((value, rowIndex) => {
-      card[rowIndex][columnIndex] = { value, marked: false };
+      card[rowIndex][columnIndex] = {
+        value,
+        marked: false,
+      };
     });
   });
 
-  selectedSet.forEach((value) => {
-    if (value === 0) {
-      return;
-    }
+  /*
+   * Force selected lucky numbers onto card.
+   */
+  selectedSet.forEach((number) => {
+    const columnIndex = Math.floor((number - 1) / 15);
 
-    const alreadyPresent = card.some((row) =>
-      row.some((cell) => cell?.value === value),
+    const existing = card.some((row) =>
+      row.some((cell) => cell?.value === number),
     );
-    if (alreadyPresent) {
+
+    if (existing) {
       return;
     }
 
-    const nextPosition = availablePositions.pop();
-    if (!nextPosition) {
-      return;
-    }
+    const possibleRows = [0, 1, 2, 3, 4].filter(
+      (row) => !(row === 2 && columnIndex === 2),
+    );
 
-    const [rowIndex, columnIndex] = nextPosition;
-    card[rowIndex][columnIndex] = { value, marked: false };
+    const row = possibleRows[Math.floor(Math.random() * possibleRows.length)];
+
+    card[row][columnIndex] = {
+      value: number,
+      marked: false,
+    };
   });
 
-  card[2][2] = { value: "FREE", marked: true };
+  /*
+   * FREE center.
+   */
+  card[2][2] = {
+    value: "FREE",
+    marked: true,
+  };
 
   return card;
 };
@@ -83,7 +94,10 @@ export const markNumberOnCard = (card, number) => {
   return card.map((row) =>
     row.map((cell) => {
       if (cell?.value === number) {
-        return { ...cell, marked: true };
+        return {
+          ...cell,
+          marked: true,
+        };
       }
 
       return cell;
@@ -92,30 +106,50 @@ export const markNumberOnCard = (card, number) => {
 };
 
 export const hasBingo = (card) => {
-  if (!card || !Array.isArray(card) || card.length !== 5) {
+  if (!Array.isArray(card) || card.length !== 5) {
     return false;
   }
 
   const isMarked = (cell) =>
     Boolean(cell && (cell.marked || cell.value === "FREE" || cell.value === 0));
 
-  const hasLine = (line) =>
-    Array.isArray(line) && line.length === 5 && line.every(isMarked);
+  /*
+   * Rows
+   */
+  for (let row = 0; row < 5; row++) {
+    if (card[row].every(isMarked)) {
+      return true;
+    }
+  }
 
-  const rows = card.some((row) => hasLine(row));
-  if (rows) return true;
+  /*
+   * Columns
+   */
+  for (let column = 0; column < 5; column++) {
+    const values = card.map((row) => row[column]);
 
-  const columns = Array.from({ length: 5 }, (_, columnIndex) =>
-    hasLine(card.map((row) => row[columnIndex])),
-  ).some(Boolean);
-  if (columns) return true;
+    if (values.every(isMarked)) {
+      return true;
+    }
+  }
 
-  const diagonalOne = hasLine(card.map((row, index) => row[index]));
-  if (diagonalOne) return true;
+  /*
+   * Diagonal \
+   */
+  const diagonalOne = card.map((row, index) => row[index]);
 
-  const diagonalTwo = hasLine(card.map((row, index) => row[4 - index]));
-  return diagonalTwo;
+  if (diagonalOne.every(isMarked)) {
+    return true;
+  }
+
+  /*
+   * Diagonal /
+   */
+  const diagonalTwo = card.map((row, index) => row[4 - index]);
+
+  return diagonalTwo.every(isMarked);
 };
 
-export const createNumberPool = () =>
-  shuffle(Array.from({ length: 75 }, (_, index) => index + 1));
+export const createNumberPool = () => {
+  return shuffle(Array.from({ length: 75 }, (_, index) => index + 1));
+};

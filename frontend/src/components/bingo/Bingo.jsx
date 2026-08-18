@@ -1,22 +1,12 @@
 ﻿import React, { useEffect, useRef, useState } from "react";
 
-import CurrentNumber from "./CurrentNumber";
-import CalledNumbers from "./CalledNumbers";
-import GameStatus from "./GameStatus";
-import Countdown from "./Countdown";
-import WinnerModal from "./WinnerModal";
 import Header from "./Header";
 import SelectionPage from "./SelectionPage";
 import LivePage from "./LivePage";
-
-import {
-  createBingoCard,
-  createNumberPool,
-  hasBingo,
-  markNumberOnCard,
-} from "./gameLogic";
+import WinnerModal from "./WinnerModal";
 
 import socket from "../../socket/socket";
+
 import { useAuth } from "../../context/AuthContext";
 
 const Bingo = ({ theme }) => {
@@ -25,24 +15,28 @@ const Bingo = ({ theme }) => {
       accentText: "text-emerald-300",
       accentBg: "bg-emerald-600/20",
       accentIcon: "text-emerald-400",
+      title: "text-emerald-300",
     },
 
     yellow: {
       accentText: "text-amber-300",
       accentBg: "bg-amber-600/20",
       accentIcon: "text-amber-400",
+      title: "text-amber-300",
     },
 
     blue: {
       accentText: "text-sky-300",
       accentBg: "bg-sky-600/20",
       accentIcon: "text-sky-400",
+      title: "text-sky-300",
     },
 
     red: {
       accentText: "text-rose-300",
       accentBg: "bg-rose-600/20",
       accentIcon: "text-rose-400",
+      title: "text-rose-300",
     },
   };
 
@@ -76,59 +70,48 @@ const Bingo = ({ theme }) => {
 
   const [selectionCountdown, setSelectionCountdown] = useState(30);
 
-  const [liveCountdown, setLiveCountdown] = useState(null);
-
-  const roundStatusRef = useRef("WAITING");
   const winnerRef = useRef(null);
 
-  const selectionNumbers = mySelections;
+  const roundStatusRef = useRef("WAITING");
 
-  const canSelectMore = mySelections.length < 2;
+  /* ======================================================
+     SYNC STATE
+  ====================================================== */
 
-  const showSelectionPanel = phase === "selection";
-
-  /*
-   * Sync game state received from Socket.IO.
-   */
   const syncRoundState = (payload) => {
     if (!payload) {
       return;
     }
 
-    const nextStatus = String(payload.status || "WAITING").toUpperCase();
+    const status = String(payload.status || "WAITING").toUpperCase();
 
-    const nextPhase =
-      nextStatus === "WAITING"
-        ? "selection"
-        : nextStatus === "PLAYING"
-          ? "live"
-          : "finished";
+    setRoundStatus(status);
 
-    setRoundStatus(nextStatus);
+    if (status === "WAITING") {
+      setPhase("selection");
+    } else if (status === "ACTIVE" || status === "PLAYING") {
+      setPhase("live");
+    } else {
+      setPhase("finished");
+    }
 
-    setPhase(nextPhase);
-
-    setRemainingSeconds(
+    const seconds =
       typeof payload.remainingSeconds === "number"
         ? payload.remainingSeconds
-        : 30,
-    );
+        : 30;
 
-    setSelectionCountdown(
-      typeof payload.remainingSeconds === "number"
-        ? payload.remainingSeconds
-        : 30,
-    );
+    setRemainingSeconds(Math.max(0, seconds));
 
-    setParticipantCount(
-      typeof payload.playerCount === "number"
-        ? payload.playerCount
-        : typeof payload.participants === "number"
-          ? payload.participants
-          : Array.isArray(payload.players)
-            ? payload.players.length
-            : 0,
-    );
+    setSelectionCountdown(Math.max(0, seconds));
+
+    const players =
+      payload.playerCount ??
+      payload.participantCount ??
+      payload.players?.length ??
+      payload.participants ??
+      0;
+
+    setParticipantCount(Number(players) || 0);
 
     setSelectedNumbersGlobal(
       Array.isArray(payload.selectedNumbers) ? payload.selectedNumbers : [],
@@ -140,18 +123,18 @@ const Bingo = ({ theme }) => {
 
     setCurrentNumber(payload.currentNumber ?? null);
 
-    setWinner(payload.winner ?? null);
-
     if (payload.gameId) {
       setRoundId(payload.gameId);
     }
 
-    if (nextStatus === "PLAYING") {
-      setLiveCountdown(0);
-    } else {
-      setLiveCountdown(null);
+    if (payload.winner) {
+      setWinner(payload.winner);
     }
   };
+
+  /* ======================================================
+     REFS
+  ====================================================== */
 
   useEffect(() => {
     roundStatusRef.current = roundStatus;
@@ -161,32 +144,17 @@ const Bingo = ({ theme }) => {
     winnerRef.current = winner;
   }, [winner]);
 
-  /*
-   * Socket.IO connection and game events.
-   *
-   * IMPORTANT:
-   * Telegram authentication is NOT performed here.
-   *
-   * LoginPage/AuthContext already authenticated the user.
-   */
+  /* ======================================================
+     SOCKET
+  ====================================================== */
+
   useEffect(() => {
     const handleConnect = () => {
-      console.log("✅ Bingo Socket.IO connected");
+      console.log("✅ Bingo socket connected");
     };
 
     const handleRoundState = (payload) => {
-      console.log("🎮 Bingo round state:", payload);
-
-      const nextStatus = String(payload?.status || "WAITING").toUpperCase();
-
-      if (winnerRef.current || roundStatusRef.current === "FINISHED") {
-        if (nextStatus === "PLAYING" || nextStatus === "FINISHED") {
-          console.warn(
-            "⚠️ Ignoring stale game state after winner was declared",
-          );
-          return;
-        }
-      }
+      console.log("🎮 Round state:", payload);
 
       syncRoundState(payload);
     };
@@ -196,21 +164,23 @@ const Bingo = ({ theme }) => {
         return;
       }
 
-      const winnerPayload = payload.winner || payload.winners?.[0] || payload;
+      const winnerData = payload.winner || payload.winners?.[0] || payload;
 
-      winnerRef.current = winnerPayload;
-      setWinner(winnerPayload);
-      setRoundStatus("FINISHED");
+      winnerRef.current = winnerData;
+
+      setWinner(winnerData);
+
+      setRoundStatus("COMPLETED");
+
       setPhase("finished");
     };
 
     const handleNextRound = (payload) => {
+      console.log("🔄 Next Bingo round", payload);
+
       winnerRef.current = null;
-      syncRoundState({
-        ...payload,
-        status: "WAITING",
-        remainingSeconds: payload?.remainingSeconds ?? 30,
-      });
+
+      setWinner(null);
 
       setMySelections([]);
 
@@ -224,7 +194,13 @@ const Bingo = ({ theme }) => {
 
       setSelectedNumbersGlobal([]);
 
-      setWinner(null);
+      syncRoundState({
+        ...payload,
+
+        status: "WAITING",
+
+        remainingSeconds: payload?.remainingSeconds ?? 30,
+      });
     };
 
     socket.on("connect", handleConnect);
@@ -237,9 +213,6 @@ const Bingo = ({ theme }) => {
 
     socket.on("bingo:nextRound", handleNextRound);
 
-    /*
-     * Connect only after Bingo is rendered.
-     */
     if (!socket.connected) {
       socket.connect();
     }
@@ -257,28 +230,10 @@ const Bingo = ({ theme }) => {
     };
   }, []);
 
-  /*
-   * Clear winner after 4 seconds.
-   */
-  useEffect(() => {
-    if (!winner) {
-      return;
-    }
+  /* ======================================================
+     SELECT LUCKY NUMBER
+  ====================================================== */
 
-    const timeoutId = setTimeout(() => {
-      setWinner(null);
-      setMySelectedNumber(null);
-      winnerRef.current = null;
-    }, 8000);
-
-    return () => {
-      clearTimeout(timeoutId);
-    };
-  }, [winner]);
-
-  /*
-   * Select a lucky number.
-   */
   const toggleLuckyNumber = (number) => {
     if (roundStatus !== "WAITING") {
       return;
@@ -288,20 +243,23 @@ const Bingo = ({ theme }) => {
       return;
     }
 
-    if (
-      selectedNumbersGlobal.includes(number) &&
-      !mySelections.includes(number)
-    ) {
+    if (selectedNumbersGlobal.includes(number)) {
       return;
     }
 
     if (!authUser?.telegramId) {
-      console.warn("⚠️ No authenticated Telegram user");
+      console.warn("No authenticated user");
+
       return;
     }
 
     if (!roundId) {
-      console.warn("⚠️ No Bingo round ID yet");
+      console.warn("No game ID");
+
+      return;
+    }
+
+    if (mySelections.length >= 2) {
       return;
     }
 
@@ -311,22 +269,27 @@ const Bingo = ({ theme }) => {
 
     socket.emit("joinRoom", {
       gameId: roundId,
+
       telegramId: authUser.telegramId,
+
       betAmount: 1,
+
       luckyNumber: number,
     });
 
-    setMySelections((prev) => [...prev, number]);
+    setMySelections((previous) => [...previous, number]);
 
     setMySelectedNumber(number);
   };
 
-  /*
-   * Join Bingo room.
-   */
+  /* ======================================================
+     JOIN
+  ====================================================== */
+
   const handleJoin = () => {
     if (!authUser?.telegramId) {
-      console.warn("⚠️ Cannot join: user not authenticated");
+      console.warn("User is not authenticated");
+
       return;
     }
 
@@ -344,26 +307,56 @@ const Bingo = ({ theme }) => {
 
     socket.emit("joinRoom", {
       gameId: roundId,
+
       telegramId: authUser.telegramId,
+
       betAmount: 1,
+
       luckyNumber: null,
     });
   };
 
+  /* ======================================================
+     WINNER CLEANUP
+  ====================================================== */
+
+  useEffect(() => {
+    if (!winner) {
+      return;
+    }
+
+    const timeout = setTimeout(() => {
+      setWinner(null);
+
+      winnerRef.current = null;
+    }, 8000);
+
+    return () => {
+      clearTimeout(timeout);
+    };
+  }, [winner]);
+
+  /* ======================================================
+     VALUES
+  ====================================================== */
+
+  const canSelectMore = mySelections.length < 2;
+
   const joinButtonDisabled =
     roundStatus !== "WAITING" || mySelections.length >= 2;
 
-  const joinButtonLabel =
-    roundStatus === "WAITING" ? "Tap to select" : "Waiting...";
+  const selectionNumbers = mySelections;
 
   return (
-    <div className="min-h-screen bg-linear-to-b from-slate-950 to-slate-900 flex flex-col">
+    <div className="min-h-screen bg-gradient-to-b from-slate-950 to-slate-900 flex flex-col">
+      {/* HEADER */}
+
       {roundStatus === "WAITING" ? (
         <Header
           gameType="selection"
           timeLeft={Math.max(0, remainingSeconds)}
-          stake="10"
-          balance="0.00"
+          stake={10}
+          balance={authUser?.balance ?? 0}
         />
       ) : (
         <Header
@@ -371,12 +364,14 @@ const Bingo = ({ theme }) => {
           players={participantCount}
           called={calledNumbers.length}
           derash={1250}
-          round="5/TECI"
-          stake="10"
+          round="LIVE"
+          stake={10}
         />
       )}
 
-      <div className="flex-1 overflow-auto p-4">
+      {/* CONTENT */}
+
+      <main className="flex-1 overflow-auto p-4">
         {phase === "selection" && (
           <SelectionPage
             selectionCountdown={selectionCountdown}
@@ -384,7 +379,7 @@ const Bingo = ({ theme }) => {
             selectedNumbersGlobal={selectedNumbersGlobal}
             mySelections={mySelections}
             canSelectMore={canSelectMore}
-            showSelectionPanel={showSelectionPanel}
+            showSelectionPanel={true}
             toggleLuckyNumber={toggleLuckyNumber}
             joinButtonDisabled={joinButtonDisabled}
             handleJoin={handleJoin}
@@ -409,10 +404,17 @@ const Bingo = ({ theme }) => {
               <h2 className="text-2xl font-bold">Round Finished</h2>
 
               <p className="text-slate-400 mt-2">Preparing the next round...</p>
+
+              <p className="text-slate-500 text-sm mt-2">
+                Numbers called: {calledNumbers.length}
+                /75
+              </p>
             </div>
           </div>
         )}
-      </div>
+      </main>
+
+      {/* WINNER */}
 
       <WinnerModal
         open={Boolean(winner)}

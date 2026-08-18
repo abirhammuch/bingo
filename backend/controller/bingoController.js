@@ -28,6 +28,7 @@ export const createGame = async (req, res) => {
     });
   } catch (error) {
     console.error("Create Bingo Game Error:", error);
+
     return res.status(500).json({
       success: false,
       message: "Failed to create bingo game",
@@ -38,7 +39,7 @@ export const createGame = async (req, res) => {
 
 export const joinGame = async (req, res) => {
   try {
-    const { gameId, telegramId, betAmount } = req.body;
+    const { gameId, telegramId, betAmount, luckyNumber } = req.body;
 
     if (!gameId || !telegramId || !betAmount) {
       return res.status(400).json({
@@ -47,20 +48,30 @@ export const joinGame = async (req, res) => {
       });
     }
 
-    const result = await joinBingoGame(gameId, telegramId, betAmount);
+    const result = await joinBingoGame(
+      gameId,
+      telegramId,
+      betAmount,
+      luckyNumber,
+    );
 
     return res.json({
       success: true,
       message: "Joined bingo game successfully",
+
       ticket: result.ticket,
+
       game: result.game,
+
       balance: result.user.balance,
     });
   } catch (error) {
     console.error("Join Bingo Game Error:", error);
+
     return res.status(500).json({
       success: false,
       message: error.message || "Failed to join bingo game",
+
       error: error.message,
     });
   }
@@ -86,6 +97,7 @@ export const startGame = async (req, res) => {
     });
   } catch (error) {
     console.error("Start Bingo Game Error:", error);
+
     return res.status(500).json({
       success: false,
       message: error.message || "Failed to start bingo game",
@@ -109,14 +121,27 @@ export const callNumber = async (req, res) => {
 
     return res.json({
       success: true,
-      message: "Number called successfully",
+
+      message: result?.gameEnded
+        ? "Bingo round finished"
+        : "Number called successfully",
+
       call: result,
+
+      /*
+       * Useful for frontend.
+       */
+      calledCount: result?.calledNumbers?.length || 0,
+
+      maxCalls: 75,
     });
   } catch (error) {
     console.error("Call Bingo Number Error:", error);
+
     return res.status(500).json({
       success: false,
       message: error.message || "Failed to call number",
+
       error: error.message,
     });
   }
@@ -126,7 +151,7 @@ export const markNumber = async (req, res) => {
   try {
     const { gameId, telegramId, number } = req.body;
 
-    if (!gameId || !telegramId || !number) {
+    if (!gameId || !telegramId || number === undefined) {
       return res.status(400).json({
         success: false,
         message: "gameId, telegramId, and number are required",
@@ -141,9 +166,11 @@ export const markNumber = async (req, res) => {
     });
   } catch (error) {
     console.error("Mark Bingo Number Error:", error);
+
     return res.status(500).json({
       success: false,
       message: error.message || "Failed to mark number",
+
       error: error.message,
     });
   }
@@ -168,9 +195,11 @@ export const getGameState = async (req, res) => {
     });
   } catch (error) {
     console.error("Get Bingo Game State Error:", error);
+
     return res.status(500).json({
       success: false,
       message: error.message || "Failed to load game state",
+
       error: error.message,
     });
   }
@@ -191,13 +220,15 @@ export const getPlayerCard = async (req, res) => {
 
     return res.json({
       success: true,
-      card,
+      ...card,
     });
   } catch (error) {
     console.error("Get Player Card Error:", error);
+
     return res.status(500).json({
       success: false,
       message: error.message || "Failed to load player card",
+
       error: error.message,
     });
   }
