@@ -321,14 +321,38 @@ export const initBingoSocket = (io) => {
           throw new Error("Selection time has ended");
         }
 
-        const player = game.players.find(
+        let player = game.players.find(
           (entry) =>
             String(entry.telegramId) === String(telegramId) &&
             !entry.isSpectator,
         );
 
         if (!player) {
-          throw new Error("You are not a player in this round");
+          const fallbackBetAmount = Number(data.betAmount ?? 1) || 1;
+
+          await joinBingoGame(
+            gameId,
+            telegramId,
+            fallbackBetAmount,
+            incomingNumbers,
+          );
+
+          const refreshedGame = await BingoGame.findOne({ gameId });
+          if (!refreshedGame) {
+            throw new Error("Game not found after join");
+          }
+
+          game.players = refreshedGame.players;
+          game.selectedNumbers = refreshedGame.selectedNumbers;
+          player = refreshedGame.players.find(
+            (entry) =>
+              String(entry.telegramId) === String(telegramId) &&
+              !entry.isSpectator,
+          );
+
+          if (!player) {
+            throw new Error("You are not a player in this round");
+          }
         }
 
         const currentSelected = Array.isArray(player.selectedLuckyNumbers)
