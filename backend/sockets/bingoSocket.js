@@ -337,7 +337,7 @@ const startNumberCalling = (io, gameId, roomId) => {
             } catch (error) {
               console.error("Next round setup error:", error.message || error);
             }
-          }, 4000);
+          }, 8000);
         }
       }
     } catch (error) {
@@ -607,7 +607,7 @@ export const initBingoSocket = (io) => {
             } catch (err) {
               console.error("Failed to create next round:", err.message || err);
             }
-          }, 4000);
+          }, 8000);
         }
       } catch (error) {
         console.error("Mark Number Error:", error.message);

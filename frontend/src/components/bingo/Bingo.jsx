@@ -246,7 +246,7 @@ const Bingo = ({ theme }) => {
     const timeoutId = setTimeout(() => {
       setWinner(null);
       setMySelectedNumber(null);
-    }, 4000);
+    }, 8000);
 
     return () => {
       clearTimeout(timeoutId);
