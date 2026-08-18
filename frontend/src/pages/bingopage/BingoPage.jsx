@@ -29,18 +29,22 @@ const BingoPage = () => {
         </p>
 
         <p>
-          <strong>User:</strong> {user ? JSON.stringify(user) : "NULL"}
+          <strong>User:</strong>{" "}
+          {user ? JSON.stringify(user) : "NULL"}
         </p>
 
         <p>
-          <strong>Token:</strong> {token ? "EXISTS" : "NULL"}
+          <strong>Token:</strong>{" "}
+          {token ? "EXISTS" : "NULL"}
         </p>
       </div>
 
       {user ? (
         <Bingo theme="green" />
       ) : (
-        <div style={{ marginTop: "30px" }}>Waiting for authentication...</div>
+        <div style={{ marginTop: "30px" }}>
+          Waiting for authentication...
+        </div>
       )}
     </div>
   );
