@@ -70,6 +70,8 @@ const Bingo = ({ theme }) => {
 
   const [selectionCountdown, setSelectionCountdown] = useState(30);
 
+  const [noSelectionsMessage, setNoSelectionsMessage] = useState(null);
+
   const winnerRef = useRef(null);
 
   const roundStatusRef = useRef("WAITING");
@@ -235,6 +237,22 @@ const Bingo = ({ theme }) => {
       });
     };
 
+    const handleNoSelections = (payload) => {
+      console.log("⚠️ No selections message:", payload);
+
+      setNoSelectionsMessage({
+        message: payload?.message || "No players selected cards.",
+        remainingSeconds: payload?.remainingSeconds ?? 30,
+      });
+
+      // Auto-clear message after a delay
+      const timeout = setTimeout(() => {
+        setNoSelectionsMessage(null);
+      }, 35000);
+
+      return () => clearTimeout(timeout);
+    };
+
     socket.on("connect", handleConnect);
 
     socket.on("bingo:roundState", handleRoundState);
@@ -248,6 +266,8 @@ const Bingo = ({ theme }) => {
     socket.on("bingo:roundFinished", handleWinner);
 
     socket.on("bingo:nextRound", handleNextRound);
+
+    socket.on("bingo:noSelections", handleNoSelections);
 
     if (!socket.connected) {
       socket.connect();
@@ -267,6 +287,8 @@ const Bingo = ({ theme }) => {
       socket.off("bingo:roundFinished", handleWinner);
 
       socket.off("bingo:nextRound", handleNextRound);
+
+      socket.off("bingo:noSelections", handleNoSelections);
     };
   }, []);
 
@@ -453,6 +475,22 @@ const Bingo = ({ theme }) => {
           </div>
         )}
       </main>
+
+      {/* NO SELECTIONS WARNING */}
+
+      {noSelectionsMessage && (
+        <div className="fixed bottom-20 left-0 right-0 mx-4 bg-amber-900/80 border border-amber-600 rounded-lg p-4 shadow-lg backdrop-blur">
+          <div className="max-w-md mx-auto">
+            <p className="text-amber-100 font-semibold text-sm">
+              ⚠️ {noSelectionsMessage.message}
+            </p>
+
+            <p className="text-amber-200 text-xs mt-2">
+              Returning to selection in {noSelectionsMessage.remainingSeconds}s
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* WINNER */}
 

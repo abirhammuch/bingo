@@ -107,6 +107,134 @@ const stopCallerTimer = (gameId) => {
 };
 
 // =========================================================================
+// startNoSelectionsCountdown - Returns to selection if no one selected
+// =========================================================================
+const startNoSelectionsCountdown = async (io, gameId, roomId, game) => {
+  console.log(
+    `⚠️ [NO SELECTIONS] Starting 30-second countdown before returning to selection. gameId: ${gameId}`,
+  );
+
+  stopSelectionTimer(gameId);
+  stopCallerTimer(gameId);
+
+  // Update game status to indicate no selections
+  game.status = "waiting";
+  game.selectionEndsAt = new Date(Date.now() + 30 * 1000); // 30 seconds from now
+  await saveWithRetry(game);
+
+  const startTime = Date.now();
+  const endTime = startTime + 30 * 1000; // 30 seconds
+
+  let remainingSeconds = 30;
+  let lastEmittedSeconds = 30;
+
+  // Broadcast the "no selections" state with countdown
+  emitRoundState(io, roomId, game, {
+    remainingSeconds: 30,
+    status: "WAITING",
+  });
+
+  io.to(roomId).emit("bingo:noSelections", {
+    message: "No players selected cards. Restarting selection in 30 seconds...",
+    remainingSeconds: 30,
+  });
+
+  const intervalId = setInterval(async () => {
+    try {
+      const now = Date.now();
+      remainingSeconds = Math.max(0, Math.ceil((endTime - now) / 1000));
+
+      // Only emit if the remaining seconds have changed
+      if (remainingSeconds !== lastEmittedSeconds) {
+        lastEmittedSeconds = remainingSeconds;
+
+        const latest = await getGameState(gameId).catch(() => null);
+        if (latest) {
+          console.log(
+            `⏱️ [NO SELECTIONS TICK] gameId: ${gameId}, remaining: ${remainingSeconds}s`,
+          );
+
+          // ✅ CHECK: If someone made a selection during countdown, proceed to PLAYING
+          const hasSelectionsDuringCountdown = latest.players?.some(
+            (player) =>
+              Array.isArray(player.selectedLuckyNumbers) &&
+              player.selectedLuckyNumbers.length > 0,
+          );
+
+          if (hasSelectionsDuringCountdown) {
+            console.log(
+              `✅ [NO SELECTIONS OVERRIDE] Player made a selection during countdown! Proceeding to PLAYING.`,
+            );
+            clearInterval(intervalId);
+            stopSelectionTimer(gameId);
+
+            // Set game to active immediately
+            latest.status = "active";
+            latest.selectionEndsAt = null;
+            latest.roundStartedAt = new Date();
+            latest.playerCount = latest.players.length;
+            await saveWithRetry(latest);
+
+            emitRoundState(io, roomId, latest, {
+              remainingSeconds: 0,
+              status: "PLAYING",
+            });
+
+            startNumberCalling(io, gameId, roomId);
+            return;
+          }
+
+          emitRoundState(io, roomId, latest, {
+            remainingSeconds,
+            status: "WAITING",
+          });
+
+          io.to(roomId).emit("bingo:noSelections", {
+            message: "Restarting selection phase...",
+            remainingSeconds,
+          });
+        }
+      }
+
+      if (remainingSeconds <= 0) {
+        console.log(
+          `✅ [NO SELECTIONS END] Returning to selection phase for gameId: ${gameId}`,
+        );
+        clearInterval(intervalId);
+        stopSelectionTimer(gameId);
+
+        // Reset and restart selection countdown
+        const freshGame = await getGameState(gameId).catch(() => null);
+        if (freshGame) {
+          freshGame.status = "waiting";
+          freshGame.players = freshGame.players.map((player) => ({
+            ...player,
+            selectedLuckyNumbers: [],
+            markedNumbers: [],
+          }));
+          freshGame.selectedNumbers = [];
+          freshGame.calledNumbers = [];
+          freshGame.currentNumber = null;
+          await saveWithRetry(freshGame);
+
+          // Restart the selection countdown
+          await startSelectionCountdown(io, gameId, roomId);
+        }
+      }
+    } catch (error) {
+      console.error("No selections countdown error:", error.message || error);
+      clearInterval(intervalId);
+      stopSelectionTimer(gameId);
+    }
+  }, 1000);
+
+  selectionTimers.set(gameId, { intervalId, startTime, endTime });
+  console.log(
+    `✅ [NO SELECTIONS REGISTERED] Countdown interval registered for gameId: ${gameId}`,
+  );
+};
+
+// =========================================================================
 // ✅ startSelectionCountdown now transitions to PLAYING correctly
 // =========================================================================
 const startSelectionCountdown = async (io, gameId, roomId) => {
@@ -181,6 +309,23 @@ const startSelectionCountdown = async (io, gameId, roomId) => {
           console.error(
             `❌ [TIMER END] Game not found during transition: ${gameId}`,
           );
+          return;
+        }
+
+        // ✅ CHECK: Verify if at least one player has selected a card
+        const hasAtLeastOneSelection = freshGame.players?.some(
+          (player) =>
+            Array.isArray(player.selectedLuckyNumbers) &&
+            player.selectedLuckyNumbers.length > 0,
+        );
+
+        if (!hasAtLeastOneSelection) {
+          console.log(
+            `⚠️ [NO SELECTIONS] No players have selected cards. Waiting 30 seconds before returning to selection...`,
+          );
+
+          // Start a 30-second "no selections" countdown before returning to selection
+          startNoSelectionsCountdown(io, gameId, roomId, freshGame);
           return;
         }
 
