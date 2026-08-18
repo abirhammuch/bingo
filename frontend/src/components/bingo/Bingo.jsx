@@ -159,6 +159,38 @@ const Bingo = ({ theme }) => {
       syncRoundState(payload);
     };
 
+    const handleJoinedRoom = (payload) => {
+      if (!payload || !payload.card) {
+        return;
+      }
+
+      const nextCards = Array.isArray(payload.card)
+        ? [payload.card]
+        : Array.isArray(payload.cards)
+          ? payload.cards
+          : [];
+
+      if (nextCards.length > 0) {
+        setCards(nextCards);
+      }
+    };
+
+    const handlePlayerCard = (payload) => {
+      if (!payload || !payload.card) {
+        return;
+      }
+
+      const nextCards = Array.isArray(payload.card)
+        ? [payload.card]
+        : Array.isArray(payload.cards)
+          ? payload.cards
+          : [];
+
+      if (nextCards.length > 0) {
+        setCards(nextCards);
+      }
+    };
+
     const handleWinner = (payload) => {
       if (!payload) {
         return;
@@ -207,6 +239,10 @@ const Bingo = ({ theme }) => {
 
     socket.on("bingo:roundState", handleRoundState);
 
+    socket.on("joinedRoom", handleJoinedRoom);
+
+    socket.on("playerCard", handlePlayerCard);
+
     socket.on("bingo:winner", handleWinner);
 
     socket.on("bingo:roundFinished", handleWinner);
@@ -221,6 +257,10 @@ const Bingo = ({ theme }) => {
       socket.off("connect", handleConnect);
 
       socket.off("bingo:roundState", handleRoundState);
+
+      socket.off("joinedRoom", handleJoinedRoom);
+
+      socket.off("playerCard", handlePlayerCard);
 
       socket.off("bingo:winner", handleWinner);
 
