@@ -21,28 +21,13 @@ const SelectionPage = ({
   const isNumberDisabled = (number) => {
     const isMySelected = mySelections.includes(number);
 
-    const isReservedByOther =
-      selectedNumbersGlobal.includes(number) && !isMySelected;
-
-    /*
-     * IMPORTANT:
-     *
-     * Do NOT disable isMySelected.
-     *
-     * The user needs to click their selected number again
-     * to deselect it.
-     */
-
+    // The backend is the source of truth. Do not hard-block a click just
+    // because the number already exists in the global list; the user may still
+    // be selecting their own valid number and the server will decide.
     if (!showSelectionPanel) {
       return true;
     }
 
-    // Selected by another player
-    if (isReservedByOther) {
-      return true;
-    }
-
-    // User has reached maximum selections
     if (!isMySelected && !canSelectMore) {
       return true;
     }
