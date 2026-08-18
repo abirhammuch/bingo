@@ -8,6 +8,9 @@ import WinnerModal from "./WinnerModal";
 import socket from "../../socket/socket";
 import { useAuth } from "../../context/AuthContext";
 
+const MAX_LUCKY_NUMBERS = 3;
+const DEFAULT_SELECTION_TIME = 30;
+
 const Bingo = ({ theme }) => {
   // ============================================================
   // THEME
@@ -60,14 +63,20 @@ const Bingo = ({ theme }) => {
   const [phase, setPhase] = useState("selection");
 
   // IMPORTANT:
-  // This comes ONLY from the backend.
-  const [remainingSeconds, setRemainingSeconds] = useState(30);
+  // This is controlled ONLY by the backend Socket.IO timer.
+  const [remainingSeconds, setRemainingSeconds] = useState(
+    DEFAULT_SELECTION_TIME,
+  );
 
   const [participantCount, setParticipantCount] = useState(0);
 
   const [spectatorCount, setSpectatorCount] = useState(0);
 
+  // Numbers selected by ALL players.
   const [selectedNumbersGlobal, setSelectedNumbersGlobal] = useState([]);
+
+  // Numbers selected by THIS player.
+  const [mySelections, setMySelections] = useState([]);
 
   const [calledNumbers, setCalledNumbers] = useState([]);
 
@@ -77,25 +86,17 @@ const Bingo = ({ theme }) => {
 
   const [roundId, setRoundId] = useState(null);
 
-  // Numbers selected by THIS user.
-  const [mySelections, setMySelections] = useState([]);
-
-  // User's cards.
+  // User cards.
   const [cards, setCards] = useState([]);
 
-  // Whether current user is spectator.
   const [isSpectator, setIsSpectator] = useState(false);
 
-  // Whether current user has actually joined this round.
   const [hasJoinedRound, setHasJoinedRound] = useState(false);
 
-  // Winner card.
   const [winnerCard, setWinnerCard] = useState(null);
 
-  // Winner name.
   const [winnerName, setWinnerName] = useState("");
 
-  // Winner amount.
   const [winnerAmount, setWinnerAmount] = useState(0);
 
   const [noSelectionsMessage, setNoSelectionsMessage] = useState(null);
@@ -105,11 +106,13 @@ const Bingo = ({ theme }) => {
   // ============================================================
 
   const roundStatusRef = useRef("WAITING");
+
   const roundIdRef = useRef(null);
+
   const winnerRef = useRef(null);
 
-  // Prevent duplicate join requests.
-  const joiningRef = useRef(false);
+  // Prevent duplicate socket requests.
+  const requestRef = useRef(false);
 
   // ============================================================
   // KEEP REFS UPDATED
@@ -128,13 +131,13 @@ const Bingo = ({ theme }) => {
   }, [winner]);
 
   // ============================================================
-  // SERVER ROUND STATE
+  // SYNC ROUND STATE
   // ============================================================
 
   const syncRoundState = (payload) => {
     if (!payload) return;
 
-    console.log("🎮 [ROUND STATE]", payload);
+    console.log("🎮 ROUND STATE:", payload);
 
     const status = String(payload.status || "WAITING").toUpperCase();
 
@@ -146,13 +149,13 @@ const Bingo = ({ theme }) => {
 
     if (status === "WAITING" || status === "READY") {
       setPhase("selection");
-    } else if (
-      status === "PLAYING" ||
-      status === "ACTIVE" ||
-      status === "LIVE"
-    ) {
+    }
+
+    if (status === "PLAYING" || status === "ACTIVE" || status === "LIVE") {
       setPhase("live");
-    } else if (status === "FINISHED" || status === "COMPLETED") {
+    }
+
+    if (status === "FINISHED" || status === "COMPLETED") {
       setPhase("finished");
     }
 
@@ -160,22 +163,18 @@ const Bingo = ({ theme }) => {
     // GLOBAL TIMER
     // ----------------------------------------------------------
 
-    const seconds =
-      typeof payload.remainingSeconds === "number"
-        ? payload.remainingSeconds
-        : 0;
-
-    setRemainingSeconds(Math.max(0, seconds));
+    if (typeof payload.remainingSeconds === "number") {
+      setRemainingSeconds(Math.max(0, Math.ceil(payload.remainingSeconds)));
+    }
 
     // ----------------------------------------------------------
-    // PLAYERS
+    // PLAYER COUNT
     // ----------------------------------------------------------
 
     const players =
       payload.playerCount ??
       payload.participantCount ??
       payload.players?.length ??
-      payload.participants ??
       0;
 
     setParticipantCount(Number(players) || 0);
@@ -189,20 +188,20 @@ const Bingo = ({ theme }) => {
     }
 
     // ----------------------------------------------------------
-    // SELECTED NUMBERS
+    // GLOBAL SELECTED NUMBERS
     // ----------------------------------------------------------
 
-    setSelectedNumbersGlobal(
-      Array.isArray(payload.selectedNumbers) ? payload.selectedNumbers : [],
-    );
+    if (Array.isArray(payload.selectedNumbers)) {
+      setSelectedNumbersGlobal(payload.selectedNumbers);
+    }
 
     // ----------------------------------------------------------
     // CALLED NUMBERS
     // ----------------------------------------------------------
 
-    setCalledNumbers(
-      Array.isArray(payload.calledNumbers) ? payload.calledNumbers : [],
-    );
+    if (Array.isArray(payload.calledNumbers)) {
+      setCalledNumbers(payload.calledNumbers);
+    }
 
     // ----------------------------------------------------------
     // CURRENT NUMBER
@@ -227,19 +226,10 @@ const Bingo = ({ theme }) => {
       setWinner(payload.winner);
       winnerRef.current = payload.winner;
     }
-
-    // ----------------------------------------------------------
-    // IMPORTANT
-    // If server says LIVE, local selection UI must disappear.
-    // ----------------------------------------------------------
-
-    if (status === "PLAYING" || status === "ACTIVE" || status === "LIVE") {
-      setNoSelectionsMessage(null);
-    }
   };
 
   // ============================================================
-  // SOCKET CONNECTION
+  // SOCKET EVENTS
   // ============================================================
 
   useEffect(() => {
@@ -251,43 +241,52 @@ const Bingo = ({ theme }) => {
       console.error("❌ Bingo socket error:", error);
     };
 
-    // ----------------------------------------------------------
+    // ==========================================================
     // GLOBAL ROUND STATE
-    // ----------------------------------------------------------
+    // ==========================================================
 
     const handleRoundState = (payload) => {
       syncRoundState(payload);
     };
 
-    // ----------------------------------------------------------
-    // SELECTION TIMER
-    // ----------------------------------------------------------
+    // ==========================================================
+    // GLOBAL SELECTION TIMER
+    // ==========================================================
 
     const handleSelectionTick = (payload) => {
       if (!payload) return;
 
+      console.log(
+        "⏱️ GLOBAL TIMER:",
+        payload.remainingSeconds,
+        "GAME:",
+        payload.gameId,
+      );
+
+      // IMPORTANT:
+      // Every connected player receives exactly the same
+      // backend timer.
+
       if (typeof payload.remainingSeconds === "number") {
-        setRemainingSeconds(Math.max(0, payload.remainingSeconds));
+        setRemainingSeconds(Math.max(0, Math.ceil(payload.remainingSeconds)));
       }
 
-      // The timer is GLOBAL.
-      // Do not calculate it locally.
       if (payload.gameId) {
         setRoundId(payload.gameId);
         roundIdRef.current = payload.gameId;
       }
     };
 
-    // ----------------------------------------------------------
-    // PLAYER / SPECTATOR JOIN
-    // ----------------------------------------------------------
+    // ==========================================================
+    // JOINED ROOM
+    // ==========================================================
 
     const handleJoinedRoom = (payload) => {
-      console.log("👤 [JOINED ROOM]", payload);
+      console.log("👤 JOINED ROOM:", payload);
 
       if (!payload?.success) return;
 
-      joiningRef.current = false;
+      requestRef.current = false;
 
       setHasJoinedRound(true);
 
@@ -308,12 +307,11 @@ const Bingo = ({ theme }) => {
           setCards(nextCards);
         }
       } else {
-        // Spectators NEVER get a card.
         setCards([]);
       }
 
       // --------------------------------------------------------
-      // SERVER CONFIRMED SELECTIONS
+      // GLOBAL SELECTED NUMBERS
       // --------------------------------------------------------
 
       if (Array.isArray(payload.selectedNumbers)) {
@@ -329,37 +327,23 @@ const Bingo = ({ theme }) => {
       }
 
       // --------------------------------------------------------
-      // ROUND ID
+      // GAME ID
       // --------------------------------------------------------
 
       if (payload.gameId) {
         setRoundId(payload.gameId);
         roundIdRef.current = payload.gameId;
       }
-
-      // --------------------------------------------------------
-      // IMPORTANT
-      // If joined as spectator, they can watch LIVE.
-      // --------------------------------------------------------
-
-      if (payload.isSpectator) {
-        console.log("👀 Joined as spectator");
-      } else {
-        console.log("🎮 Joined as player");
-      }
     };
 
-    // ----------------------------------------------------------
+    // ==========================================================
     // PLAYER CARD
-    // ----------------------------------------------------------
+    // ==========================================================
 
     const handlePlayerCard = (payload) => {
       if (!payload) return;
 
-      // Never show card to spectator.
-      if (isSpectator) {
-        return;
-      }
+      if (isSpectator) return;
 
       const nextCards = Array.isArray(payload.cards)
         ? payload.cards
@@ -372,9 +356,9 @@ const Bingo = ({ theme }) => {
       }
     };
 
-    // ----------------------------------------------------------
+    // ==========================================================
     // NUMBER CALLED
-    // ----------------------------------------------------------
+    // ==========================================================
 
     const handleNumberCalled = (payload) => {
       if (!payload) return;
@@ -388,12 +372,12 @@ const Bingo = ({ theme }) => {
       }
     };
 
-    // ----------------------------------------------------------
+    // ==========================================================
     // GAME STARTED
-    // ----------------------------------------------------------
+    // ==========================================================
 
     const handleGameStarted = (payload) => {
-      console.log("🚀 [GAME STARTED]", payload);
+      console.log("🚀 GAME STARTED:", payload);
 
       setRoundStatus("PLAYING");
       setPhase("live");
@@ -412,23 +396,26 @@ const Bingo = ({ theme }) => {
       }
     };
 
-    // ----------------------------------------------------------
-    // NO PLAYERS
-    // ----------------------------------------------------------
+    // ==========================================================
+    // ROUND RESET
+    // ==========================================================
 
     const handleRoundReset = (payload) => {
-      console.log("🔄 [ROUND RESET]", payload);
+      console.log("🔄 ROUND RESET:", payload);
 
       setRoundStatus("WAITING");
+
       setPhase("selection");
 
       setRemainingSeconds(
         typeof payload?.remainingSeconds === "number"
           ? payload.remainingSeconds
-          : 30,
+          : DEFAULT_SELECTION_TIME,
       );
 
-      setParticipantCount(Number(payload?.playerCount || 0));
+      setParticipantCount(0);
+
+      setSpectatorCount(0);
 
       setSelectedNumbersGlobal([]);
 
@@ -452,14 +439,9 @@ const Bingo = ({ theme }) => {
 
       setIsSpectator(false);
 
-      joiningRef.current = false;
+      requestRef.current = false;
 
-      setNoSelectionsMessage({
-        message:
-          payload?.message ||
-          "No players selected a card. Starting a new selection round.",
-        remainingSeconds: payload?.remainingSeconds ?? 30,
-      });
+      setNoSelectionsMessage(null);
 
       if (payload?.gameId) {
         setRoundId(payload.gameId);
@@ -467,25 +449,25 @@ const Bingo = ({ theme }) => {
       }
     };
 
-    // ----------------------------------------------------------
+    // ==========================================================
     // NO SELECTIONS
-    // ----------------------------------------------------------
+    // ==========================================================
 
     const handleNoSelections = (payload) => {
-      console.log("⚠️ [NO SELECTIONS]", payload);
+      console.log("⚠️ NO SELECTIONS:", payload);
 
       setNoSelectionsMessage({
         message: payload?.message || "No players selected cards.",
-        remainingSeconds: payload?.remainingSeconds ?? 30,
+        remainingSeconds: payload?.remainingSeconds ?? DEFAULT_SELECTION_TIME,
       });
     };
 
-    // ----------------------------------------------------------
+    // ==========================================================
     // WINNER
-    // ----------------------------------------------------------
+    // ==========================================================
 
     const handleWinner = (payload) => {
-      console.log("🏆 [WINNER]", payload);
+      console.log("🏆 WINNER:", payload);
 
       if (!payload) return;
 
@@ -513,17 +495,18 @@ const Bingo = ({ theme }) => {
       }
 
       setRoundStatus("FINISHED");
+
       setPhase("finished");
 
       setRemainingSeconds(0);
     };
 
-    // ----------------------------------------------------------
+    // ==========================================================
     // ROUND FINISHED
-    // ----------------------------------------------------------
+    // ==========================================================
 
     const handleRoundFinished = (payload) => {
-      console.log("🏁 [ROUND FINISHED]", payload);
+      console.log("🏁 ROUND FINISHED:", payload);
 
       if (payload?.winner) {
         handleWinner(payload);
@@ -534,14 +517,12 @@ const Bingo = ({ theme }) => {
       }
     };
 
-    // ----------------------------------------------------------
+    // ==========================================================
     // NEXT ROUND
-    // ----------------------------------------------------------
+    // ==========================================================
 
     const handleNextRound = (payload) => {
-      console.log("🔄 [NEXT ROUND]", payload);
-
-      // Reset everything from previous round.
+      console.log("🔄 NEXT ROUND:", payload);
 
       winnerRef.current = null;
 
@@ -571,18 +552,15 @@ const Bingo = ({ theme }) => {
 
       setIsSpectator(false);
 
-      joiningRef.current = false;
+      requestRef.current = false;
 
       setNoSelectionsMessage(null);
 
-      // New round ID.
-
       if (payload?.gameId) {
         setRoundId(payload.gameId);
+
         roundIdRef.current = payload.gameId;
       }
-
-      // New global selection timer.
 
       setRoundStatus("WAITING");
 
@@ -591,13 +569,13 @@ const Bingo = ({ theme }) => {
       setRemainingSeconds(
         typeof payload?.remainingSeconds === "number"
           ? payload.remainingSeconds
-          : 30,
+          : DEFAULT_SELECTION_TIME,
       );
     };
 
-    // ----------------------------------------------------------
-    // REGISTER EVENTS
-    // ----------------------------------------------------------
+    // ==========================================================
+    // REGISTER SOCKET EVENTS
+    // ==========================================================
 
     socket.on("connect", handleConnect);
 
@@ -625,17 +603,17 @@ const Bingo = ({ theme }) => {
 
     socket.on("bingo:nextRound", handleNextRound);
 
-    // ----------------------------------------------------------
+    // ==========================================================
     // CONNECT
-    // ----------------------------------------------------------
+    // ==========================================================
 
     if (!socket.connected) {
       socket.connect();
     }
 
-    // ----------------------------------------------------------
+    // ==========================================================
     // CLEANUP
-    // ----------------------------------------------------------
+    // ==========================================================
 
     return () => {
       socket.off("connect", handleConnect);
@@ -671,12 +649,23 @@ const Bingo = ({ theme }) => {
   // ============================================================
 
   const toggleLuckyNumber = (number) => {
+    console.log("🎯 SELECT NUMBER:", number);
+
     // ----------------------------------------------------------
-    // ONLY WAITING
+    // GAME MUST BE WAITING
     // ----------------------------------------------------------
 
     if (roundStatusRef.current !== "WAITING") {
-      console.log("❌ Selection is closed.");
+      console.log("❌ Selection phase is closed.");
+      return;
+    }
+
+    // ----------------------------------------------------------
+    // TIMER MUST STILL BE ACTIVE
+    // ----------------------------------------------------------
+
+    if (remainingSeconds <= 0) {
+      console.log("❌ Selection timer expired.");
       return;
     }
 
@@ -685,25 +674,16 @@ const Bingo = ({ theme }) => {
     // ----------------------------------------------------------
 
     if (!authUser?.telegramId) {
-      console.warn("❌ No authenticated Telegram user.");
+      console.warn("❌ Telegram user not authenticated.");
       return;
     }
 
     // ----------------------------------------------------------
-    // GAME ID
+    // ROUND ID
     // ----------------------------------------------------------
 
     if (!roundIdRef.current) {
-      console.warn("❌ No active game ID.");
-      return;
-    }
-
-    // ----------------------------------------------------------
-    // MAX 2 SELECTIONS
-    // ----------------------------------------------------------
-
-    if (mySelections.length >= 2) {
-      console.log("❌ Maximum 2 selections reached.");
+      console.warn("❌ No active Bingo game.");
       return;
     }
 
@@ -712,63 +692,83 @@ const Bingo = ({ theme }) => {
     // ----------------------------------------------------------
 
     if (mySelections.includes(number)) {
+      console.log("Removing number:", number);
+
+      setMySelections((previous) => previous.filter((item) => item !== number));
+
+      /*
+       * Optional backend event.
+       *
+       * Add this event to backend if you want
+       * users to be able to deselect a number.
+       */
+
+      socket.emit("deselectLuckyNumber", {
+        gameId: roundIdRef.current,
+        telegramId: authUser.telegramId,
+        number,
+      });
+
       return;
     }
 
     // ----------------------------------------------------------
-    // GLOBAL NUMBER ALREADY SELECTED
+    // MAXIMUM 3
+    // ----------------------------------------------------------
+
+    if (mySelections.length >= MAX_LUCKY_NUMBERS) {
+      console.log(`❌ Maximum ${MAX_LUCKY_NUMBERS} numbers allowed.`);
+
+      return;
+    }
+
+    // ----------------------------------------------------------
+    // GLOBAL DUPLICATE
     // ----------------------------------------------------------
 
     if (selectedNumbersGlobal.includes(number)) {
-      console.log("❌ Number already selected globally.");
+      console.log("❌ Number already selected by another player.");
+
       return;
     }
 
     // ----------------------------------------------------------
-    // SOCKET
+    // SOCKET CONNECTION
     // ----------------------------------------------------------
 
     if (!socket.connected) {
       socket.connect();
     }
 
-    /*
-     * IMPORTANT:
-     *
-     * Do NOT immediately assume the selection succeeded.
-     *
-     * The backend should confirm the join.
-     */
-
-    if (joiningRef.current) {
-      return;
-    }
-
-    joiningRef.current = true;
+    // ----------------------------------------------------------
+    // DO NOT USE joinRoom HERE
+    //
+    // Selecting a number is NOT joining the game.
+    // ----------------------------------------------------------
 
     socket.emit(
-      "joinRoom",
+      "selectLuckyNumber",
       {
         gameId: roundIdRef.current,
 
         telegramId: authUser.telegramId,
 
-        betAmount: 1,
+        number,
 
-        luckyNumber: number,
+        betAmount: 1,
       },
       (response) => {
-        joiningRef.current = false;
+        console.log("🎯 selectLuckyNumber response:", response);
 
         if (!response?.success) {
-          console.error("❌ Selection failed:", response?.message);
+          console.error("❌ Number selection failed:", response?.message);
 
           return;
         }
 
-        console.log("✅ Selection confirmed by server", response);
-
-        // Only update local selection AFTER server confirmation.
+        // ------------------------------------------------------
+        // SERVER CONFIRMED PERSONAL SELECTION
+        // ------------------------------------------------------
 
         setMySelections((previous) => {
           if (previous.includes(number)) {
@@ -778,57 +778,67 @@ const Bingo = ({ theme }) => {
           return [...previous, number];
         });
 
-        // Update global selected numbers.
+        // ------------------------------------------------------
+        // SERVER CONFIRMED GLOBAL SELECTION
+        // ------------------------------------------------------
 
         if (Array.isArray(response.selectedNumbers)) {
           setSelectedNumbersGlobal(response.selectedNumbers);
         }
 
-        setHasJoinedRound(true);
-
-        setIsSpectator(false);
-
-        // Card received from server.
-
-        if (response.card) {
-          setCards([response.card]);
-        }
-
-        if (Array.isArray(response.cards)) {
-          setCards(response.cards);
-        }
+        console.log("✅ Lucky number selected:", number);
       },
     );
   };
 
   // ============================================================
-  // JOIN AS PLAYER
+  // JOIN GAME / GET CARD
   // ============================================================
 
   const handleJoin = () => {
     if (!authUser?.telegramId) {
       console.warn("❌ User is not authenticated.");
+
       return;
     }
 
     if (roundStatusRef.current !== "WAITING") {
+      console.log("❌ Cannot join. Game is no longer waiting.");
+
       return;
     }
 
     if (!roundIdRef.current) {
       console.warn("❌ No active round.");
+
       return;
     }
 
-    if (joiningRef.current) {
+    if (remainingSeconds <= 0) {
+      console.warn("❌ Selection time expired.");
+
       return;
     }
 
-    joiningRef.current = true;
+    if (mySelections.length === 0) {
+      console.warn("❌ Select at least one lucky number first.");
+
+      return;
+    }
+
+    if (requestRef.current) {
+      return;
+    }
+
+    requestRef.current = true;
 
     if (!socket.connected) {
       socket.connect();
     }
+
+    // ==========================================================
+    // JOIN ROOM
+    // ==========================================================
 
     socket.emit(
       "joinRoom",
@@ -839,10 +849,12 @@ const Bingo = ({ theme }) => {
 
         betAmount: 1,
 
-        luckyNumber: mySelections[0] ?? null,
+        luckyNumbers: mySelections,
       },
       (response) => {
-        joiningRef.current = false;
+        requestRef.current = false;
+
+        console.log("🎮 JOIN RESPONSE:", response);
 
         if (!response?.success) {
           console.error("❌ Join failed:", response?.message);
@@ -852,15 +864,27 @@ const Bingo = ({ theme }) => {
 
         setHasJoinedRound(true);
 
-        setIsSpectator(Boolean(response.isSpectator));
+        setIsSpectator(false);
+
+        // ------------------------------------------------------
+        // SERVER GLOBAL NUMBERS
+        // ------------------------------------------------------
 
         if (Array.isArray(response.selectedNumbers)) {
           setSelectedNumbersGlobal(response.selectedNumbers);
         }
 
+        // ------------------------------------------------------
+        // PLAYER COUNT
+        // ------------------------------------------------------
+
         if (typeof response.playerCount === "number") {
           setParticipantCount(response.playerCount);
         }
+
+        // ------------------------------------------------------
+        // CARD
+        // ------------------------------------------------------
 
         if (response.card) {
           setCards([response.card]);
@@ -869,6 +893,8 @@ const Bingo = ({ theme }) => {
         if (Array.isArray(response.cards)) {
           setCards(response.cards);
         }
+
+        console.log("✅ Joined Bingo game.");
       },
     );
   };
@@ -879,32 +905,22 @@ const Bingo = ({ theme }) => {
 
   const handleJoinAsSpectator = () => {
     if (!authUser?.telegramId) {
-      console.warn("❌ Authentication required.");
-
       return;
     }
 
     if (!roundIdRef.current) {
-      console.warn("❌ No round available.");
-
       return;
     }
 
-    if (joiningRef.current) {
+    if (requestRef.current) {
       return;
     }
 
-    joiningRef.current = true;
+    requestRef.current = true;
 
     if (!socket.connected) {
       socket.connect();
     }
-
-    /*
-     * Send NO bet.
-     *
-     * Backend should recognize this as spectator.
-     */
 
     socket.emit(
       "joinRoom",
@@ -915,10 +931,10 @@ const Bingo = ({ theme }) => {
 
         betAmount: 0,
 
-        luckyNumber: null,
+        luckyNumbers: [],
       },
       (response) => {
-        joiningRef.current = false;
+        requestRef.current = false;
 
         if (!response?.success) {
           console.error("❌ Spectator join failed:", response?.message);
@@ -930,12 +946,14 @@ const Bingo = ({ theme }) => {
 
         setIsSpectator(true);
 
-        // Spectators don't have cards.
-
         setCards([]);
 
         if (typeof response.playerCount === "number") {
           setParticipantCount(response.playerCount);
+        }
+
+        if (typeof response.spectatorCount === "number") {
+          setSpectatorCount(response.spectatorCount);
         }
       },
     );
@@ -943,9 +961,6 @@ const Bingo = ({ theme }) => {
 
   // ============================================================
   // AUTO SPECTATOR
-  //
-  // If user is already on the page when game becomes LIVE
-  // and they did not select a card, they become a spectator.
   // ============================================================
 
   useEffect(() => {
@@ -962,40 +977,19 @@ const Bingo = ({ theme }) => {
   }, [phase, hasJoinedRound, authUser?.telegramId, roundId]);
 
   // ============================================================
-  // WINNER CLEANUP
-  // ============================================================
-
-  useEffect(() => {
-    if (!winner) {
-      return;
-    }
-
-    const timeout = setTimeout(() => {
-      /*
-       * Do not immediately destroy the winner data
-       * if you want WinnerModal to stay visible.
-       *
-       * The nextRound event will reset everything.
-       */
-
-      console.log("🏆 Winner display timeout");
-    }, 8000);
-
-    return () => {
-      clearTimeout(timeout);
-    };
-  }, [winner]);
-
-  // ============================================================
   // DERIVED VALUES
   // ============================================================
 
-  const canSelectMore = roundStatus === "WAITING" && mySelections.length < 2;
+  const canSelectMore =
+    roundStatus === "WAITING" &&
+    remainingSeconds > 0 &&
+    mySelections.length < MAX_LUCKY_NUMBERS;
 
   const joinButtonDisabled =
-    roundStatus !== "WAITING" || mySelections.length >= 2;
-
-  const selectionNumbers = mySelections;
+    roundStatus !== "WAITING" ||
+    remainingSeconds <= 0 ||
+    mySelections.length === 0 ||
+    hasJoinedRound;
 
   // ============================================================
   // UI
@@ -1031,7 +1025,7 @@ const Bingo = ({ theme }) => {
 
       <main className="flex-1 overflow-auto p-4">
         {/* ====================================================
-            SELECTION
+            SELECTION PAGE
         ==================================================== */}
 
         {phase === "selection" && (
@@ -1049,20 +1043,15 @@ const Bingo = ({ theme }) => {
         )}
 
         {/* ====================================================
-            LIVE
+            LIVE PAGE
         ==================================================== */}
 
         {phase === "live" && (
           <LivePage
             calledNumbers={calledNumbers}
             currentNumber={currentNumber}
-            /*
-             * Spectators receive [].
-             * Players receive their card.
-             */
-
             cards={isSpectator ? [] : cards}
-            selectionNumbers={selectionNumbers}
+            selectionNumbers={mySelections}
             accent={accent}
             isSpectator={isSpectator}
             spectatorCount={spectatorCount}
@@ -1096,8 +1085,6 @@ const Bingo = ({ theme }) => {
                 Numbers called: {calledNumbers.length}
                 /75
               </p>
-
-              {/* Winner card preview */}
 
               {winnerCard && (
                 <div className="mt-6">
