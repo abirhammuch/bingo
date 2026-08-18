@@ -1,5 +1,5 @@
-﻿import React, { useEffect, useMemo, useState } from "react";
-import BingoCell from "./BingoCell";
+﻿import React, { useEffect, useState } from "react";
+
 import CurrentNumber from "./CurrentNumber";
 import CalledNumbers from "./CalledNumbers";
 import GameStatus from "./GameStatus";
@@ -8,12 +8,14 @@ import WinnerModal from "./WinnerModal";
 import Header from "./Header";
 import SelectionPage from "./SelectionPage";
 import LivePage from "./LivePage";
+
 import {
   createBingoCard,
   createNumberPool,
   hasBingo,
   markNumberOnCard,
 } from "./gameLogic";
+
 import socket from "../../socket/socket";
 import { useAuth } from "../../context/AuthContext";
 
@@ -24,16 +26,19 @@ const Bingo = ({ theme }) => {
       accentBg: "bg-emerald-600/20",
       accentIcon: "text-emerald-400",
     },
+
     yellow: {
       accentText: "text-amber-300",
       accentBg: "bg-amber-600/20",
       accentIcon: "text-amber-400",
     },
+
     blue: {
       accentText: "text-sky-300",
       accentBg: "bg-sky-600/20",
       accentIcon: "text-sky-400",
     },
+
     red: {
       accentText: "text-rose-300",
       accentBg: "bg-rose-600/20",
@@ -42,31 +47,53 @@ const Bingo = ({ theme }) => {
   };
 
   const accent = themeMap[theme] || themeMap.green;
+
   const { user: authUser } = useAuth();
 
   const [roundStatus, setRoundStatus] = useState("WAITING");
+
   const [phase, setPhase] = useState("selection");
+
   const [remainingSeconds, setRemainingSeconds] = useState(30);
+
   const [participantCount, setParticipantCount] = useState(0);
+
   const [selectedNumbersGlobal, setSelectedNumbersGlobal] = useState([]);
+
   const [calledNumbers, setCalledNumbers] = useState([]);
+
   const [currentNumber, setCurrentNumber] = useState(null);
+
   const [winner, setWinner] = useState(null);
+
   const [roundId, setRoundId] = useState(null);
+
   const [mySelections, setMySelections] = useState([]);
+
   const [mySelectedNumber, setMySelectedNumber] = useState(null);
+
   const [cards, setCards] = useState([]);
+
   const [selectionCountdown, setSelectionCountdown] = useState(30);
+
   const [liveCountdown, setLiveCountdown] = useState(null);
 
   const selectionNumbers = mySelections;
+
   const canSelectMore = mySelections.length < 2;
+
   const showSelectionPanel = phase === "selection";
 
+  /*
+   * Sync game state received from Socket.IO.
+   */
   const syncRoundState = (payload) => {
-    if (!payload) return;
+    if (!payload) {
+      return;
+    }
 
     const nextStatus = String(payload.status || "WAITING").toUpperCase();
+
     const nextPhase =
       nextStatus === "WAITING"
         ? "selection"
@@ -75,17 +102,21 @@ const Bingo = ({ theme }) => {
           : "finished";
 
     setRoundStatus(nextStatus);
+
     setPhase(nextPhase);
+
     setRemainingSeconds(
       typeof payload.remainingSeconds === "number"
         ? payload.remainingSeconds
         : 30,
     );
+
     setSelectionCountdown(
       typeof payload.remainingSeconds === "number"
         ? payload.remainingSeconds
         : 30,
     );
+
     setParticipantCount(
       typeof payload.playerCount === "number"
         ? payload.playerCount
@@ -95,108 +126,165 @@ const Bingo = ({ theme }) => {
             ? payload.players.length
             : 0,
     );
+
     setSelectedNumbersGlobal(
       Array.isArray(payload.selectedNumbers) ? payload.selectedNumbers : [],
     );
+
     setCalledNumbers(
       Array.isArray(payload.calledNumbers) ? payload.calledNumbers : [],
     );
+
     setCurrentNumber(payload.currentNumber ?? null);
+
     setWinner(payload.winner ?? null);
-    if (payload.gameId) setRoundId(payload.gameId);
+
+    if (payload.gameId) {
+      setRoundId(payload.gameId);
+    }
 
     if (nextStatus === "PLAYING") {
       setLiveCountdown(0);
-    } else if (nextStatus === "WAITING") {
-      setLiveCountdown(null);
     } else {
       setLiveCountdown(null);
     }
   };
 
+  /*
+   * Socket.IO connection and game events.
+   *
+   * IMPORTANT:
+   * Telegram authentication is NOT performed here.
+   *
+   * LoginPage/AuthContext already authenticated the user.
+   */
   useEffect(() => {
+    const handleConnect = () => {
+      console.log("✅ Bingo Socket.IO connected");
+    };
+
     const handleRoundState = (payload) => {
+      console.log("🎮 Bingo round state:", payload);
+
       syncRoundState(payload);
     };
 
     const handleWinner = (payload) => {
-      if (!payload) return;
+      if (!payload) {
+        return;
+      }
+
       const winnerPayload = payload.winner || payload.winners?.[0] || payload;
+
       setWinner(winnerPayload);
+
       setRoundStatus("FINISHED");
+
       setPhase("finished");
     };
 
-    // ✅ Connect the socket
-    if (!socket.connected) socket.connect();
+    const handleNextRound = (payload) => {
+      syncRoundState({
+        ...payload,
+        status: "WAITING",
+        remainingSeconds: payload?.remainingSeconds ?? 30,
+      });
 
-    // ✅ Send Telegram initData as soon as the socket connects
-    const handleConnect = () => {
-      console.log("✅ Socket connected! Checking Telegram initData...");
-      if (typeof window !== "undefined" && window.Telegram?.WebApp) {
-        const initData = window.Telegram.WebApp.initData;
-        if (initData) {
-          // Decode and send initData
-          const decodedInitData = decodeURIComponent(initData);
-          console.log("📤 SENDING INITDATA TO BACKEND");
-          socket.emit("auth", { initData: decodedInitData });
-        } else {
-          console.warn("⚠️ Telegram WebApp exists but no initData found.");
-        }
-      } else {
-        console.warn("⚠️ Not running inside Telegram WebApp.");
-      }
+      setMySelections([]);
+
+      setMySelectedNumber(null);
+
+      setCards([]);
+
+      setCalledNumbers([]);
+
+      setCurrentNumber(null);
+
+      setSelectedNumbersGlobal([]);
+
+      setWinner(null);
     };
 
     socket.on("connect", handleConnect);
 
     socket.on("bingo:roundState", handleRoundState);
+
     socket.on("bingo:winner", handleWinner);
+
     socket.on("bingo:roundFinished", handleWinner);
-    socket.on("bingo:nextRound", (payload) => {
-      syncRoundState({
-        ...payload,
-        status: "WAITING",
-        remainingSeconds: payload.remainingSeconds ?? 30,
-      });
-      setMySelections([]);
-      setMySelectedNumber(null);
-      setCards([]);
-      setCalledNumbers([]);
-      setCurrentNumber(null);
-      setSelectedNumbersGlobal([]);
-      setWinner(null);
-    });
+
+    socket.on("bingo:nextRound", handleNextRound);
+
+    /*
+     * Connect only after Bingo is rendered.
+     */
+    if (!socket.connected) {
+      socket.connect();
+    }
 
     return () => {
       socket.off("connect", handleConnect);
+
       socket.off("bingo:roundState", handleRoundState);
+
       socket.off("bingo:winner", handleWinner);
+
       socket.off("bingo:roundFinished", handleWinner);
-      socket.off("bingo:nextRound");
+
+      socket.off("bingo:nextRound", handleNextRound);
     };
   }, []);
 
+  /*
+   * Clear winner after 4 seconds.
+   */
   useEffect(() => {
-    if (!winner) return;
+    if (!winner) {
+      return;
+    }
+
     const timeoutId = setTimeout(() => {
       setWinner(null);
       setMySelectedNumber(null);
     }, 4000);
-    return () => clearTimeout(timeoutId);
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
   }, [winner]);
 
+  /*
+   * Select a lucky number.
+   */
   const toggleLuckyNumber = (number) => {
-    if (roundStatus !== "WAITING") return;
-    if (mySelections.includes(number)) return;
+    if (roundStatus !== "WAITING") {
+      return;
+    }
+
+    if (mySelections.includes(number)) {
+      return;
+    }
+
     if (
       selectedNumbersGlobal.includes(number) &&
       !mySelections.includes(number)
-    )
+    ) {
       return;
-    if (!authUser?.telegramId || !roundId) return;
+    }
 
-    if (!socket.connected) socket.connect();
+    if (!authUser?.telegramId) {
+      console.warn("⚠️ No authenticated Telegram user");
+      return;
+    }
+
+    if (!roundId) {
+      console.warn("⚠️ No Bingo round ID yet");
+      return;
+    }
+
+    if (!socket.connected) {
+      socket.connect();
+    }
 
     socket.emit("joinRoom", {
       gameId: roundId,
@@ -206,15 +294,28 @@ const Bingo = ({ theme }) => {
     });
 
     setMySelections((prev) => [...prev, number]);
+
     setMySelectedNumber(number);
   };
 
+  /*
+   * Join Bingo room.
+   */
   const handleJoin = () => {
-    if (!authUser?.telegramId) return;
-    if (roundStatus !== "WAITING") return;
+    if (!authUser?.telegramId) {
+      console.warn("⚠️ Cannot join: user not authenticated");
+      return;
+    }
+
+    if (roundStatus !== "WAITING") {
+      return;
+    }
 
     if (!roundId) {
-      socket.emit("createRoom", { roomId: "Main Room" });
+      socket.emit("createRoom", {
+        roomId: "Main Room",
+      });
+
       return;
     }
 
@@ -228,6 +329,7 @@ const Bingo = ({ theme }) => {
 
   const joinButtonDisabled =
     roundStatus !== "WAITING" || mySelections.length >= 2;
+
   const joinButtonLabel =
     roundStatus === "WAITING" ? "Tap to select" : "Waiting...";
 
@@ -275,6 +377,18 @@ const Bingo = ({ theme }) => {
             accent={accent}
           />
         )}
+
+        {phase === "finished" && (
+          <div className="min-h-[300px] flex items-center justify-center text-white">
+            <div className="text-center">
+              <div className="text-5xl mb-4">🏆</div>
+
+              <h2 className="text-2xl font-bold">Round Finished</h2>
+
+              <p className="text-slate-400 mt-2">Preparing the next round...</p>
+            </div>
+          </div>
+        )}
       </div>
 
       <WinnerModal
@@ -284,7 +398,7 @@ const Bingo = ({ theme }) => {
         isCurrentUserWinner={
           winner === "You" ||
           (typeof winner === "object" &&
-            winner.telegramId === authUser?.telegramId)
+            winner?.telegramId === authUser?.telegramId)
         }
         onClose={() => setWinner(null)}
         accent={accent}

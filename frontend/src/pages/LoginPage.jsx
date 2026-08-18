@@ -5,7 +5,9 @@ import { promptTelegramShareContact } from "../utils/telegramWebApp";
 
 const LoginPage = () => {
   const navigate = useNavigate();
+
   const { login, loginWithTelegramInitData, loading } = useAuth();
+
   const [telegramId, setTelegramId] = useState("");
   const [loginCode, setLoginCode] = useState("");
   const [error, setError] = useState(null);
@@ -17,56 +19,95 @@ const LoginPage = () => {
     setError(null);
 
     try {
-      await login({ telegramId, loginCode });
-      navigate("/wallet");
+      await login({
+        telegramId,
+        loginCode,
+      });
+
+      navigate("/wallet", {
+        replace: true,
+      });
     } catch (err) {
-      setError(err.message || "Failed to login");
+      setError(err?.message || "Failed to login");
     }
   };
 
   useEffect(() => {
     const telegram = window?.Telegram?.WebApp;
-    const initData =
-      telegram?.initData || telegram?.initDataUnsafe?.initData || null;
 
     if (!telegram) {
       return;
     }
 
+    setIsTelegramWebApp(true);
+
+    // Tell Telegram that the WebApp is ready
+    if (typeof telegram.ready === "function") {
+      telegram.ready();
+    }
+
+    // Expand WebApp
+    if (typeof telegram.expand === "function") {
+      telegram.expand();
+    }
+
+    // IMPORTANT:
+    // Do NOT decode Telegram initData.
+    const initData = telegram.initData;
+
     if (!initData) {
-      setError("This page must be opened from the Telegram bot.");
-      setIsTelegramWebApp(true);
+      setError(
+        "No Telegram authentication data found. Please open the game from the Telegram bot.",
+      );
+      setIsAuthenticating(false);
       return;
     }
 
-    setIsTelegramWebApp(true);
     setIsAuthenticating(true);
 
     const doWebAppLogin = async () => {
-      setError(null);
       try {
-        // ✅ FIX 1: Decode the initData before sending
-        const decodedInitData = decodeURIComponent(initData);
-        console.log("🔐 [LoginPage] Sending decoded initData to backend...");
+        setError(null);
+
+        console.log("🔐 Telegram WebApp authentication started");
 
         const result = await loginWithTelegramInitData({
-          initData: decodedInitData,
+          initData,
         });
-        console.log("✅ [LoginPage] WebApp login successful", result);
 
-        // ✅ Restore the correct route that exists in the app
-        setTimeout(() => {
-          navigate("/bingopage", { replace: true });
-        }, 500);
+        console.log("✅ Telegram WebApp authentication successful");
+        console.log("👤 Telegram user:", result?.user);
+
+        if (!result?.user) {
+          throw new Error("Backend did not return a user");
+        }
+
+        if (!result?.token) {
+          throw new Error("Backend did not return an authentication token");
+        }
+
+        /*
+         * AuthContext already does:
+         *
+         * setUser(result.user)
+         * setToken(result.token)
+         *
+         * So now we can safely open Bingo.
+         */
+        navigate("/bingopage", {
+          replace: true,
+        });
       } catch (err) {
-        console.warn("❌ [LoginPage] Telegram WebApp login failed:", err);
-        setError(err.message || "Login failed");
+        console.error("❌ Telegram WebApp login failed:", err);
 
-        // Prompt user to share contact as fallback
-        promptTelegramShareContact();
+        setError(
+          err?.message || "Telegram authentication failed. Please try again.",
+        );
 
-        // ✅ FIX 3: Do NOT navigate on failure — let the user stay and retry
         setIsAuthenticating(false);
+
+        // Ask the user to complete registration/contact sharing
+        promptTelegramShareContact();
       }
     };
 
@@ -79,9 +120,9 @@ const LoginPage = () => {
         <h1 className="text-3xl font-semibold mb-4 text-slate-100">
           Telegram Login
         </h1>
+
         <p className="text-sm text-slate-400 mb-6">
-          Use the Telegram bot to generate a login code, then enter your
-          Telegram ID and the code here.
+          Use the Telegram bot to login and play Bingo.
         </p>
 
         {isTelegramWebApp && (
@@ -101,6 +142,7 @@ const LoginPage = () => {
         <form onSubmit={handleSubmit} className="space-y-4">
           <label className="block">
             <span className="text-slate-300 text-sm">Telegram ID</span>
+
             <input
               value={telegramId}
               onChange={(e) => setTelegramId(e.target.value)}
@@ -113,6 +155,7 @@ const LoginPage = () => {
 
           <label className="block">
             <span className="text-slate-300 text-sm">Login Code</span>
+
             <input
               value={loginCode}
               onChange={(e) => setLoginCode(e.target.value)}
@@ -122,6 +165,7 @@ const LoginPage = () => {
               disabled={isTelegramWebApp || isAuthenticating}
             />
           </label>
+
           <div className="text-xs text-slate-500">
             Run <strong>/login</strong> in the Telegram bot to get your one-time
             code.
