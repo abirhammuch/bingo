@@ -83,7 +83,7 @@ const stopRoundTimer = (gameId) => {
  * START SELECTION PHASE (30-second countdown)
  * This is where players select lucky numbers
  */
-const startSelectionPhase = async (io, gameId, roomId) => {
+export const startSelectionPhase = async (io, gameId, roomId) => {
   console.log(`⏱️ [SELECTION START] gameId: ${gameId}, roomId: ${roomId}`);
 
   stopRoundTimer(gameId);
