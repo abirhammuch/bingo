@@ -11,10 +11,17 @@ const TELEGRAM_BOT_LAUNCH_DISABLED =
     .toLowerCase() === "true";
 
 const bot = new Telegraf(TELEGRAM_BOT_TOKEN || "");
+const telegramTokenLooksValid =
+  !!TELEGRAM_BOT_TOKEN &&
+  /^\d+:[A-Za-z0-9_-]+$/.test(String(TELEGRAM_BOT_TOKEN).trim());
 
 if (!TELEGRAM_BOT_TOKEN) {
   console.warn(
     "⚠️ TELEGRAM_BOT_TOKEN is not set. Bot commands will not start.",
+  );
+} else if (!telegramTokenLooksValid) {
+  console.warn(
+    "⚠️ TELEGRAM_BOT_TOKEN is present but not in the expected Telegram format. Bot startup will likely fail.",
   );
 }
 
@@ -39,6 +46,13 @@ const launchBot = async () => {
     return false;
   }
 
+  if (!telegramTokenLooksValid) {
+    console.warn(
+      "⚠️ Telegram bot startup skipped because the token format is invalid.",
+    );
+    return false;
+  }
+
   if (TELEGRAM_BOT_LAUNCH_DISABLED) {
     console.warn(
       "⚠️ Telegram bot startup disabled via TELEGRAM_BOT_LAUNCH_DISABLED=true",
@@ -55,13 +69,11 @@ const launchBot = async () => {
 
   try {
     await bot.launch({ dropPendingUpdates: true });
-    console.log(
-      "🤖 Telegram bot is running",
-      bot.botInfo?.username || "Telegram bot",
-    );
+    const botInfo = await bot.telegram.getMe();
+    console.log("🤖 Telegram bot is running as @" + botInfo.username);
     return true;
   } catch (error) {
-    console.error("Telegram bot failed to launch:", error.message);
+    console.error("Telegram bot failed to launch:", error.message || error);
     return false;
   }
 };
