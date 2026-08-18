@@ -506,6 +506,58 @@ export const joinBingoGame = async (
   };
 };
 
+export const joinAsSpectator = async (gameId, telegramId) => {
+  const normalizedTelegramId = normalizeTelegramId(telegramId);
+
+  if (!normalizedTelegramId) {
+    throw new Error("Telegram ID is required");
+  }
+
+  const game = await BingoGame.findOne({ gameId });
+
+  if (!game) {
+    throw new Error("Game not found");
+  }
+
+  if (game.status !== "waiting" && game.status !== "active") {
+    throw new Error("Cannot spectate this round. Game is not in progress.");
+  }
+
+  const user = await User.findOne({ telegramId: normalizedTelegramId });
+
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  const existingPlayerIndex = game.players.findIndex(
+    (player) => normalizeTelegramId(player.telegramId) === normalizedTelegramId,
+  );
+
+  if (existingPlayerIndex === -1) {
+    game.players.push({
+      telegramId: normalizedTelegramId,
+      username: user.username || user.firstName || "Spectator",
+      firstName: user.firstName || "Spectator",
+      lastName: user.lastName || "",
+      betAmount: 0,
+      selectedLuckyNumbers: [],
+      isSpectator: true,
+    });
+
+    game.playerCount = game.players.length;
+    await saveWithRetry(game);
+  }
+
+  return {
+    game,
+    user: {
+      balance: user.balance,
+      firstName: user.firstName,
+    },
+    isSpectator: true,
+  };
+};
+
 /* =========================================================
    START GAME
 ========================================================= */
