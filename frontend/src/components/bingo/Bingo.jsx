@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from "react";
+﻿import React, { useEffect, useRef, useState } from "react";
 
 import CurrentNumber from "./CurrentNumber";
 import CalledNumbers from "./CalledNumbers";
@@ -78,6 +78,9 @@ const Bingo = ({ theme }) => {
 
   const [liveCountdown, setLiveCountdown] = useState(null);
 
+  const roundStatusRef = useRef("WAITING");
+  const winnerRef = useRef(null);
+
   const selectionNumbers = mySelections;
 
   const canSelectMore = mySelections.length < 2;
@@ -150,6 +153,14 @@ const Bingo = ({ theme }) => {
     }
   };
 
+  useEffect(() => {
+    roundStatusRef.current = roundStatus;
+  }, [roundStatus]);
+
+  useEffect(() => {
+    winnerRef.current = winner;
+  }, [winner]);
+
   /*
    * Socket.IO connection and game events.
    *
@@ -166,6 +177,17 @@ const Bingo = ({ theme }) => {
     const handleRoundState = (payload) => {
       console.log("🎮 Bingo round state:", payload);
 
+      const nextStatus = String(payload?.status || "WAITING").toUpperCase();
+
+      if (winnerRef.current || roundStatusRef.current === "FINISHED") {
+        if (nextStatus === "PLAYING" || nextStatus === "FINISHED") {
+          console.warn(
+            "⚠️ Ignoring stale game state after winner was declared",
+          );
+          return;
+        }
+      }
+
       syncRoundState(payload);
     };
 
@@ -176,14 +198,14 @@ const Bingo = ({ theme }) => {
 
       const winnerPayload = payload.winner || payload.winners?.[0] || payload;
 
+      winnerRef.current = winnerPayload;
       setWinner(winnerPayload);
-
       setRoundStatus("FINISHED");
-
       setPhase("finished");
     };
 
     const handleNextRound = (payload) => {
+      winnerRef.current = null;
       syncRoundState({
         ...payload,
         status: "WAITING",
@@ -246,6 +268,7 @@ const Bingo = ({ theme }) => {
     const timeoutId = setTimeout(() => {
       setWinner(null);
       setMySelectedNumber(null);
+      winnerRef.current = null;
     }, 8000);
 
     return () => {
