@@ -26,6 +26,11 @@ const telegramWebAppUrl = rawWebAppUrl
   .replace(/\/login\/?$/, "")
   .replace(/\/$/, "");
 
+const openGameKeyboard = () =>
+  Markup.inlineKeyboard([
+    [Markup.button.webApp("🎮 Open Marshal Bingo", telegramWebAppUrl)],
+  ]);
+
 const launchBot = async () => {
   if (!TELEGRAM_BOT_TOKEN) {
     console.warn(
@@ -78,12 +83,20 @@ const sendLoginPrompt = async (ctx, user) => {
     .resize()
     .oneTime();
 
-  await ctx.reply(
+  const message =
     user && needsPhoneRegistration(user)
       ? "Your account is created but not fully registered yet. Please share your phone number or use Login once complete."
-      : "Welcome back! Use the button below to login to Marshal Game.",
-    keyboard,
-  );
+      : "Welcome back! Use the button below to login to Marshal Game.";
+
+  await ctx.reply(message, {
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: "🎮 Open Game", web_app: { url: telegramWebAppUrl } }],
+      ],
+    },
+  });
+
+  await ctx.reply("You can also use the buttons below.", keyboard);
 };
 
 bot.command("login", async (ctx) => {
@@ -232,6 +245,8 @@ bot.start(async (ctx) => {
       `You are all set! Use the button below to continue.`,
       replyMarkup,
     );
+
+    await ctx.reply("🎮 Start the game in Telegram.", openGameKeyboard());
   } catch (error) {
     console.error("Telegram /start error:", error);
 
@@ -278,6 +293,11 @@ bot.on("contact", async (ctx) => {
       `🎉 Registration successful!\n\n` +
         `Welcome ${user.firstName}! Your account is now complete.`,
       keyboard,
+    );
+
+    await ctx.reply(
+      "🎮 Tap below to open the game in Telegram.",
+      openGameKeyboard(),
     );
   } catch (error) {
     console.error("Telegram registration error:", error);
