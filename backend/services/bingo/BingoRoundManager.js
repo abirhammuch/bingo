@@ -35,7 +35,11 @@ const getRemainingSeconds = (endTime) => {
 
 // Emit round state to all clients in room
 const emitRoundState = (io, roomId, game, extra = {}) => {
-  if (!io || !roomId || !game) return;
+  if (!io || !game) return;
+
+  const targetRoom = roomId?.startsWith("bingo:")
+    ? roomId
+    : `bingo:${game.gameId}`;
 
   const remainingSeconds =
     extra.remainingSeconds ?? getRemainingSeconds(game.selectionEndsAt);
@@ -63,7 +67,7 @@ const emitRoundState = (io, roomId, game, extra = {}) => {
     ...extra,
   };
 
-  io.to(roomId).emit("bingo:roundState", state);
+  io.to(targetRoom).emit("bingo:roundState", state);
 };
 
 // Stop any active timer for a game
@@ -195,7 +199,7 @@ const startNoSelectionsWaitPhase = async (io, gameId, roomId, game) => {
 
   let lastEmittedSeconds = 30;
 
-  io.to(roomId).emit("bingo:noSelections", {
+  io.to(`bingo:${gameId}`).emit("bingo:noSelections", {
     message:
       "No players selected cards. Waiting 30 seconds before restarting selection...",
     remainingSeconds: 30,
@@ -239,7 +243,7 @@ const startNoSelectionsWaitPhase = async (io, gameId, roomId, game) => {
           status: "WAITING",
         });
 
-        io.to(roomId).emit("bingo:noSelections", {
+        io.to(`bingo:${gameId}`).emit("bingo:noSelections", {
           message: "Restarting selection phase...",
           remainingSeconds,
         });
@@ -368,7 +372,7 @@ export const finishRound = async (io, gameId, roomId) => {
   setTimeout(async () => {
     try {
       const nextGame = await createBingoGame(roomId);
-      io.to(roomId).emit("bingo:nextRound", {
+      io.to(`bingo:${nextGame.gameId}`).emit("bingo:nextRound", {
         gameId: nextGame.gameId,
         roomId: nextGame.roomId,
         status: "WAITING",
@@ -390,7 +394,7 @@ export const initializeNewRound = async (io, roomId) => {
 
   const game = await createBingoGame(roomId);
 
-  io.to(roomId).emit("bingo:roundState", {
+  io.to(`bingo:${game.gameId}`).emit("bingo:roundState", {
     gameId: game.gameId,
     roomId: game.roomId,
     status: "WAITING",

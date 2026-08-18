@@ -7,6 +7,8 @@
   getGameState as getBingoGameState,
   getPlayerCard as getBingoPlayerCard,
 } from "../services/bingo/bingoService.js";
+import { getIO } from "../sockets/socketServer.js";
+import { startSelectionPhase } from "../services/bingo/BingoRoundManager.js";
 
 export const createGame = async (req, res) => {
   try {
@@ -20,6 +22,11 @@ export const createGame = async (req, res) => {
     }
 
     const game = await createBingoGame(roomId, maxPlayers, minBet, maxBet);
+
+    const io = getIO();
+    if (io) {
+      await startSelectionPhase(io, game.gameId, game.roomId);
+    }
 
     return res.status(201).json({
       success: true,
