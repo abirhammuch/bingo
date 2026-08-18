@@ -1,4 +1,4 @@
-﻿import BingoGame from "../../models/BingoGame.js";
+﻿import BingoGame from "../models/BingoGame.js";
 import {
   SELECTION_TIME_SECONDS,
   joinBingoGame,

@@ -1,11 +1,11 @@
-import BingoGame from "../../models/BingoGame.js";
+import BingoGame from "../models/BingoGame.js";
 import {
   SELECTION_TIME_SECONDS,
   startGame,
   resetEmptyRound,
   createBingoGame,
   callNumber,
-} from "../../services/bingo/bingoService.js";
+} from "../services/bingo/bingoService.js";
 
 const selectionTimers = new Map();
 const callingTimers = new Map();
