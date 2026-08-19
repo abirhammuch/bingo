@@ -5,6 +5,8 @@ const Countdown = ({
   seconds = 30,
   label = "Next Number In",
   selectedCardsCount = 0,
+  stake = null,
+  balance = null,
 }) => {
   const calculateRemaining = () => {
     if (!selectionEndsAt) {
@@ -34,7 +36,11 @@ const Countdown = ({
   }, [selectionEndsAt, seconds]);
 
   return (
-    <div className="flex items-center justify-between gap-4 rounded-lg border border-slate-700 bg-slate-900 p-3">
+    <div
+      className={`grid items-center gap-3 rounded-lg border border-slate-700 bg-slate-950 p-3 text-center ${
+        stake !== null && balance !== null ? "grid-cols-4" : "grid-cols-2"
+      }`}
+    >
       {/* Total Selected Cards Counter on the left - GLOBAL from all devices */}
       <div className="flex flex-col items-center justify-center min-w-fit">
         <p className="text-xs text-slate-500 uppercase tracking-wide">
@@ -57,6 +63,26 @@ const Countdown = ({
           {timeLeft}s
         </h2>
       </div>
+
+      {stake !== null && balance !== null && (
+        <>
+          <div>
+            <p className="text-xs text-slate-500 uppercase tracking-wide">
+              Stake
+            </p>
+            <p className="mt-1 text-lg font-bold text-amber-400">{stake} ETB</p>
+          </div>
+
+          <div>
+            <p className="text-xs text-slate-500 uppercase tracking-wide">
+              Balance
+            </p>
+            <p className="mt-1 text-lg font-bold text-sky-400">
+              {Number(balance || 0).toFixed(2)} ETB
+            </p>
+          </div>
+        </>
+      )}
     </div>
   );
 };
