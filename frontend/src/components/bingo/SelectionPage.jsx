@@ -29,34 +29,13 @@ const SelectionPage = ({
     const isReservedByOther =
       selectedNumbersGlobal.includes(number) && !isMySelected;
 
-    return `
-      aspect-square
-      rounded-lg
-      text-sm
-      font-semibold
-      transition-all
-      border
+    const stateClasses = isMySelected
+      ? "border-emerald-400 bg-emerald-600/40 text-emerald-100 ring-2 ring-emerald-400/40 cursor-pointer"
+      : isReservedByOther
+        ? "border-rose-400 bg-rose-600/30 text-rose-100 opacity-70 cursor-not-allowed"
+        : "border-slate-700 bg-slate-900 text-slate-300 hover:border-emerald-500 hover:bg-slate-800 hover:text-white cursor-pointer";
 
-      ${
-        isMySelected
-          ? "border-emerald-400 bg-emerald-600/40 text-emerald-100 ring-2 ring-emerald-400/40"
-          : ""
-      }
-
-      ${
-        isReservedByOther
-          ? "border-rose-400 bg-rose-600/30 text-rose-100 opacity-70 cursor-not-allowed"
-          : ""
-      }
-
-      ${
-        !isMySelected && !isReservedByOther
-          ? "border-slate-700 bg-slate-900 text-slate-300 hover:border-emerald-500 hover:bg-slate-800 hover:text-white"
-          : ""
-      }
-
-      ${isMySelected ? "cursor-pointer" : ""}
-    `;
+    return `aspect-square rounded-lg text-sm font-semibold transition-all border ${stateClasses}`;
   };
 
   return (
