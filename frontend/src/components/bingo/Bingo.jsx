@@ -7,6 +7,7 @@ import WinnerModal from "./WinnerModal";
 
 import socket from "../../socket/socket";
 import { useAuth } from "../../context/AuthContext";
+import { post } from "../../utils/apiClient";
 
 const MAX_LUCKY_NUMBERS = 3;
 const DEFAULT_SELECTION_TIME = 30;
@@ -150,6 +151,52 @@ const Bingo = ({ theme }) => {
   useEffect(() => {
     winnerRef.current = winner;
   }, [winner]);
+
+  useEffect(() => {
+    if (!authUser?.telegramId || roundIdRef.current) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const initializeRound = async () => {
+      try {
+        const response = await post("/api/bingo/create", {
+          roomId: "default-bingo-room",
+          maxPlayers: 100,
+          minBet: 1,
+          maxBet: 100,
+        });
+
+        const game = response?.game;
+        if (cancelled || !game?.gameId) {
+          return;
+        }
+
+        roundIdRef.current = game.gameId;
+        setRoundId(game.gameId);
+
+        const requestState = () => {
+          socket.emit("bingo:getState", { gameId: game.gameId });
+        };
+
+        if (socket.connected) {
+          requestState();
+        } else {
+          socket.once("connect", requestState);
+        }
+      } catch (error) {
+        console.error("❌ Failed to initialize Bingo round:", error);
+      }
+    };
+
+    initializeRound();
+
+    return () => {
+      cancelled = true;
+      socket.off("connect", initializeRound);
+    };
+  }, [authUser?.telegramId]);
 
   // ============================================================
   // HELPER: APPLY SERVER TIMER

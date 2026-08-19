@@ -162,12 +162,25 @@ export const initBingoSocket = (io) => {
 
         let result;
         let isSpectator = false;
+        const existingPlayer = game.players.find(
+          (player) =>
+            String(player.telegramId) === String(telegramId) &&
+            !player.isSpectator,
+        );
 
         // ========================================================
         // SPECTATOR
         // ========================================================
 
-        if (spectator || game.status === "active") {
+        if (game.status === "active" && existingPlayer) {
+          result = {
+            ticket: {
+              card: existingPlayer.card || [],
+              ticketId: null,
+            },
+            user: { balance: null },
+          };
+        } else if (spectator || game.status === "active") {
           result = await joinAsSpectator(gameId, telegramId);
           isSpectator = true;
         }

@@ -8,7 +8,7 @@
   getPlayerCard as getBingoPlayerCard,
 } from "../services/bingo/bingoService.js";
 import { getIO } from "../sockets/socketServer.js";
-import { startSelectionPhase } from "../services/bingo/BingoRoundManager.js";
+import { startSelectionTimer } from "../sockets/bingoTimer.js";
 
 export const createGame = async (req, res) => {
   try {
@@ -25,7 +25,7 @@ export const createGame = async (req, res) => {
 
     const io = getIO();
     if (io) {
-      await startSelectionPhase(io, game.gameId, game.roomId);
+      await startSelectionTimer(io, game.gameId);
     }
 
     return res.status(201).json({
