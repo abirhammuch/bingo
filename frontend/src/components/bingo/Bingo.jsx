@@ -176,7 +176,26 @@ const Bingo = ({ theme }) => {
         "🎮 [INIT] Creating new Bingo game for user:",
         authUser.telegramId,
       );
-      await createBingoGame("default-bingo-room");
+
+      const game = await createBingoGame("default-bingo-room");
+
+      if (!game) {
+        return;
+      }
+
+      const remainingSeconds = game.selectionEndsAt
+        ? Math.max(
+            0,
+            Math.ceil(
+              (new Date(game.selectionEndsAt).getTime() - Date.now()) / 1000,
+            ),
+          )
+        : DEFAULT_SELECTION_TIME;
+
+      syncRoundState({
+        ...game,
+        remainingSeconds,
+      });
     };
 
     initializeGame();
