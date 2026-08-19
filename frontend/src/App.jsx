@@ -16,11 +16,13 @@ import AdminLayout from "./pages/admin/adminlayout.jsx";
 import UserPage from "./pages/admin/UserPage.jsx";
 import TransactionPage from "./pages/admin/TransactionPage.jsx";
 import { useAppContext } from "./context/AppContext.jsx";
+import Footer from "./components/footer/Footer";
 
 const App = () => {
   const location = useLocation();
   const isAdminPath = location.pathname.startsWith("/admin");
   const isAuthPage = ["/login", "/logout"].includes(location.pathname);
+  const isLivePage = location.pathname === "/bingopage";
   const { theme } = useAppContext();
 
   const themeBackgrounds = {
@@ -50,29 +52,32 @@ const App = () => {
           <Route path="/admin/transactions" element={<TransactionPage />} />
         </Routes>
       ) : (
-        <main className="min-h-screen">
-          <Routes>
-            <Route path="/" element={<LobbyPage theme={theme} />} />
-            <Route path="/lobby" element={<LobbyPage theme={theme} />} />
-            <Route path="/bingopage" element={<LobbyPage theme={theme} />} />
-            <Route path="/history" element={<HistoryPage />} />
-            <Route path="/profile" element={<ProfilePage />} />
-            <Route path="/referral" element={<Invite />} />
-            <Route path="/wallet" element={<WalletPage />} />
-            <Route path="/deposit" element={<DepositePage />} />
-            <Route path="settings" element={<SettingPage />} />
-            <Route
-              path="/telebirr-deposit"
-              element={<TelebirrDepositePage />}
-            />
-            <Route path="/withdraw" element={<WithdrawPage />} />
-            <Route
-              path="/telebirr-withdraw"
-              element={<TeleBirrWithdrawPage />}
-            />
-            <Route path="/appearance" element={<SettingPage />} />
-          </Routes>
-        </main>
+        <>
+          <main className="min-h-screen">
+            <Routes>
+              <Route path="/" element={<LobbyPage theme={theme} />} />
+              <Route path="/lobby" element={<LobbyPage theme={theme} />} />
+              <Route path="/bingopage" element={<LobbyPage theme={theme} />} />
+              <Route path="/history" element={<HistoryPage />} />
+              <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/referral" element={<Invite />} />
+              <Route path="/wallet" element={<WalletPage />} />
+              <Route path="/deposit" element={<DepositePage />} />
+              <Route path="settings" element={<SettingPage />} />
+              <Route
+                path="/telebirr-deposit"
+                element={<TelebirrDepositePage />}
+              />
+              <Route path="/withdraw" element={<WithdrawPage />} />
+              <Route
+                path="/telebirr-withdraw"
+                element={<TeleBirrWithdrawPage />}
+              />
+              <Route path="/appearance" element={<SettingPage />} />
+            </Routes>
+          </main>
+          {!isLivePage && <Footer />}
+        </>
       )}
     </div>
   );
