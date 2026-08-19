@@ -374,7 +374,13 @@ const Bingo = ({ theme }) => {
               (entry) =>
                 String(entry.telegramId) === String(authUser?.telegramId),
             )
-            .map((entry) => entry.card)
+            .flatMap((entry) =>
+              Array.isArray(entry.cards)
+                ? entry.cards
+                : entry.card
+                  ? [entry.card]
+                  : [],
+            )
         : [];
 
       const nextCards =
@@ -784,24 +790,27 @@ const Bingo = ({ theme }) => {
           (item) => item !== number,
         );
 
-        mySelectionsRef.current = nextSelections;
+        socket.emit(
+          "deselectLuckyNumber",
+          {
+            gameId: roundIdRef.current,
+            telegramId: authUser.telegramId,
+            number,
+          },
+          (response) => {
+            if (!response?.success) {
+              console.error("❌ Number deselection failed:", response?.message);
+              return;
+            }
 
-        setMySelections(nextSelections);
+            const confirmedSelections = Array.isArray(response.selectedNumbers)
+              ? response.selectedNumbers
+              : nextSelections;
 
-        /*
-         * Optional backend support.
-         *
-         * If your backend implements this event,
-         * it will release the number globally.
-         */
-
-        socket.emit("deselectLuckyNumber", {
-          gameId: roundIdRef.current,
-
-          telegramId: authUser.telegramId,
-
-          number,
-        });
+            mySelectionsRef.current = confirmedSelections;
+            setMySelections(confirmedSelections);
+          },
+        );
 
         return;
       }

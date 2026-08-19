@@ -119,7 +119,7 @@ export const generateBingoCard = () => {
 // GENERATE CARD WITH LUCKY NUMBER
 // ============================================================
 
-const generateCardWithLuckyNumber = (luckyNumber) => {
+export const generateCardWithLuckyNumber = (luckyNumber) => {
   const number = Number(luckyNumber);
 
   if (!Number.isFinite(number) || number < 1 || number > 75) {
@@ -636,6 +636,8 @@ export const joinBingoGame = async (
 
     card,
 
+    cards: [card],
+
     markedNumbers: [],
 
     selectedLuckyNumbers: normalizedLuckyNumbers,
@@ -914,13 +916,22 @@ export const callNumber = async (gameId) => {
       continue;
     }
 
-    if (!Array.isArray(player.card)) {
+    const playerCards =
+      Array.isArray(player.cards) && player.cards.length > 0
+        ? player.cards
+        : player.card?.length
+          ? [player.card]
+          : [];
+
+    if (playerCards.length === 0) {
       continue;
     }
 
-    const found = checkNumberOnCard(player.card, number);
+    const matchingCard = playerCards.find(
+      (card) => checkNumberOnCard(card, number).found,
+    );
 
-    if (!found.found) {
+    if (!matchingCard) {
       continue;
     }
 
@@ -930,7 +941,12 @@ export const callNumber = async (gameId) => {
     }
 
     // Check bingo
-    const bingoResult = checkBingo(player.card, player.markedNumbers);
+    const winningCard = playerCards.find(
+      (card) => checkBingo(card, player.markedNumbers).bingo,
+    );
+    const bingoResult = winningCard
+      ? checkBingo(winningCard, player.markedNumbers)
+      : { bingo: false };
 
     if (bingoResult.bingo && !player.hasBingo) {
       player.hasBingo = true;
@@ -948,7 +964,7 @@ export const callNumber = async (gameId) => {
 
         firstName: player.firstName || "Player",
 
-        card: player.card,
+        card: winningCard,
 
         markedNumbers: player.markedNumbers,
 
@@ -1122,9 +1138,18 @@ export const markNumber = async (gameId, telegramId, number) => {
     throw new Error("Number has not been called");
   }
 
-  const result = checkNumberOnCard(player.card, numericNumber);
+  const playerCards =
+    Array.isArray(player.cards) && player.cards.length > 0
+      ? player.cards
+      : player.card?.length
+        ? [player.card]
+        : [];
 
-  if (!result.found) {
+  const result = playerCards.some(
+    (card) => checkNumberOnCard(card, numericNumber).found,
+  );
+
+  if (!result) {
     throw new Error("Number is not on your card");
   }
 
@@ -1134,7 +1159,12 @@ export const markNumber = async (gameId, telegramId, number) => {
 
   await saveWithRetry(game);
 
-  const bingoResult = checkBingo(player.card, player.markedNumbers);
+  const winningCard = playerCards.find(
+    (card) => checkBingo(card, player.markedNumbers).bingo,
+  );
+  const bingoResult = winningCard
+    ? checkBingo(winningCard, player.markedNumbers)
+    : { bingo: false };
 
   return {
     marked: true,
@@ -1191,7 +1221,7 @@ export const getPlayerCard = async (gameId, telegramId) => {
   }
 
   return {
-    card: player.card,
+    cards: player.cards?.length ? player.cards : [player.card],
 
     markedNumbers: player.markedNumbers,
 

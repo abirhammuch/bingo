@@ -173,10 +173,14 @@ export const startSelectionTimer = async (io, gameId) => {
       io.to(`bingo:${gameId}`).emit("bingo:playerCards", {
         gameId,
         playerCards: liveGame.players
-          .filter((player) => !player.isSpectator && player.card?.length)
+          .filter(
+            (player) =>
+              !player.isSpectator &&
+              (player.cards?.length || player.card?.length),
+          )
           .map((player) => ({
             telegramId: player.telegramId,
-            card: player.card,
+            cards: player.cards?.length ? player.cards : [player.card],
           })),
       });
 

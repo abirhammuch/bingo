@@ -47,6 +47,11 @@ const playerSchema = new mongoose.Schema(
       default: [],
     },
 
+    cards: {
+      type: [[[Number]]],
+      default: [],
+    },
+
     // ========================================================
     // MARKED NUMBERS
     // ========================================================

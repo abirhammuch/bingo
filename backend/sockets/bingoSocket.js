@@ -8,6 +8,7 @@ import {
   createBingoGame,
   saveWithRetry,
   resetEmptyRound,
+  generateCardWithLuckyNumber,
 } from "../services/bingo/bingoService.js";
 
 import {
@@ -136,10 +137,14 @@ export const initBingoSocket = (io) => {
             socket.emit("bingo:playerCards", {
               gameId: game.gameId,
               playerCards: game.players
-                .filter((player) => !player.isSpectator && player.card?.length)
+                .filter(
+                  (player) =>
+                    !player.isSpectator &&
+                    (player.cards?.length || player.card?.length),
+                )
                 .map((player) => ({
                   telegramId: player.telegramId,
-                  card: player.card,
+                  cards: player.cards?.length ? player.cards : [player.card],
                 })),
             });
           }
@@ -436,6 +441,12 @@ export const initBingoSocket = (io) => {
           ? player.selectedLuckyNumbers
           : [];
 
+        const currentCards = Array.isArray(player.cards)
+          ? player.cards
+          : player.card?.length
+            ? [player.card]
+            : [];
+
         const finalSelected = isDeselect
           ? currentSelected.filter(
               (value) => !incomingNumbers.includes(Number(value)),
@@ -449,6 +460,12 @@ export const initBingoSocket = (io) => {
         }
 
         player.selectedLuckyNumbers = finalSelected;
+        player.cards = finalSelected.map((selectedNumber, index) =>
+          currentSelected.includes(selectedNumber)
+            ? currentCards[currentSelected.indexOf(selectedNumber)]
+            : generateCardWithLuckyNumber(selectedNumber),
+        );
+        player.card = player.cards[0] || [];
         player.cardsSelected = finalSelected.length;
 
         const allSelected = [
@@ -483,6 +500,7 @@ export const initBingoSocket = (io) => {
           selectedNumbersGlobal: game.selectedNumbers,
           playerCount: game.playerCount,
           status: "WAITING",
+          cards: player.cards,
         });
 
         io.to(`bingo:${gameId}`).emit("bingo:numberSelected", {
