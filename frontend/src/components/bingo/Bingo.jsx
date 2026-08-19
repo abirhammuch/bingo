@@ -196,6 +196,11 @@ const Bingo = ({ theme }) => {
 
       if (status === "WAITING" || status === "READY") {
         setPhase("selection");
+        setWinner(null);
+        winnerRef.current = null;
+        setWinnerCard(null);
+        setWinnerName("");
+        setWinnerAmount(0);
       }
 
       if (status === "PLAYING" || status === "ACTIVE" || status === "LIVE") {
@@ -1075,7 +1080,7 @@ const Bingo = ({ theme }) => {
       ====================================================== */}
 
       <WinnerModal
-        open={Boolean(winner)}
+        open={Boolean(winner) && phase === "finished"}
         winner={winner || "Unknown Player"}
         isCurrentUserWinner={
           typeof winner === "object" &&
