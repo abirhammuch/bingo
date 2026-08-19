@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useRef, useState } from "react";
+﻿import React, { useEffect, useRef, useState, useCallback } from "react";
 
 import Header from "./Header";
 import SelectionPage from "./SelectionPage";
@@ -7,29 +7,6 @@ import WinnerModal from "./WinnerModal";
 
 import socket from "../../socket/socket";
 import { useAuth } from "../../context/AuthContext";
-import { post } from "../../utils/apiClient";
-
-const createBingoGame = async (roomId = "default-room") => {
-  try {
-    const data = await post("/api/bingo/create", {
-      roomId,
-      maxPlayers: 100,
-      minBet: 1,
-      maxBet: 100,
-    });
-
-    if (!data.success) {
-      console.error("❌ Failed to create bingo game:", data.message);
-      return null;
-    }
-
-    console.log("✅ Bingo game created:", data.game.gameId);
-    return data.game;
-  } catch (error) {
-    console.error("❌ Error creating bingo game:", error);
-    return null;
-  }
-};
 
 const MAX_LUCKY_NUMBERS = 3;
 const DEFAULT_SELECTION_TIME = 30;
@@ -85,6 +62,11 @@ const Bingo = ({ theme }) => {
 
   const [phase, setPhase] = useState("selection");
 
+  // IMPORTANT:
+  // This value ALWAYS comes from the server.
+  //
+  // DO NOT decrement this value locally.
+  //
   const [remainingSeconds, setRemainingSeconds] = useState(
     DEFAULT_SELECTION_TIME,
   );
@@ -93,10 +75,10 @@ const Bingo = ({ theme }) => {
 
   const [spectatorCount, setSpectatorCount] = useState(0);
 
-  // All players' selected numbers
+  // All numbers selected by all players.
   const [selectedNumbersGlobal, setSelectedNumbersGlobal] = useState([]);
 
-  // Current user's selected numbers
+  // Numbers selected by this user.
   const [mySelections, setMySelections] = useState([]);
 
   const [calledNumbers, setCalledNumbers] = useState([]);
@@ -129,11 +111,17 @@ const Bingo = ({ theme }) => {
 
   const roundIdRef = useRef(null);
 
-  const winnerRef = useRef(null);
+  const remainingSecondsRef = useRef(DEFAULT_SELECTION_TIME);
+
+  const mySelectionsRef = useRef([]);
+
+  const hasJoinedRoundRef = useRef(false);
 
   const requestRef = useRef(false);
 
-  const isSpectatorRef = useRef(false);
+  const autoJoinTriggeredRef = useRef(false);
+
+  const winnerRef = useRef(null);
 
   // ============================================================
   // KEEP REFS UPDATED
@@ -148,150 +136,300 @@ const Bingo = ({ theme }) => {
   }, [roundId]);
 
   useEffect(() => {
+    remainingSecondsRef.current = remainingSeconds;
+  }, [remainingSeconds]);
+
+  useEffect(() => {
+    mySelectionsRef.current = mySelections;
+  }, [mySelections]);
+
+  useEffect(() => {
+    hasJoinedRoundRef.current = hasJoinedRound;
+  }, [hasJoinedRound]);
+
+  useEffect(() => {
     winnerRef.current = winner;
   }, [winner]);
 
-  useEffect(() => {
-    isSpectatorRef.current = isSpectator;
-  }, [isSpectator]);
-
   // ============================================================
-  // AUTO-CREATE GAME ON LOAD
+  // HELPER: APPLY SERVER TIMER
   // ============================================================
 
-  useEffect(() => {
-    if (!authUser?.telegramId || roundId) {
-      return; // User not authenticated or game already exists
+  const updateServerTimer = useCallback((seconds) => {
+    if (typeof seconds !== "number") {
+      return;
     }
 
-    const initializeGame = async () => {
-      console.log(
-        "🎮 [INIT] Creating new Bingo game for user:",
-        authUser.telegramId,
-      );
+    const value = Math.max(0, Math.ceil(seconds));
 
-      const game = await createBingoGame("default-bingo-room");
+    // Store server value.
+    remainingSecondsRef.current = value;
 
-      if (!game) {
-        return;
-      }
+    // Display server value.
+    setRemainingSeconds(value);
+  }, []);
 
-      const remainingSeconds = game.selectionEndsAt
-        ? Math.max(
-            0,
-            Math.ceil(
-              (new Date(game.selectionEndsAt).getTime() - Date.now()) / 1000,
-            ),
-          )
-        : DEFAULT_SELECTION_TIME;
+  // ============================================================
+  // HELPER: UPDATE ROUND ID
+  // ============================================================
 
-      syncRoundState({
-        ...game,
-        remainingSeconds,
-      });
-    };
+  const updateRoundId = useCallback((gameId) => {
+    if (!gameId) {
+      return;
+    }
 
-    initializeGame();
-  }, [authUser?.telegramId, roundId]);
+    roundIdRef.current = gameId;
+    setRoundId(gameId);
+  }, []);
+
+  // ============================================================
+  // AUTO JOIN
+  //
+  // Called automatically when the SERVER timer reaches 0.
+  // ============================================================
+
+  const autoJoinGame = useCallback(() => {
+    console.log("⏰ SERVER TIMER FINISHED");
+
+    // Already joined.
+    if (hasJoinedRoundRef.current) {
+      console.log("ℹ️ Already joined this round.");
+      return;
+    }
+
+    // Already sent request.
+    if (requestRef.current) {
+      console.log("ℹ️ Join request already sent.");
+      return;
+    }
+
+    // Must have authenticated user.
+    if (!authUser?.telegramId) {
+      console.warn("❌ Cannot auto join: user is not authenticated.");
+      return;
+    }
+
+    // Must have game ID.
+    const gameId = roundIdRef.current;
+
+    if (!gameId) {
+      console.warn("❌ Cannot auto join: no game ID.");
+      return;
+    }
+
+    /*
+     * IMPORTANT:
+     *
+     * The server should now move the game from:
+     *
+     * WAITING -> PLAYING
+     *
+     * after processing all selected players.
+     *
+     * We still send joinRoom here because the server needs
+     * to convert the player's selection into a player/card.
+     */
+
+    requestRef.current = true;
+
+    if (!socket.connected) {
+      socket.connect();
+    }
+
+    const luckyNumbers = [...mySelectionsRef.current];
+
+    console.log("🤖 AUTO JOIN");
+
+    console.log({
+      gameId,
+      telegramId: authUser.telegramId,
+      luckyNumbers,
+    });
+
+    socket.emit(
+      "joinRoom",
+      {
+        gameId,
+
+        telegramId: authUser.telegramId,
+
+        betAmount: 1,
+
+        luckyNumbers,
+      },
+      (response) => {
+        requestRef.current = false;
+
+        console.log("🤖 AUTO JOIN RESPONSE:", response);
+
+        if (!response?.success) {
+          console.error("❌ Automatic join failed:", response?.message);
+
+          return;
+        }
+
+        console.log("✅ Automatically joined Bingo game.");
+
+        setHasJoinedRound(true);
+
+        hasJoinedRoundRef.current = true;
+
+        setIsSpectator(Boolean(response.isSpectator));
+
+        // --------------------------------------------------------
+        // GLOBAL NUMBERS
+        // --------------------------------------------------------
+
+        if (Array.isArray(response.selectedNumbers)) {
+          setSelectedNumbersGlobal(response.selectedNumbers);
+        }
+
+        // --------------------------------------------------------
+        // PLAYER COUNT
+        // --------------------------------------------------------
+
+        if (typeof response.playerCount === "number") {
+          setParticipantCount(response.playerCount);
+        }
+
+        // --------------------------------------------------------
+        // SPECTATOR COUNT
+        // --------------------------------------------------------
+
+        if (typeof response.spectatorCount === "number") {
+          setSpectatorCount(response.spectatorCount);
+        }
+
+        // --------------------------------------------------------
+        // CARD
+        // --------------------------------------------------------
+
+        if (response.card) {
+          setCards([response.card]);
+        }
+
+        if (Array.isArray(response.cards)) {
+          setCards(response.cards);
+        }
+      },
+    );
+  }, [authUser?.telegramId]);
 
   // ============================================================
   // SYNC ROUND STATE
   // ============================================================
 
-  const syncRoundState = (payload) => {
-    if (!payload) return;
+  const syncRoundState = useCallback(
+    (payload) => {
+      if (!payload) {
+        return;
+      }
 
-    console.log("🎮 ROUND STATE:", payload);
+      console.log("🎮 SERVER ROUND STATE:", payload);
 
-    const status = String(payload.status || "WAITING").toUpperCase();
+      const status = String(payload.status || "WAITING").toUpperCase();
 
-    // ----------------------------------------------------------
-    // STATUS
-    // ----------------------------------------------------------
+      // ----------------------------------------------------------
+      // STATUS
+      // ----------------------------------------------------------
 
-    setRoundStatus(status);
-    roundStatusRef.current = status;
+      setRoundStatus(status);
 
-    if (status === "WAITING" || status === "READY") {
-      setPhase("selection");
-    } else if (
-      status === "PLAYING" ||
-      status === "ACTIVE" ||
-      status === "LIVE"
-    ) {
-      setPhase("live");
-    } else if (status === "FINISHED" || status === "COMPLETED") {
-      setPhase("finished");
-    }
+      roundStatusRef.current = status;
 
-    // ----------------------------------------------------------
-    // TIMER
-    // ----------------------------------------------------------
+      if (status === "WAITING" || status === "READY") {
+        setPhase("selection");
+      }
 
-    if (typeof payload.remainingSeconds === "number") {
-      setRemainingSeconds(Math.max(0, Math.ceil(payload.remainingSeconds)));
-    }
+      if (status === "PLAYING" || status === "ACTIVE" || status === "LIVE") {
+        setPhase("live");
+      }
 
-    // ----------------------------------------------------------
-    // PLAYERS
-    // ----------------------------------------------------------
+      if (status === "FINISHED" || status === "COMPLETED") {
+        setPhase("finished");
+      }
 
-    const players =
-      payload.playerCount ??
-      payload.participantCount ??
-      payload.players?.length ??
-      0;
+      // ----------------------------------------------------------
+      // SERVER TIMER
+      // ----------------------------------------------------------
 
-    setParticipantCount(Number(players) || 0);
+      if (typeof payload.remainingSeconds === "number") {
+        updateServerTimer(payload.remainingSeconds);
+      }
 
-    // ----------------------------------------------------------
-    // SPECTATORS
-    // ----------------------------------------------------------
+      // ----------------------------------------------------------
+      // PLAYER COUNT
+      // ----------------------------------------------------------
 
-    if (typeof payload.spectatorCount === "number") {
-      setSpectatorCount(payload.spectatorCount);
-    }
+      const players =
+        payload.playerCount ??
+        payload.participantCount ??
+        payload.players?.length ??
+        0;
 
-    // ----------------------------------------------------------
-    // GLOBAL SELECTED NUMBERS
-    // ----------------------------------------------------------
+      setParticipantCount(Number(players) || 0);
 
-    if (Array.isArray(payload.selectedNumbers)) {
-      setSelectedNumbersGlobal(payload.selectedNumbers);
-    }
+      // ----------------------------------------------------------
+      // SPECTATOR COUNT
+      // ----------------------------------------------------------
 
-    // ----------------------------------------------------------
-    // CALLED NUMBERS
-    // ----------------------------------------------------------
+      if (typeof payload.spectatorCount === "number") {
+        setSpectatorCount(payload.spectatorCount);
+      }
 
-    if (Array.isArray(payload.calledNumbers)) {
-      setCalledNumbers(payload.calledNumbers);
-    }
+      // ----------------------------------------------------------
+      // SELECTED NUMBERS
+      // ----------------------------------------------------------
 
-    // ----------------------------------------------------------
-    // CURRENT NUMBER
-    // ----------------------------------------------------------
+      if (Array.isArray(payload.selectedNumbers)) {
+        setSelectedNumbersGlobal(payload.selectedNumbers);
+      }
 
-    setCurrentNumber(payload.currentNumber ?? null);
+      // ----------------------------------------------------------
+      // CALLED NUMBERS
+      // ----------------------------------------------------------
 
-    // ----------------------------------------------------------
-    // GAME ID
-    // ----------------------------------------------------------
+      if (Array.isArray(payload.calledNumbers)) {
+        setCalledNumbers(payload.calledNumbers);
+      }
 
-    if (payload.gameId) {
-      setRoundId(payload.gameId);
-      roundIdRef.current = payload.gameId;
-    }
+      // ----------------------------------------------------------
+      // CURRENT NUMBER
+      // ----------------------------------------------------------
 
-    // ----------------------------------------------------------
-    // WINNER
-    // ----------------------------------------------------------
+      setCurrentNumber(payload.currentNumber ?? null);
 
-    if (payload.winner) {
-      setWinner(payload.winner);
-      winnerRef.current = payload.winner;
-    }
-  };
+      // ----------------------------------------------------------
+      // GAME ID
+      // ----------------------------------------------------------
+
+      if (payload.gameId) {
+        updateRoundId(payload.gameId);
+      }
+
+      // ----------------------------------------------------------
+      // WINNER
+      // ----------------------------------------------------------
+
+      if (payload.winner) {
+        setWinner(payload.winner);
+
+        winnerRef.current = payload.winner;
+      }
+
+      // ----------------------------------------------------------
+      // IMPORTANT
+      //
+      // If server already says LIVE, never try to auto join
+      // from the frontend timer.
+      // ----------------------------------------------------------
+
+      if (status === "PLAYING" || status === "ACTIVE" || status === "LIVE") {
+        autoJoinTriggeredRef.current = true;
+      }
+    },
+    [autoJoinGame, updateRoundId, updateServerTimer],
+  );
 
   // ============================================================
   // SOCKET EVENTS
@@ -315,26 +453,61 @@ const Bingo = ({ theme }) => {
     };
 
     // ==========================================================
-    // SELECTION TIMER
+    // SERVER SELECTION TIMER
     // ==========================================================
 
     const handleSelectionTick = (payload) => {
-      if (!payload) return;
-
-      if (typeof payload.remainingSeconds === "number") {
-        setRemainingSeconds(Math.max(0, Math.ceil(payload.remainingSeconds)));
+      if (!payload) {
+        return;
       }
+
+      console.log(
+        "⏱️ SERVER TIMER:",
+        payload.remainingSeconds,
+        "GAME:",
+        payload.gameId,
+      );
+
+      // --------------------------------------------------------
+      // GAME ID
+      // --------------------------------------------------------
 
       if (payload.gameId) {
-        setRoundId(payload.gameId);
-        roundIdRef.current = payload.gameId;
+        updateRoundId(payload.gameId);
       }
 
-      if (
-        payload.remainingSeconds <= 0 &&
-        roundStatusRef.current === "WAITING"
-      ) {
-        autoJoinRound();
+      // --------------------------------------------------------
+      // SERVER TIMER
+      // --------------------------------------------------------
+
+      if (typeof payload.remainingSeconds === "number") {
+        updateServerTimer(payload.remainingSeconds);
+      }
+
+      // --------------------------------------------------------
+      // IMPORTANT
+      //
+      // The frontend does NOT do:
+      //
+      // setInterval(() => setTime(time - 1))
+      //
+      // The server is the only clock.
+      // --------------------------------------------------------
+
+      const seconds = Math.max(0, Math.ceil(payload.remainingSeconds ?? 0));
+
+      // --------------------------------------------------------
+      // SERVER TIMER FINISHED
+      // --------------------------------------------------------
+
+      if (seconds <= 0 && roundStatusRef.current === "WAITING") {
+        console.log("🚨 SERVER TIMER = 0");
+
+        if (!autoJoinTriggeredRef.current) {
+          autoJoinTriggeredRef.current = true;
+
+          autoJoinGame();
+        }
       }
     };
 
@@ -345,23 +518,23 @@ const Bingo = ({ theme }) => {
     const handleJoinedRoom = (payload) => {
       console.log("👤 JOINED ROOM:", payload);
 
-      if (!payload?.success) return;
+      if (!payload?.success) {
+        return;
+      }
 
       requestRef.current = false;
 
       setHasJoinedRound(true);
 
+      hasJoinedRoundRef.current = true;
+
       setIsSpectator(Boolean(payload.isSpectator));
 
-      isSpectatorRef.current = Boolean(payload.isSpectator);
-
       // --------------------------------------------------------
-      // CARDS
+      // CARD
       // --------------------------------------------------------
 
-      if (payload.isSpectator) {
-        setCards([]);
-      } else {
+      if (!payload.isSpectator) {
         const nextCards = Array.isArray(payload.cards)
           ? payload.cards
           : payload.card
@@ -371,6 +544,8 @@ const Bingo = ({ theme }) => {
         if (nextCards.length > 0) {
           setCards(nextCards);
         }
+      } else {
+        setCards([]);
       }
 
       // --------------------------------------------------------
@@ -402,8 +577,7 @@ const Bingo = ({ theme }) => {
       // --------------------------------------------------------
 
       if (payload.gameId) {
-        setRoundId(payload.gameId);
-        roundIdRef.current = payload.gameId;
+        updateRoundId(payload.gameId);
       }
     };
 
@@ -412,9 +586,11 @@ const Bingo = ({ theme }) => {
     // ==========================================================
 
     const handlePlayerCard = (payload) => {
-      if (!payload) return;
+      if (!payload) {
+        return;
+      }
 
-      if (isSpectatorRef.current) {
+      if (isSpectator) {
         return;
       }
 
@@ -434,7 +610,9 @@ const Bingo = ({ theme }) => {
     // ==========================================================
 
     const handleNumberCalled = (payload) => {
-      if (!payload) return;
+      if (!payload) {
+        return;
+      }
 
       if (typeof payload.number === "number") {
         setCurrentNumber(payload.number);
@@ -453,11 +631,12 @@ const Bingo = ({ theme }) => {
       console.log("🚀 GAME STARTED:", payload);
 
       setRoundStatus("PLAYING");
+
       roundStatusRef.current = "PLAYING";
 
       setPhase("live");
 
-      setRemainingSeconds(0);
+      updateServerTimer(0);
 
       setNoSelectionsMessage(null);
 
@@ -480,15 +659,21 @@ const Bingo = ({ theme }) => {
       console.log("🔄 ROUND RESET:", payload);
 
       setRoundStatus("WAITING");
+
       roundStatusRef.current = "WAITING";
 
       setPhase("selection");
 
       setRemainingSeconds(
         typeof payload?.remainingSeconds === "number"
-          ? payload.remainingSeconds
+          ? Math.ceil(payload.remainingSeconds)
           : DEFAULT_SELECTION_TIME,
       );
+
+      remainingSecondsRef.current =
+        typeof payload?.remainingSeconds === "number"
+          ? Math.ceil(payload.remainingSeconds)
+          : DEFAULT_SELECTION_TIME;
 
       setParticipantCount(0);
 
@@ -496,13 +681,13 @@ const Bingo = ({ theme }) => {
 
       setSelectedNumbersGlobal([]);
 
-      setMySelections([]);
-
       setCalledNumbers([]);
 
       setCurrentNumber(null);
 
       setWinner(null);
+
+      winnerRef.current = null;
 
       setWinnerCard(null);
 
@@ -510,21 +695,26 @@ const Bingo = ({ theme }) => {
 
       setWinnerAmount(0);
 
+      setMySelections([]);
+
+      mySelectionsRef.current = [];
+
       setCards([]);
 
       setHasJoinedRound(false);
 
+      hasJoinedRoundRef.current = false;
+
       setIsSpectator(false);
 
-      isSpectatorRef.current = false;
-
       requestRef.current = false;
+
+      autoJoinTriggeredRef.current = false;
 
       setNoSelectionsMessage(null);
 
       if (payload?.gameId) {
-        setRoundId(payload.gameId);
-        roundIdRef.current = payload.gameId;
+        updateRoundId(payload.gameId);
       }
     };
 
@@ -548,11 +738,15 @@ const Bingo = ({ theme }) => {
     const handleWinner = (payload) => {
       console.log("🏆 WINNER:", payload);
 
-      if (!payload) return;
+      if (!payload) {
+        return;
+      }
 
       const winnerData = payload.winner || payload.winners?.[0] || null;
 
-      if (!winnerData) return;
+      if (!winnerData) {
+        return;
+      }
 
       winnerRef.current = winnerData;
 
@@ -579,7 +773,7 @@ const Bingo = ({ theme }) => {
 
       setPhase("finished");
 
-      setRemainingSeconds(0);
+      updateServerTimer(0);
     };
 
     // ==========================================================
@@ -598,7 +792,7 @@ const Bingo = ({ theme }) => {
 
         setPhase("finished");
 
-        setRemainingSeconds(0);
+        updateServerTimer(0);
       }
     };
 
@@ -621,6 +815,8 @@ const Bingo = ({ theme }) => {
 
       setMySelections([]);
 
+      mySelectionsRef.current = [];
+
       setCards([]);
 
       setCalledNumbers([]);
@@ -635,18 +831,18 @@ const Bingo = ({ theme }) => {
 
       setHasJoinedRound(false);
 
+      hasJoinedRoundRef.current = false;
+
       setIsSpectator(false);
 
-      isSpectatorRef.current = false;
-
       requestRef.current = false;
+
+      autoJoinTriggeredRef.current = false;
 
       setNoSelectionsMessage(null);
 
       if (payload?.gameId) {
-        setRoundId(payload.gameId);
-
-        roundIdRef.current = payload.gameId;
+        updateRoundId(payload.gameId);
       }
 
       setRoundStatus("WAITING");
@@ -655,7 +851,7 @@ const Bingo = ({ theme }) => {
 
       setPhase("selection");
 
-      setRemainingSeconds(
+      updateServerTimer(
         typeof payload?.remainingSeconds === "number"
           ? payload.remainingSeconds
           : DEFAULT_SELECTION_TIME,
@@ -663,7 +859,7 @@ const Bingo = ({ theme }) => {
     };
 
     // ==========================================================
-    // REGISTER
+    // REGISTER EVENTS
     // ==========================================================
 
     socket.on("connect", handleConnect);
@@ -731,322 +927,198 @@ const Bingo = ({ theme }) => {
 
       socket.off("bingo:nextRound", handleNextRound);
     };
-  }, []);
+  }, [
+    isSpectator,
+    syncRoundState,
+    updateRoundId,
+    updateServerTimer,
+    autoJoinGame,
+  ]);
 
   // ============================================================
   // SELECT / DESELECT LUCKY NUMBER
   // ============================================================
 
-  const toggleLuckyNumber = (number) => {
-    console.log("🎯 NUMBER CLICKED:", number);
+  const toggleLuckyNumber = useCallback(
+    (number) => {
+      console.log("🎯 SELECT NUMBER:", number);
 
-    // ----------------------------------------------------------
-    // CHECK ROUND
-    // ----------------------------------------------------------
+      // --------------------------------------------------------
+      // ROUND MUST BE WAITING
+      // --------------------------------------------------------
 
-    if (roundStatusRef.current !== "WAITING") {
-      console.log("❌ Selection phase is closed.");
-      return;
-    }
+      if (roundStatusRef.current !== "WAITING") {
+        console.log("❌ Selection phase closed.");
 
-    // ----------------------------------------------------------
-    // CHECK TIMER
-    // ----------------------------------------------------------
+        return;
+      }
 
-    if (remainingSeconds <= 0) {
-      console.log("❌ Selection timer expired.");
-      return;
-    }
+      // --------------------------------------------------------
+      // SERVER TIMER
+      // --------------------------------------------------------
 
-    // ----------------------------------------------------------
-    // CHECK AUTH
-    // ----------------------------------------------------------
+      if (remainingSecondsRef.current <= 0) {
+        console.log("❌ Selection timer expired.");
 
-    if (!authUser?.telegramId) {
-      console.warn("❌ Telegram user not authenticated.");
-      return;
-    }
+        return;
+      }
 
-    // ----------------------------------------------------------
-    // CHECK GAME ID
-    // ----------------------------------------------------------
+      // --------------------------------------------------------
+      // AUTH
+      // --------------------------------------------------------
 
-    if (!roundIdRef.current) {
-      console.warn("❌ No active Bingo game.");
-      return;
-    }
+      if (!authUser?.telegramId) {
+        console.warn("❌ Telegram user not authenticated.");
 
-    // ----------------------------------------------------------
-    // IS ALREADY MY NUMBER?
-    // ----------------------------------------------------------
+        return;
+      }
 
-    const alreadySelected = mySelections.includes(number);
+      // --------------------------------------------------------
+      // GAME ID
+      // --------------------------------------------------------
 
-    // ==========================================================
-    // DESELECT
-    // ==========================================================
+      if (!roundIdRef.current) {
+        console.warn("❌ No active Bingo game.");
 
-    if (alreadySelected) {
-      console.log("↩️ Deselecting:", number);
+        return;
+      }
 
-      /*
-       * Remove immediately from UI.
-       *
-       * This makes the interface responsive.
-       */
+      // --------------------------------------------------------
+      // CURRENT SELECTIONS
+      // --------------------------------------------------------
 
-      setMySelections((previous) => previous.filter((item) => item !== number));
+      const currentSelections = mySelectionsRef.current;
 
-      /*
-       * Tell backend.
-       *
-       * Backend must implement this event.
-       */
+      // --------------------------------------------------------
+      // DESELECT
+      // --------------------------------------------------------
+
+      if (currentSelections.includes(number)) {
+        console.log("↩️ Deselect:", number);
+
+        const nextSelections = currentSelections.filter(
+          (item) => item !== number,
+        );
+
+        mySelectionsRef.current = nextSelections;
+
+        setMySelections(nextSelections);
+
+        /*
+         * Optional backend support.
+         *
+         * If your backend implements this event,
+         * it will release the number globally.
+         */
+
+        socket.emit("deselectLuckyNumber", {
+          gameId: roundIdRef.current,
+
+          telegramId: authUser.telegramId,
+
+          number,
+        });
+
+        return;
+      }
+
+      // --------------------------------------------------------
+      // MAX 3
+      // --------------------------------------------------------
+
+      if (currentSelections.length >= MAX_LUCKY_NUMBERS) {
+        console.log(`❌ Maximum ${MAX_LUCKY_NUMBERS} numbers allowed.`);
+
+        return;
+      }
+
+      // --------------------------------------------------------
+      // NUMBER RESERVED BY SOMEONE
+      // --------------------------------------------------------
+
+      if (selectedNumbersGlobal.includes(number)) {
+        console.log("❌ Number already selected by another player.");
+
+        return;
+      }
+
+      // --------------------------------------------------------
+      // SOCKET
+      // --------------------------------------------------------
+
+      if (!socket.connected) {
+        socket.connect();
+      }
+
+      // --------------------------------------------------------
+      // SEND SELECTION TO SERVER
+      // --------------------------------------------------------
 
       socket.emit(
-        "deselectLuckyNumber",
+        "selectLuckyNumber",
         {
           gameId: roundIdRef.current,
 
           telegramId: authUser.telegramId,
 
           number,
+
+          betAmount: 1,
         },
         (response) => {
-          console.log("↩️ Deselect response:", response);
+          console.log("🎯 SERVER SELECTION RESPONSE:", response);
 
-          if (response?.success && Array.isArray(response.selectedNumbers)) {
+          if (!response?.success) {
+            console.error("❌ Number selection failed:", response?.message);
+
+            return;
+          }
+
+          // ----------------------------------------------------
+          // SERVER CONFIRMED
+          // ----------------------------------------------------
+
+          setMySelections((previous) => {
+            if (previous.includes(number)) {
+              return previous;
+            }
+
+            const next = [...previous, number];
+
+            mySelectionsRef.current = next;
+
+            return next;
+          });
+
+          // ----------------------------------------------------
+          // SERVER GLOBAL NUMBERS
+          // ----------------------------------------------------
+
+          if (Array.isArray(response.selectedNumbers)) {
             setSelectedNumbersGlobal(response.selectedNumbers);
           }
+
+          console.log("✅ Lucky number selected:", number);
         },
       );
-
-      return;
-    }
-
-    // ==========================================================
-    // MAXIMUM
-    // ==========================================================
-
-    if (mySelections.length >= MAX_LUCKY_NUMBERS) {
-      console.log(`❌ Maximum ${MAX_LUCKY_NUMBERS} numbers allowed.`);
-
-      return;
-    }
-
-    // ==========================================================
-    // SOCKET
-    // ==========================================================
-
-    if (!socket.connected) {
-      socket.connect();
-    }
-
-    // ==========================================================
-    // SELECT NUMBER
-    // ==========================================================
-
-    console.log("📤 Sending selectLuckyNumber:", number);
-
-    socket.emit(
-      "selectLuckyNumber",
-      {
-        gameId: roundIdRef.current,
-
-        telegramId: authUser.telegramId,
-
-        number,
-
-        betAmount: 1,
-      },
-      (response) => {
-        console.log("🎯 SELECT RESPONSE:", response);
-
-        // ------------------------------------------------------
-        // SERVER REJECTED
-        // ------------------------------------------------------
-
-        if (!response?.success) {
-          console.error("❌ Number selection failed:", response?.message);
-
-          return;
-        }
-
-        // ------------------------------------------------------
-        // PERSONAL SELECTION
-        // ------------------------------------------------------
-
-        setMySelections((previous) => {
-          if (previous.includes(number)) {
-            return previous;
-          }
-
-          return [...previous, number];
-        });
-
-        // ------------------------------------------------------
-        // GLOBAL SELECTION
-        // ------------------------------------------------------
-
-        if (Array.isArray(response.selectedNumbers)) {
-          setSelectedNumbersGlobal(response.selectedNumbers);
-        }
-
-        console.log("✅ Lucky number selected:", number);
-      },
-    );
-  };
+    },
+    [authUser?.telegramId, selectedNumbersGlobal],
+  );
 
   // ============================================================
-  // JOIN GAME
+  // AUTO SPECTATOR
+  //
+  // If the user did NOT select any number when the server
+  // closes selection, the backend can treat them as spectator.
+  //
+  // This is optional depending on your backend.
   // ============================================================
 
-  const handleJoin = () => {
-    console.log("🎮 JOIN GAME");
-
-    // ----------------------------------------------------------
-    // AUTH
-    // ----------------------------------------------------------
-
-    if (!authUser?.telegramId) {
-      console.warn("❌ User is not authenticated.");
+  const autoJoinAsSpectator = useCallback(() => {
+    if (hasJoinedRoundRef.current) {
       return;
     }
 
-    // ----------------------------------------------------------
-    // STATUS
-    // ----------------------------------------------------------
-
-    if (roundStatusRef.current !== "WAITING") {
-      console.log("❌ Game is no longer accepting players.");
-      return;
-    }
-
-    // ----------------------------------------------------------
-    // TIMER
-    // ----------------------------------------------------------
-
-    if (remainingSeconds <= 0) {
-      console.warn("❌ Selection time expired.");
-      return;
-    }
-
-    // ----------------------------------------------------------
-    // GAME ID
-    // ----------------------------------------------------------
-
-    if (!roundIdRef.current) {
-      console.warn("❌ No active round.");
-      return;
-    }
-
-    // ----------------------------------------------------------
-    // NUMBER REQUIRED
-    // ----------------------------------------------------------
-
-    if (mySelections.length === 0) {
-      console.warn("❌ Select at least one lucky number first.");
-      return;
-    }
-
-    // ----------------------------------------------------------
-    // ALREADY JOINED
-    // ----------------------------------------------------------
-
-    if (hasJoinedRound) {
-      console.log("⚠️ Already joined this round.");
-      return;
-    }
-
-    // ----------------------------------------------------------
-    // REQUEST LOCK
-    // ----------------------------------------------------------
-
-    if (requestRef.current) {
-      return;
-    }
-
-    requestRef.current = true;
-
-    if (!socket.connected) {
-      socket.connect();
-    }
-
-    // ==========================================================
-    // JOIN ROOM
-    // ==========================================================
-
-    socket.emit(
-      "joinRoom",
-      {
-        gameId: roundIdRef.current,
-
-        telegramId: authUser.telegramId,
-
-        betAmount: 1,
-
-        luckyNumbers: mySelections,
-      },
-      (response) => {
-        requestRef.current = false;
-
-        console.log("🎮 JOIN RESPONSE:", response);
-
-        if (!response?.success) {
-          console.error("❌ Join failed:", response?.message);
-
-          return;
-        }
-
-        // ------------------------------------------------------
-        // JOINED
-        // ------------------------------------------------------
-
-        setHasJoinedRound(true);
-
-        setIsSpectator(false);
-
-        isSpectatorRef.current = false;
-
-        // ------------------------------------------------------
-        // GLOBAL NUMBERS
-        // ------------------------------------------------------
-
-        if (Array.isArray(response.selectedNumbers)) {
-          setSelectedNumbersGlobal(response.selectedNumbers);
-          setMySelections(response.selectedNumbers);
-        }
-
-        // ------------------------------------------------------
-        // PLAYER COUNT
-        // ------------------------------------------------------
-
-        if (typeof response.playerCount === "number") {
-          setParticipantCount(response.playerCount);
-        }
-
-        // ------------------------------------------------------
-        // CARD
-        // ------------------------------------------------------
-
-        if (response.card) {
-          setCards([response.card]);
-        }
-
-        if (Array.isArray(response.cards)) {
-          setCards(response.cards);
-        }
-
-        console.log("✅ Successfully joined Bingo game.");
-      },
-    );
-  };
-
-  // ============================================================
-  // JOIN AS SPECTATOR
-  // ============================================================
-
-  const handleJoinAsSpectator = () => {
     if (!authUser?.telegramId) {
       return;
     }
@@ -1064,6 +1136,8 @@ const Bingo = ({ theme }) => {
     if (!socket.connected) {
       socket.connect();
     }
+
+    console.log("👀 AUTO JOIN AS SPECTATOR");
 
     socket.emit(
       "joinRoom",
@@ -1080,16 +1154,16 @@ const Bingo = ({ theme }) => {
         requestRef.current = false;
 
         if (!response?.success) {
-          console.error("❌ Spectator join failed:", response?.message);
+          console.error("❌ Spectator auto join failed:", response?.message);
 
           return;
         }
 
         setHasJoinedRound(true);
 
-        setIsSpectator(true);
+        hasJoinedRoundRef.current = true;
 
-        isSpectatorRef.current = true;
+        setIsSpectator(true);
 
         setCards([]);
 
@@ -1102,24 +1176,45 @@ const Bingo = ({ theme }) => {
         }
       },
     );
-  };
+  }, [authUser?.telegramId]);
 
   // ============================================================
-  // AUTO SPECTATOR
+  // WHEN TIMER IS ZERO
+  //
+  // Automatically join:
+  //
+  // 1. Player if they selected lucky numbers.
+  // 2. Spectator if they selected nothing.
+  //
+  // IMPORTANT:
+  // The trigger is based on SERVER'S value.
   // ============================================================
 
   useEffect(() => {
-    if (
-      phase !== "live" ||
-      hasJoinedRound ||
-      !authUser?.telegramId ||
-      !roundId
-    ) {
+    if (remainingSeconds !== 0) {
       return;
     }
 
-    handleJoinAsSpectator();
-  }, [phase, hasJoinedRound, authUser?.telegramId, roundId]);
+    if (roundStatusRef.current !== "WAITING") {
+      return;
+    }
+
+    if (hasJoinedRoundRef.current) {
+      return;
+    }
+
+    if (autoJoinTriggeredRef.current) {
+      return;
+    }
+
+    autoJoinTriggeredRef.current = true;
+
+    if (mySelectionsRef.current.length > 0) {
+      autoJoinGame();
+    } else {
+      autoJoinAsSpectator();
+    }
+  }, [remainingSeconds, autoJoinGame, autoJoinAsSpectator]);
 
   // ============================================================
   // DERIVED VALUES
@@ -1130,11 +1225,12 @@ const Bingo = ({ theme }) => {
     remainingSeconds > 0 &&
     mySelections.length < MAX_LUCKY_NUMBERS;
 
-  const joinButtonDisabled =
-    roundStatus !== "WAITING" ||
-    remainingSeconds <= 0 ||
-    mySelections.length === 0 ||
-    hasJoinedRound;
+  // NO JOIN BUTTON ANYMORE.
+  //
+  // This value is kept only in case another component needs it.
+  //
+
+  const joinButtonDisabled = true;
 
   // ============================================================
   // UI
@@ -1181,13 +1277,18 @@ const Bingo = ({ theme }) => {
             mySelections={mySelections}
             canSelectMore={canSelectMore}
             showSelectionPanel={
-              roundStatus === "WAITING" &&
-              remainingSeconds > 0 &&
-              !hasJoinedRound
+              roundStatus === "WAITING" && remainingSeconds > 0
             }
             toggleLuckyNumber={toggleLuckyNumber}
+            /*
+             * No join button.
+             */
             joinButtonDisabled={joinButtonDisabled}
-            handleJoin={handleJoin}
+            /*
+             * Empty function because joining
+             * happens automatically.
+             */
+            handleJoin={() => {}}
           />
         )}
 
@@ -1235,10 +1336,6 @@ const Bingo = ({ theme }) => {
                 /75
               </p>
 
-              {/* ==================================================
-                  WINNER CARD
-              ================================================== */}
-
               {winnerCard && (
                 <div className="mt-6">
                   <p className="text-slate-300 mb-3">Winning Card</p>
@@ -1276,7 +1373,7 @@ const Bingo = ({ theme }) => {
             </p>
 
             <p className="text-amber-200 text-xs mt-2">
-              Selection starts again in {noSelectionsMessage.remainingSeconds}s
+              Waiting for next round...
             </p>
           </div>
         </div>
@@ -1296,6 +1393,7 @@ const Bingo = ({ theme }) => {
         }
         onClose={() => {
           setWinner(null);
+
           winnerRef.current = null;
         }}
         accent={accent}
