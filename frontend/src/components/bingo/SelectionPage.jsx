@@ -11,10 +11,12 @@ const SelectionPage = ({
   toggleLuckyNumber,
 }) => {
   const isNumberDisabled = (number) => {
-    const isMySelected = mySelections.includes(number);
+    const isMySelected =
+      mySelections.includes(number);
 
     const isReservedByOther =
-      selectedNumbersGlobal.includes(number) && !isMySelected;
+      selectedNumbersGlobal.includes(number) &&
+      !isMySelected;
 
     return (
       !showSelectionPanel ||
@@ -24,12 +26,15 @@ const SelectionPage = ({
   };
 
   const getNumberClasses = (number) => {
-    const isCalled = calledNumbers.includes(number);
+    const isCalled =
+      calledNumbers.includes(number);
 
-    const isMySelected = mySelections.includes(number);
+    const isMySelected =
+      mySelections.includes(number);
 
     const isReservedByOther =
-      selectedNumbersGlobal.includes(number) && !isMySelected;
+      selectedNumbersGlobal.includes(number) &&
+      !isMySelected;
 
     return `
       aspect-square
@@ -58,17 +63,24 @@ const SelectionPage = ({
       }
 
       ${
-        !isCalled && !isMySelected && !isReservedByOther
+        !isCalled &&
+        !isMySelected &&
+        !isReservedByOther
           ? "border-slate-700 bg-slate-900 text-slate-300 hover:border-emerald-500 hover:bg-slate-800 hover:text-white"
           : ""
       }
 
-      ${isMySelected ? "cursor-pointer" : ""}
+      ${
+        isMySelected
+          ? "cursor-pointer"
+          : ""
+      }
     `;
   };
 
   return (
     <div className="max-w-4xl mx-auto">
+
       {/* =====================================================
           HEADER
       ===================================================== */}
@@ -81,10 +93,14 @@ const SelectionPage = ({
               : "SELECTION CLOSED"}
           </h2>
 
-          <p className="text-xs text-slate-500 mt-1">Select up to 3 numbers</p>
+          <p className="text-xs text-slate-500 mt-1">
+            Select up to 3 numbers
+          </p>
         </div>
 
-        <div className="text-xs text-slate-400">{mySelections.length}/3</div>
+        <div className="text-xs text-slate-400">
+          {mySelections.length}/3
+        </div>
       </div>
 
       {/* =====================================================
@@ -110,19 +126,24 @@ const SelectionPage = ({
 
       <div className="h-96 overflow-y-auto bg-slate-950/30 p-4 rounded-lg mb-8 border border-slate-700">
         <div className="grid grid-cols-8 gap-2">
-          {Array.from({ length: 300 }, (_, index) => index + 1).map(
-            (number) => (
-              <button
-                key={number}
-                type="button"
-                onClick={() => toggleLuckyNumber(number)}
-                disabled={isNumberDisabled(number)}
-                className={getNumberClasses(number)}
-              >
-                {number}
-              </button>
-            ),
-          )}
+          {Array.from(
+            { length: 300 },
+            (_, index) => index + 1,
+          ).map((number) => (
+            <button
+              key={number}
+              type="button"
+              onClick={() =>
+                toggleLuckyNumber(number)
+              }
+              disabled={isNumberDisabled(number)}
+              className={getNumberClasses(
+                number,
+              )}
+            >
+              {number}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -133,8 +154,10 @@ const SelectionPage = ({
       <div className="mb-8 p-4 rounded-lg bg-slate-900/70 border border-slate-700">
         <p className="text-sm text-slate-300 text-center">
           ⏰ When the timer reaches{" "}
-          <span className="text-emerald-400 font-bold">0</span>, your selection
-          will be submitted automatically.
+          <span className="text-emerald-400 font-bold">
+            0
+          </span>
+          , your selection will be submitted automatically.
         </p>
 
         <p className="text-xs text-slate-500 text-center mt-2">
@@ -149,7 +172,9 @@ const SelectionPage = ({
       <Countdown
         seconds={selectionCountdown}
         label="Time To Close Selection"
-        selectedCardsCount={mySelections.length}
+        selectedCardsCount={
+          mySelections.length
+        }
       />
     </div>
   );

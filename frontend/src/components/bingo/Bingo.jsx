@@ -263,7 +263,10 @@ const Bingo = ({ theme }) => {
         console.log("🤖 AUTO JOIN RESPONSE:", response);
 
         if (!response?.success) {
-          console.error("❌ Automatic join failed:", response?.message);
+          console.error(
+            "❌ Automatic join failed:",
+            response?.message,
+          );
 
           return;
         }
@@ -327,7 +330,9 @@ const Bingo = ({ theme }) => {
 
       console.log("🎮 SERVER ROUND STATE:", payload);
 
-      const status = String(payload.status || "WAITING").toUpperCase();
+      const status = String(
+        payload.status || "WAITING",
+      ).toUpperCase();
 
       // ----------------------------------------------------------
       // STATUS
@@ -337,15 +342,25 @@ const Bingo = ({ theme }) => {
 
       roundStatusRef.current = status;
 
-      if (status === "WAITING" || status === "READY") {
+      if (
+        status === "WAITING" ||
+        status === "READY"
+      ) {
         setPhase("selection");
       }
 
-      if (status === "PLAYING" || status === "ACTIVE" || status === "LIVE") {
+      if (
+        status === "PLAYING" ||
+        status === "ACTIVE" ||
+        status === "LIVE"
+      ) {
         setPhase("live");
       }
 
-      if (status === "FINISHED" || status === "COMPLETED") {
+      if (
+        status === "FINISHED" ||
+        status === "COMPLETED"
+      ) {
         setPhase("finished");
       }
 
@@ -353,8 +368,12 @@ const Bingo = ({ theme }) => {
       // SERVER TIMER
       // ----------------------------------------------------------
 
-      if (typeof payload.remainingSeconds === "number") {
-        updateServerTimer(payload.remainingSeconds);
+      if (
+        typeof payload.remainingSeconds === "number"
+      ) {
+        updateServerTimer(
+          payload.remainingSeconds,
+        );
       }
 
       // ----------------------------------------------------------
@@ -367,37 +386,57 @@ const Bingo = ({ theme }) => {
         payload.players?.length ??
         0;
 
-      setParticipantCount(Number(players) || 0);
+      setParticipantCount(
+        Number(players) || 0,
+      );
 
       // ----------------------------------------------------------
       // SPECTATOR COUNT
       // ----------------------------------------------------------
 
-      if (typeof payload.spectatorCount === "number") {
-        setSpectatorCount(payload.spectatorCount);
+      if (
+        typeof payload.spectatorCount === "number"
+      ) {
+        setSpectatorCount(
+          payload.spectatorCount,
+        );
       }
 
       // ----------------------------------------------------------
       // SELECTED NUMBERS
       // ----------------------------------------------------------
 
-      if (Array.isArray(payload.selectedNumbers)) {
-        setSelectedNumbersGlobal(payload.selectedNumbers);
+      if (
+        Array.isArray(
+          payload.selectedNumbers,
+        )
+      ) {
+        setSelectedNumbersGlobal(
+          payload.selectedNumbers,
+        );
       }
 
       // ----------------------------------------------------------
       // CALLED NUMBERS
       // ----------------------------------------------------------
 
-      if (Array.isArray(payload.calledNumbers)) {
-        setCalledNumbers(payload.calledNumbers);
+      if (
+        Array.isArray(
+          payload.calledNumbers,
+        )
+      ) {
+        setCalledNumbers(
+          payload.calledNumbers,
+        );
       }
 
       // ----------------------------------------------------------
       // CURRENT NUMBER
       // ----------------------------------------------------------
 
-      setCurrentNumber(payload.currentNumber ?? null);
+      setCurrentNumber(
+        payload.currentNumber ?? null,
+      );
 
       // ----------------------------------------------------------
       // GAME ID
@@ -414,7 +453,8 @@ const Bingo = ({ theme }) => {
       if (payload.winner) {
         setWinner(payload.winner);
 
-        winnerRef.current = payload.winner;
+        winnerRef.current =
+          payload.winner;
       }
 
       // ----------------------------------------------------------
@@ -424,7 +464,11 @@ const Bingo = ({ theme }) => {
       // from the frontend timer.
       // ----------------------------------------------------------
 
-      if (status === "PLAYING" || status === "ACTIVE" || status === "LIVE") {
+      if (
+        status === "PLAYING" ||
+        status === "ACTIVE" ||
+        status === "LIVE"
+      ) {
         autoJoinTriggeredRef.current = true;
       }
     },
@@ -437,11 +481,16 @@ const Bingo = ({ theme }) => {
 
   useEffect(() => {
     const handleConnect = () => {
-      console.log("✅ Bingo socket connected");
+      console.log(
+        "✅ Bingo socket connected",
+      );
     };
 
     const handleConnectError = (error) => {
-      console.error("❌ Bingo socket error:", error);
+      console.error(
+        "❌ Bingo socket error:",
+        error,
+      );
     };
 
     // ==========================================================
@@ -473,15 +522,22 @@ const Bingo = ({ theme }) => {
       // --------------------------------------------------------
 
       if (payload.gameId) {
-        updateRoundId(payload.gameId);
+        updateRoundId(
+          payload.gameId,
+        );
       }
 
       // --------------------------------------------------------
       // SERVER TIMER
       // --------------------------------------------------------
 
-      if (typeof payload.remainingSeconds === "number") {
-        updateServerTimer(payload.remainingSeconds);
+      if (
+        typeof payload.remainingSeconds ===
+        "number"
+      ) {
+        updateServerTimer(
+          payload.remainingSeconds,
+        );
       }
 
       // --------------------------------------------------------
@@ -494,17 +550,31 @@ const Bingo = ({ theme }) => {
       // The server is the only clock.
       // --------------------------------------------------------
 
-      const seconds = Math.max(0, Math.ceil(payload.remainingSeconds ?? 0));
+      const seconds = Math.max(
+        0,
+        Math.ceil(
+          payload.remainingSeconds ?? 0,
+        ),
+      );
 
       // --------------------------------------------------------
       // SERVER TIMER FINISHED
       // --------------------------------------------------------
 
-      if (seconds <= 0 && roundStatusRef.current === "WAITING") {
-        console.log("🚨 SERVER TIMER = 0");
+      if (
+        seconds <= 0 &&
+        roundStatusRef.current ===
+          "WAITING"
+      ) {
+        console.log(
+          "🚨 SERVER TIMER = 0",
+        );
 
-        if (!autoJoinTriggeredRef.current) {
-          autoJoinTriggeredRef.current = true;
+        if (
+          !autoJoinTriggeredRef.current
+        ) {
+          autoJoinTriggeredRef.current =
+            true;
 
           autoJoinGame();
         }
@@ -516,7 +586,10 @@ const Bingo = ({ theme }) => {
     // ==========================================================
 
     const handleJoinedRoom = (payload) => {
-      console.log("👤 JOINED ROOM:", payload);
+      console.log(
+        "👤 JOINED ROOM:",
+        payload,
+      );
 
       if (!payload?.success) {
         return;
@@ -528,18 +601,23 @@ const Bingo = ({ theme }) => {
 
       hasJoinedRoundRef.current = true;
 
-      setIsSpectator(Boolean(payload.isSpectator));
+      setIsSpectator(
+        Boolean(
+          payload.isSpectator,
+        ),
+      );
 
       // --------------------------------------------------------
       // CARD
       // --------------------------------------------------------
 
       if (!payload.isSpectator) {
-        const nextCards = Array.isArray(payload.cards)
-          ? payload.cards
-          : payload.card
-            ? [payload.card]
-            : [];
+        const nextCards =
+          Array.isArray(payload.cards)
+            ? payload.cards
+            : payload.card
+              ? [payload.card]
+              : [];
 
         if (nextCards.length > 0) {
           setCards(nextCards);
@@ -552,24 +630,40 @@ const Bingo = ({ theme }) => {
       // SELECTED NUMBERS
       // --------------------------------------------------------
 
-      if (Array.isArray(payload.selectedNumbers)) {
-        setSelectedNumbersGlobal(payload.selectedNumbers);
+      if (
+        Array.isArray(
+          payload.selectedNumbers,
+        )
+      ) {
+        setSelectedNumbersGlobal(
+          payload.selectedNumbers,
+        );
       }
 
       // --------------------------------------------------------
       // PLAYER COUNT
       // --------------------------------------------------------
 
-      if (typeof payload.playerCount === "number") {
-        setParticipantCount(payload.playerCount);
+      if (
+        typeof payload.playerCount ===
+        "number"
+      ) {
+        setParticipantCount(
+          payload.playerCount,
+        );
       }
 
       // --------------------------------------------------------
       // SPECTATOR COUNT
       // --------------------------------------------------------
 
-      if (typeof payload.spectatorCount === "number") {
-        setSpectatorCount(payload.spectatorCount);
+      if (
+        typeof payload.spectatorCount ===
+        "number"
+      ) {
+        setSpectatorCount(
+          payload.spectatorCount,
+        );
       }
 
       // --------------------------------------------------------
@@ -577,7 +671,9 @@ const Bingo = ({ theme }) => {
       // --------------------------------------------------------
 
       if (payload.gameId) {
-        updateRoundId(payload.gameId);
+        updateRoundId(
+          payload.gameId,
+        );
       }
     };
 
@@ -594,11 +690,12 @@ const Bingo = ({ theme }) => {
         return;
       }
 
-      const nextCards = Array.isArray(payload.cards)
-        ? payload.cards
-        : payload.card
-          ? [payload.card]
-          : [];
+      const nextCards =
+        Array.isArray(payload.cards)
+          ? payload.cards
+          : payload.card
+            ? [payload.card]
+            : [];
 
       if (nextCards.length > 0) {
         setCards(nextCards);
@@ -614,12 +711,23 @@ const Bingo = ({ theme }) => {
         return;
       }
 
-      if (typeof payload.number === "number") {
-        setCurrentNumber(payload.number);
+      if (
+        typeof payload.number ===
+        "number"
+      ) {
+        setCurrentNumber(
+          payload.number,
+        );
       }
 
-      if (Array.isArray(payload.calledNumbers)) {
-        setCalledNumbers(payload.calledNumbers);
+      if (
+        Array.isArray(
+          payload.calledNumbers,
+        )
+      ) {
+        setCalledNumbers(
+          payload.calledNumbers,
+        );
       }
     };
 
@@ -628,11 +736,15 @@ const Bingo = ({ theme }) => {
     // ==========================================================
 
     const handleGameStarted = (payload) => {
-      console.log("🚀 GAME STARTED:", payload);
+      console.log(
+        "🚀 GAME STARTED:",
+        payload,
+      );
 
       setRoundStatus("PLAYING");
 
-      roundStatusRef.current = "PLAYING";
+      roundStatusRef.current =
+        "PLAYING";
 
       setPhase("live");
 
@@ -640,14 +752,28 @@ const Bingo = ({ theme }) => {
 
       setNoSelectionsMessage(null);
 
-      if (Array.isArray(payload?.calledNumbers)) {
-        setCalledNumbers(payload.calledNumbers);
+      if (
+        Array.isArray(
+          payload?.calledNumbers,
+        )
+      ) {
+        setCalledNumbers(
+          payload.calledNumbers,
+        );
       }
 
-      setCurrentNumber(payload?.currentNumber ?? null);
+      setCurrentNumber(
+        payload?.currentNumber ??
+          null,
+      );
 
-      if (typeof payload?.playerCount === "number") {
-        setParticipantCount(payload.playerCount);
+      if (
+        typeof payload?.playerCount ===
+        "number"
+      ) {
+        setParticipantCount(
+          payload.playerCount,
+        );
       }
     };
 
@@ -656,23 +782,33 @@ const Bingo = ({ theme }) => {
     // ==========================================================
 
     const handleRoundReset = (payload) => {
-      console.log("🔄 ROUND RESET:", payload);
+      console.log(
+        "🔄 ROUND RESET:",
+        payload,
+      );
 
       setRoundStatus("WAITING");
 
-      roundStatusRef.current = "WAITING";
+      roundStatusRef.current =
+        "WAITING";
 
       setPhase("selection");
 
       setRemainingSeconds(
-        typeof payload?.remainingSeconds === "number"
-          ? Math.ceil(payload.remainingSeconds)
+        typeof payload?.remainingSeconds ===
+          "number"
+          ? Math.ceil(
+              payload.remainingSeconds,
+            )
           : DEFAULT_SELECTION_TIME,
       );
 
       remainingSecondsRef.current =
-        typeof payload?.remainingSeconds === "number"
-          ? Math.ceil(payload.remainingSeconds)
+        typeof payload?.remainingSeconds ===
+        "number"
+          ? Math.ceil(
+              payload.remainingSeconds,
+            )
           : DEFAULT_SELECTION_TIME;
 
       setParticipantCount(0);
@@ -703,18 +839,22 @@ const Bingo = ({ theme }) => {
 
       setHasJoinedRound(false);
 
-      hasJoinedRoundRef.current = false;
+      hasJoinedRoundRef.current =
+        false;
 
       setIsSpectator(false);
 
       requestRef.current = false;
 
-      autoJoinTriggeredRef.current = false;
+      autoJoinTriggeredRef.current =
+        false;
 
       setNoSelectionsMessage(null);
 
       if (payload?.gameId) {
-        updateRoundId(payload.gameId);
+        updateRoundId(
+          payload.gameId,
+        );
       }
     };
 
@@ -722,12 +862,21 @@ const Bingo = ({ theme }) => {
     // NO SELECTIONS
     // ==========================================================
 
-    const handleNoSelections = (payload) => {
-      console.log("⚠️ NO SELECTIONS:", payload);
+    const handleNoSelections = (
+      payload,
+    ) => {
+      console.log(
+        "⚠️ NO SELECTIONS:",
+        payload,
+      );
 
       setNoSelectionsMessage({
-        message: payload?.message || "No players selected cards.",
-        remainingSeconds: payload?.remainingSeconds ?? DEFAULT_SELECTION_TIME,
+        message:
+          payload?.message ||
+          "No players selected cards.",
+        remainingSeconds:
+          payload?.remainingSeconds ??
+          DEFAULT_SELECTION_TIME,
       });
     };
 
@@ -736,19 +885,26 @@ const Bingo = ({ theme }) => {
     // ==========================================================
 
     const handleWinner = (payload) => {
-      console.log("🏆 WINNER:", payload);
+      console.log(
+        "🏆 WINNER:",
+        payload,
+      );
 
       if (!payload) {
         return;
       }
 
-      const winnerData = payload.winner || payload.winners?.[0] || null;
+      const winnerData =
+        payload.winner ||
+        payload.winners?.[0] ||
+        null;
 
       if (!winnerData) {
         return;
       }
 
-      winnerRef.current = winnerData;
+      winnerRef.current =
+        winnerData;
 
       setWinner(winnerData);
 
@@ -759,17 +915,32 @@ const Bingo = ({ theme }) => {
           "Winner",
       );
 
-      setWinnerCard(payload.winnerCard || winnerData.card || null);
+      setWinnerCard(
+        payload.winnerCard ||
+          winnerData.card ||
+          null,
+      );
 
-      setWinnerAmount(payload.winAmount ?? winnerData.winAmount ?? 0);
+      setWinnerAmount(
+        payload.winAmount ??
+          winnerData.winAmount ??
+          0,
+      );
 
-      if (Array.isArray(payload.calledNumbers)) {
-        setCalledNumbers(payload.calledNumbers);
+      if (
+        Array.isArray(
+          payload.calledNumbers,
+        )
+      ) {
+        setCalledNumbers(
+          payload.calledNumbers,
+        );
       }
 
       setRoundStatus("FINISHED");
 
-      roundStatusRef.current = "FINISHED";
+      roundStatusRef.current =
+        "FINISHED";
 
       setPhase("finished");
 
@@ -780,15 +951,21 @@ const Bingo = ({ theme }) => {
     // ROUND FINISHED
     // ==========================================================
 
-    const handleRoundFinished = (payload) => {
-      console.log("🏁 ROUND FINISHED:", payload);
+    const handleRoundFinished = (
+      payload,
+    ) => {
+      console.log(
+        "🏁 ROUND FINISHED:",
+        payload,
+      );
 
       if (payload?.winner) {
         handleWinner(payload);
       } else {
         setRoundStatus("FINISHED");
 
-        roundStatusRef.current = "FINISHED";
+        roundStatusRef.current =
+          "FINISHED";
 
         setPhase("finished");
 
@@ -800,8 +977,13 @@ const Bingo = ({ theme }) => {
     // NEXT ROUND
     // ==========================================================
 
-    const handleNextRound = (payload) => {
-      console.log("🔄 NEXT ROUND:", payload);
+    const handleNextRound = (
+      payload,
+    ) => {
+      console.log(
+        "🔄 NEXT ROUND:",
+        payload,
+      );
 
       winnerRef.current = null;
 
@@ -831,28 +1013,34 @@ const Bingo = ({ theme }) => {
 
       setHasJoinedRound(false);
 
-      hasJoinedRoundRef.current = false;
+      hasJoinedRoundRef.current =
+        false;
 
       setIsSpectator(false);
 
       requestRef.current = false;
 
-      autoJoinTriggeredRef.current = false;
+      autoJoinTriggeredRef.current =
+        false;
 
       setNoSelectionsMessage(null);
 
       if (payload?.gameId) {
-        updateRoundId(payload.gameId);
+        updateRoundId(
+          payload.gameId,
+        );
       }
 
       setRoundStatus("WAITING");
 
-      roundStatusRef.current = "WAITING";
+      roundStatusRef.current =
+        "WAITING";
 
       setPhase("selection");
 
       updateServerTimer(
-        typeof payload?.remainingSeconds === "number"
+        typeof payload?.remainingSeconds ===
+          "number"
           ? payload.remainingSeconds
           : DEFAULT_SELECTION_TIME,
       );
@@ -862,31 +1050,70 @@ const Bingo = ({ theme }) => {
     // REGISTER EVENTS
     // ==========================================================
 
-    socket.on("connect", handleConnect);
+    socket.on(
+      "connect",
+      handleConnect,
+    );
 
-    socket.on("connect_error", handleConnectError);
+    socket.on(
+      "connect_error",
+      handleConnectError,
+    );
 
-    socket.on("bingo:roundState", handleRoundState);
+    socket.on(
+      "bingo:roundState",
+      handleRoundState,
+    );
 
-    socket.on("bingo:selectionTick", handleSelectionTick);
+    socket.on(
+      "bingo:selectionTick",
+      handleSelectionTick,
+    );
 
-    socket.on("joinedRoom", handleJoinedRoom);
+    socket.on(
+      "joinedRoom",
+      handleJoinedRoom,
+    );
 
-    socket.on("playerCard", handlePlayerCard);
+    socket.on(
+      "playerCard",
+      handlePlayerCard,
+    );
 
-    socket.on("bingo:numberCalled", handleNumberCalled);
+    socket.on(
+      "bingo:numberCalled",
+      handleNumberCalled,
+    );
 
-    socket.on("bingo:gameStarted", handleGameStarted);
+    socket.on(
+      "bingo:gameStarted",
+      handleGameStarted,
+    );
 
-    socket.on("bingo:roundReset", handleRoundReset);
+    socket.on(
+      "bingo:roundReset",
+      handleRoundReset,
+    );
 
-    socket.on("bingo:noSelections", handleNoSelections);
+    socket.on(
+      "bingo:noSelections",
+      handleNoSelections,
+    );
 
-    socket.on("bingo:winner", handleWinner);
+    socket.on(
+      "bingo:winner",
+      handleWinner,
+    );
 
-    socket.on("bingo:roundFinished", handleRoundFinished);
+    socket.on(
+      "bingo:roundFinished",
+      handleRoundFinished,
+    );
 
-    socket.on("bingo:nextRound", handleNextRound);
+    socket.on(
+      "bingo:nextRound",
+      handleNextRound,
+    );
 
     // ==========================================================
     // CONNECT
@@ -901,31 +1128,70 @@ const Bingo = ({ theme }) => {
     // ==========================================================
 
     return () => {
-      socket.off("connect", handleConnect);
+      socket.off(
+        "connect",
+        handleConnect,
+      );
 
-      socket.off("connect_error", handleConnectError);
+      socket.off(
+        "connect_error",
+        handleConnectError,
+      );
 
-      socket.off("bingo:roundState", handleRoundState);
+      socket.off(
+        "bingo:roundState",
+        handleRoundState,
+      );
 
-      socket.off("bingo:selectionTick", handleSelectionTick);
+      socket.off(
+        "bingo:selectionTick",
+        handleSelectionTick,
+      );
 
-      socket.off("joinedRoom", handleJoinedRoom);
+      socket.off(
+        "joinedRoom",
+        handleJoinedRoom,
+      );
 
-      socket.off("playerCard", handlePlayerCard);
+      socket.off(
+        "playerCard",
+        handlePlayerCard,
+      );
 
-      socket.off("bingo:numberCalled", handleNumberCalled);
+      socket.off(
+        "bingo:numberCalled",
+        handleNumberCalled,
+      );
 
-      socket.off("bingo:gameStarted", handleGameStarted);
+      socket.off(
+        "bingo:gameStarted",
+        handleGameStarted,
+      );
 
-      socket.off("bingo:roundReset", handleRoundReset);
+      socket.off(
+        "bingo:roundReset",
+        handleRoundReset,
+      );
 
-      socket.off("bingo:noSelections", handleNoSelections);
+      socket.off(
+        "bingo:noSelections",
+        handleNoSelections,
+      );
 
-      socket.off("bingo:winner", handleWinner);
+      socket.off(
+        "bingo:winner",
+        handleWinner,
+      );
 
-      socket.off("bingo:roundFinished", handleRoundFinished);
+      socket.off(
+        "bingo:roundFinished",
+        handleRoundFinished,
+      );
 
-      socket.off("bingo:nextRound", handleNextRound);
+      socket.off(
+        "bingo:nextRound",
+        handleNextRound,
+      );
     };
   }, [
     isSpectator,
@@ -941,14 +1207,22 @@ const Bingo = ({ theme }) => {
 
   const toggleLuckyNumber = useCallback(
     (number) => {
-      console.log("🎯 SELECT NUMBER:", number);
+      console.log(
+        "🎯 SELECT NUMBER:",
+        number,
+      );
 
       // --------------------------------------------------------
       // ROUND MUST BE WAITING
       // --------------------------------------------------------
 
-      if (roundStatusRef.current !== "WAITING") {
-        console.log("❌ Selection phase closed.");
+      if (
+        roundStatusRef.current !==
+        "WAITING"
+      ) {
+        console.log(
+          "❌ Selection phase closed.",
+        );
 
         return;
       }
@@ -957,8 +1231,13 @@ const Bingo = ({ theme }) => {
       // SERVER TIMER
       // --------------------------------------------------------
 
-      if (remainingSecondsRef.current <= 0) {
-        console.log("❌ Selection timer expired.");
+      if (
+        remainingSecondsRef.current <=
+        0
+      ) {
+        console.log(
+          "❌ Selection timer expired.",
+        );
 
         return;
       }
@@ -968,7 +1247,9 @@ const Bingo = ({ theme }) => {
       // --------------------------------------------------------
 
       if (!authUser?.telegramId) {
-        console.warn("❌ Telegram user not authenticated.");
+        console.warn(
+          "❌ Telegram user not authenticated.",
+        );
 
         return;
       }
@@ -978,7 +1259,9 @@ const Bingo = ({ theme }) => {
       // --------------------------------------------------------
 
       if (!roundIdRef.current) {
-        console.warn("❌ No active Bingo game.");
+        console.warn(
+          "❌ No active Bingo game.",
+        );
 
         return;
       }
@@ -987,22 +1270,35 @@ const Bingo = ({ theme }) => {
       // CURRENT SELECTIONS
       // --------------------------------------------------------
 
-      const currentSelections = mySelectionsRef.current;
+      const currentSelections =
+        mySelectionsRef.current;
 
       // --------------------------------------------------------
       // DESELECT
       // --------------------------------------------------------
 
-      if (currentSelections.includes(number)) {
-        console.log("↩️ Deselect:", number);
-
-        const nextSelections = currentSelections.filter(
-          (item) => item !== number,
+      if (
+        currentSelections.includes(
+          number,
+        )
+      ) {
+        console.log(
+          "↩️ Deselect:",
+          number,
         );
 
-        mySelectionsRef.current = nextSelections;
+        const nextSelections =
+          currentSelections.filter(
+            (item) =>
+              item !== number,
+          );
 
-        setMySelections(nextSelections);
+        mySelectionsRef.current =
+          nextSelections;
+
+        setMySelections(
+          nextSelections,
+        );
 
         /*
          * Optional backend support.
@@ -1011,13 +1307,18 @@ const Bingo = ({ theme }) => {
          * it will release the number globally.
          */
 
-        socket.emit("deselectLuckyNumber", {
-          gameId: roundIdRef.current,
+        socket.emit(
+          "deselectLuckyNumber",
+          {
+            gameId:
+              roundIdRef.current,
 
-          telegramId: authUser.telegramId,
+            telegramId:
+              authUser.telegramId,
 
-          number,
-        });
+            number,
+          },
+        );
 
         return;
       }
@@ -1026,8 +1327,13 @@ const Bingo = ({ theme }) => {
       // MAX 3
       // --------------------------------------------------------
 
-      if (currentSelections.length >= MAX_LUCKY_NUMBERS) {
-        console.log(`❌ Maximum ${MAX_LUCKY_NUMBERS} numbers allowed.`);
+      if (
+        currentSelections.length >=
+        MAX_LUCKY_NUMBERS
+      ) {
+        console.log(
+          `❌ Maximum ${MAX_LUCKY_NUMBERS} numbers allowed.`,
+        );
 
         return;
       }
@@ -1036,8 +1342,14 @@ const Bingo = ({ theme }) => {
       // NUMBER RESERVED BY SOMEONE
       // --------------------------------------------------------
 
-      if (selectedNumbersGlobal.includes(number)) {
-        console.log("❌ Number already selected by another player.");
+      if (
+        selectedNumbersGlobal.includes(
+          number,
+        )
+      ) {
+        console.log(
+          "❌ Number already selected by another player.",
+        );
 
         return;
       }
@@ -1057,19 +1369,27 @@ const Bingo = ({ theme }) => {
       socket.emit(
         "selectLuckyNumber",
         {
-          gameId: roundIdRef.current,
+          gameId:
+            roundIdRef.current,
 
-          telegramId: authUser.telegramId,
+          telegramId:
+            authUser.telegramId,
 
           number,
 
           betAmount: 1,
         },
         (response) => {
-          console.log("🎯 SERVER SELECTION RESPONSE:", response);
+          console.log(
+            "🎯 SERVER SELECTION RESPONSE:",
+            response,
+          );
 
           if (!response?.success) {
-            console.error("❌ Number selection failed:", response?.message);
+            console.error(
+              "❌ Number selection failed:",
+              response?.message,
+            );
 
             return;
           }
@@ -1078,31 +1398,53 @@ const Bingo = ({ theme }) => {
           // SERVER CONFIRMED
           // ----------------------------------------------------
 
-          setMySelections((previous) => {
-            if (previous.includes(number)) {
-              return previous;
-            }
+          setMySelections(
+            (previous) => {
+              if (
+                previous.includes(
+                  number,
+                )
+              ) {
+                return previous;
+              }
 
-            const next = [...previous, number];
+              const next = [
+                ...previous,
+                number,
+              ];
 
-            mySelectionsRef.current = next;
+              mySelectionsRef.current =
+                next;
 
-            return next;
-          });
+              return next;
+            },
+          );
 
           // ----------------------------------------------------
           // SERVER GLOBAL NUMBERS
           // ----------------------------------------------------
 
-          if (Array.isArray(response.selectedNumbers)) {
-            setSelectedNumbersGlobal(response.selectedNumbers);
+          if (
+            Array.isArray(
+              response.selectedNumbers,
+            )
+          ) {
+            setSelectedNumbersGlobal(
+              response.selectedNumbers,
+            );
           }
 
-          console.log("✅ Lucky number selected:", number);
+          console.log(
+            "✅ Lucky number selected:",
+            number,
+          );
         },
       );
     },
-    [authUser?.telegramId, selectedNumbersGlobal],
+    [
+      authUser?.telegramId,
+      selectedNumbersGlobal,
+    ],
   );
 
   // ============================================================
@@ -1115,7 +1457,9 @@ const Bingo = ({ theme }) => {
   // ============================================================
 
   const autoJoinAsSpectator = useCallback(() => {
-    if (hasJoinedRoundRef.current) {
+    if (
+      hasJoinedRoundRef.current
+    ) {
       return;
     }
 
@@ -1137,14 +1481,18 @@ const Bingo = ({ theme }) => {
       socket.connect();
     }
 
-    console.log("👀 AUTO JOIN AS SPECTATOR");
+    console.log(
+      "👀 AUTO JOIN AS SPECTATOR",
+    );
 
     socket.emit(
       "joinRoom",
       {
-        gameId: roundIdRef.current,
+        gameId:
+          roundIdRef.current,
 
-        telegramId: authUser.telegramId,
+        telegramId:
+          authUser.telegramId,
 
         betAmount: 0,
 
@@ -1154,25 +1502,39 @@ const Bingo = ({ theme }) => {
         requestRef.current = false;
 
         if (!response?.success) {
-          console.error("❌ Spectator auto join failed:", response?.message);
+          console.error(
+            "❌ Spectator auto join failed:",
+            response?.message,
+          );
 
           return;
         }
 
         setHasJoinedRound(true);
 
-        hasJoinedRoundRef.current = true;
+        hasJoinedRoundRef.current =
+          true;
 
         setIsSpectator(true);
 
         setCards([]);
 
-        if (typeof response.playerCount === "number") {
-          setParticipantCount(response.playerCount);
+        if (
+          typeof response.playerCount ===
+          "number"
+        ) {
+          setParticipantCount(
+            response.playerCount,
+          );
         }
 
-        if (typeof response.spectatorCount === "number") {
-          setSpectatorCount(response.spectatorCount);
+        if (
+          typeof response.spectatorCount ===
+          "number"
+        ) {
+          setSpectatorCount(
+            response.spectatorCount,
+          );
         }
       },
     );
@@ -1191,30 +1553,47 @@ const Bingo = ({ theme }) => {
   // ============================================================
 
   useEffect(() => {
-    if (remainingSeconds !== 0) {
+    if (
+      remainingSeconds !== 0
+    ) {
       return;
     }
 
-    if (roundStatusRef.current !== "WAITING") {
+    if (
+      roundStatusRef.current !==
+      "WAITING"
+    ) {
       return;
     }
 
-    if (hasJoinedRoundRef.current) {
+    if (
+      hasJoinedRoundRef.current
+    ) {
       return;
     }
 
-    if (autoJoinTriggeredRef.current) {
+    if (
+      autoJoinTriggeredRef.current
+    ) {
       return;
     }
 
-    autoJoinTriggeredRef.current = true;
+    autoJoinTriggeredRef.current =
+      true;
 
-    if (mySelectionsRef.current.length > 0) {
+    if (
+      mySelectionsRef.current
+        .length > 0
+    ) {
       autoJoinGame();
     } else {
       autoJoinAsSpectator();
     }
-  }, [remainingSeconds, autoJoinGame, autoJoinAsSpectator]);
+  }, [
+    remainingSeconds,
+    autoJoinGame,
+    autoJoinAsSpectator,
+  ]);
 
   // ============================================================
   // DERIVED VALUES
@@ -1223,7 +1602,8 @@ const Bingo = ({ theme }) => {
   const canSelectMore =
     roundStatus === "WAITING" &&
     remainingSeconds > 0 &&
-    mySelections.length < MAX_LUCKY_NUMBERS;
+    mySelections.length <
+      MAX_LUCKY_NUMBERS;
 
   // NO JOIN BUTTON ANYMORE.
   //
@@ -1245,9 +1625,14 @@ const Bingo = ({ theme }) => {
       {roundStatus === "WAITING" ? (
         <Header
           gameType="selection"
-          timeLeft={Math.max(0, remainingSeconds)}
+          timeLeft={Math.max(
+            0,
+            remainingSeconds,
+          )}
           stake={10}
-          balance={authUser?.balance ?? 0}
+          balance={
+            authUser?.balance ?? 0
+          }
         />
       ) : (
         <Header
@@ -1271,19 +1656,43 @@ const Bingo = ({ theme }) => {
 
         {phase === "selection" && (
           <SelectionPage
-            selectionCountdown={remainingSeconds}
-            calledNumbers={calledNumbers}
-            selectedNumbersGlobal={selectedNumbersGlobal}
-            mySelections={mySelections}
-            canSelectMore={canSelectMore}
-            showSelectionPanel={
-              roundStatus === "WAITING" && remainingSeconds > 0
+            selectionCountdown={
+              remainingSeconds
             }
-            toggleLuckyNumber={toggleLuckyNumber}
+
+            calledNumbers={
+              calledNumbers
+            }
+
+            selectedNumbersGlobal={
+              selectedNumbersGlobal
+            }
+
+            mySelections={
+              mySelections
+            }
+
+            canSelectMore={
+              canSelectMore
+            }
+
+            showSelectionPanel={
+              roundStatus ===
+                "WAITING" &&
+              remainingSeconds > 0
+            }
+
+            toggleLuckyNumber={
+              toggleLuckyNumber
+            }
+
             /*
              * No join button.
              */
-            joinButtonDisabled={joinButtonDisabled}
+            joinButtonDisabled={
+              joinButtonDisabled
+            }
+
             /*
              * Empty function because joining
              * happens automatically.
@@ -1298,13 +1707,33 @@ const Bingo = ({ theme }) => {
 
         {phase === "live" && (
           <LivePage
-            calledNumbers={calledNumbers}
-            currentNumber={currentNumber}
-            cards={isSpectator ? [] : cards}
-            selectionNumbers={mySelections}
+            calledNumbers={
+              calledNumbers
+            }
+
+            currentNumber={
+              currentNumber
+            }
+
+            cards={
+              isSpectator
+                ? []
+                : cards
+            }
+
+            selectionNumbers={
+              mySelections
+            }
+
             accent={accent}
-            isSpectator={isSpectator}
-            spectatorCount={spectatorCount}
+
+            isSpectator={
+              isSpectator
+            }
+
+            spectatorCount={
+              spectatorCount
+            }
           />
         )}
 
@@ -1315,44 +1744,69 @@ const Bingo = ({ theme }) => {
         {phase === "finished" && (
           <div className="min-h-[300px] flex items-center justify-center text-white">
             <div className="text-center">
-              <div className="text-5xl mb-4">🏆</div>
+              <div className="text-5xl mb-4">
+                🏆
+              </div>
 
-              <h2 className="text-2xl font-bold">Round Finished</h2>
+              <h2 className="text-2xl font-bold">
+                Round Finished
+              </h2>
 
               {winnerName && (
                 <p className="text-emerald-300 font-bold mt-3">
-                  Winner: {winnerName}
+                  Winner:{" "}
+                  {winnerName}
                 </p>
               )}
 
               {winnerAmount > 0 && (
-                <p className="text-amber-300 mt-2">Prize: {winnerAmount}</p>
+                <p className="text-amber-300 mt-2">
+                  Prize:{" "}
+                  {winnerAmount}
+                </p>
               )}
 
-              <p className="text-slate-400 mt-2">Preparing the next round...</p>
+              <p className="text-slate-400 mt-2">
+                Preparing the next
+                round...
+              </p>
 
               <p className="text-slate-500 text-sm mt-2">
-                Numbers called: {calledNumbers.length}
+                Numbers called:{" "}
+                {calledNumbers.length}
                 /75
               </p>
 
               {winnerCard && (
                 <div className="mt-6">
-                  <p className="text-slate-300 mb-3">Winning Card</p>
+                  <p className="text-slate-300 mb-3">
+                    Winning Card
+                  </p>
 
                   <div className="inline-grid grid-cols-5 gap-1">
-                    {winnerCard.flat().map((number, index) => (
-                      <div
-                        key={`${number}-${index}`}
-                        className={`w-10 h-10 flex items-center justify-center rounded text-sm font-bold ${
-                          number === 0
-                            ? "bg-emerald-600 text-white"
-                            : "bg-slate-800 text-white"
-                        }`}
-                      >
-                        {number === 0 ? "★" : number}
-                      </div>
-                    ))}
+                    {winnerCard
+                      .flat()
+                      .map(
+                        (
+                          number,
+                          index,
+                        ) => (
+                          <div
+                            key={`${number}-${index}`}
+                            className={`w-10 h-10 flex items-center justify-center rounded text-sm font-bold ${
+                              number ===
+                              0
+                                ? "bg-emerald-600 text-white"
+                                : "bg-slate-800 text-white"
+                            }`}
+                          >
+                            {number ===
+                            0
+                              ? "★"
+                              : number}
+                          </div>
+                        ),
+                      )}
                   </div>
                 </div>
               )}
@@ -1369,11 +1823,15 @@ const Bingo = ({ theme }) => {
         <div className="fixed bottom-20 left-0 right-0 mx-4 bg-amber-900/80 border border-amber-600 rounded-lg p-4 shadow-lg backdrop-blur">
           <div className="max-w-md mx-auto">
             <p className="text-amber-100 font-semibold text-sm">
-              ⚠️ {noSelectionsMessage.message}
+              ⚠️{" "}
+              {
+                noSelectionsMessage.message
+              }
             </p>
 
             <p className="text-amber-200 text-xs mt-2">
-              Waiting for next round...
+              Waiting for next
+              round...
             </p>
           </div>
         </div>
@@ -1385,16 +1843,25 @@ const Bingo = ({ theme }) => {
 
       <WinnerModal
         open={Boolean(winner)}
-        winner={winner || "Unknown Player"}
-        luckyNumber={mySelections[0] ?? null}
+        winner={
+          winner ||
+          "Unknown Player"
+        }
+        luckyNumber={
+          mySelections[0] ??
+          null
+        }
         isCurrentUserWinner={
-          typeof winner === "object" &&
-          winner?.telegramId === authUser?.telegramId
+          typeof winner ===
+            "object" &&
+          winner?.telegramId ===
+            authUser?.telegramId
         }
         onClose={() => {
           setWinner(null);
 
-          winnerRef.current = null;
+          winnerRef.current =
+            null;
         }}
         accent={accent}
       />
