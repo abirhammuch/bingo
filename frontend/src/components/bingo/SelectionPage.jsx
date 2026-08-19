@@ -1,5 +1,6 @@
 import React, { memo } from "react";
 import Countdown from "./Countdown";
+import startSelectionTimer from "../../sockets/bingoTimer";
 
 const SelectionPage = ({
   selectionCountdown,
@@ -147,25 +148,7 @@ const SelectionPage = ({
         </div>
       </div>
 
-      {/* =====================================================
-          AUTO JOIN INFORMATION
-      ===================================================== */}
-
-      <div className="mb-8 p-4 rounded-lg bg-slate-900/70 border border-slate-700">
-        <p className="text-sm text-slate-300 text-center">
-          ⏰ When the timer reaches{" "}
-          <span className="text-emerald-400 font-bold">
-            0
-          </span>
-          , your selection will be submitted automatically.
-        </p>
-
-        <p className="text-xs text-slate-500 text-center mt-2">
-          No Join button is required.
-        </p>
-      </div>
-
-      {/* =====================================================
+     {/*}
           SERVER TIMER
       ===================================================== */}
 
@@ -176,6 +159,7 @@ const SelectionPage = ({
           mySelections.length
         }
       />
+      startSelectionTimer();
     </div>
   );
 };
