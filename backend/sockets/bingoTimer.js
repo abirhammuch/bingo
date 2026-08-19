@@ -271,7 +271,8 @@ export const startCallingNumbers = (io, gameId) => {
 
           winAmount: winner?.winAmount || 0,
 
-          bingoResult: winner?.bingoResult || null,
+          bingoResult:
+            winner?.bingoResult || result.winner?.bingoResult || null,
 
           calledNumbers: winnerGame.calledNumbers,
 

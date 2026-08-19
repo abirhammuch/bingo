@@ -541,20 +541,28 @@ const Bingo = ({ theme }) => {
         return;
       }
 
-      winnerRef.current = winnerData;
+      const normalizedWinner = {
+        ...winnerData,
+        card: winnerData.card || payload.winnerCard || [],
+        bingoResult: winnerData.bingoResult || payload.bingoResult || null,
+      };
 
-      setWinner(winnerData);
+      winnerRef.current = normalizedWinner;
+
+      setWinner(normalizedWinner);
 
       setWinnerName(
         payload.winnerName ||
-          winnerData.firstName ||
-          winnerData.username ||
+          normalizedWinner.firstName ||
+          normalizedWinner.username ||
           "Winner",
       );
 
-      setWinnerCard(payload.winnerCard || winnerData.card || null);
+      setWinnerCard(
+        normalizedWinner.card?.length ? normalizedWinner.card : null,
+      );
 
-      setWinnerAmount(payload.winAmount ?? winnerData.winAmount ?? 0);
+      setWinnerAmount(payload.winAmount ?? normalizedWinner.winAmount ?? 0);
 
       if (Array.isArray(payload.calledNumbers)) {
         setCalledNumbers(payload.calledNumbers);
