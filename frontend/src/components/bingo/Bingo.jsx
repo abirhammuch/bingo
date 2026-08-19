@@ -907,6 +907,21 @@ const Bingo = ({ theme }) => {
     remainingSeconds > 0 &&
     mySelections.length < MAX_LUCKY_NUMBERS;
 
+  const isWinningCell = (rowIndex, columnIndex) => {
+    const result = winner?.bingoResult;
+
+    if (!result?.bingo) return false;
+    if (result.type === "row") return rowIndex === result.position;
+    if (result.type === "column") return columnIndex === result.position;
+    if (result.type === "diagonal") {
+      return result.direction === "top-left-to-bottom-right"
+        ? rowIndex === columnIndex
+        : rowIndex + columnIndex === 4;
+    }
+
+    return false;
+  };
+
   // ============================================================
   // UI
   // ============================================================
@@ -1008,18 +1023,25 @@ const Bingo = ({ theme }) => {
                   <p className="text-slate-300 mb-3">Winning Card</p>
 
                   <div className="inline-grid grid-cols-5 gap-1">
-                    {winnerCard.flat().map((number, index) => (
-                      <div
-                        key={`${number}-${index}`}
-                        className={`w-10 h-10 flex items-center justify-center rounded text-sm font-bold ${
-                          number === 0
-                            ? "bg-emerald-600 text-white"
-                            : "bg-slate-800 text-white"
-                        }`}
-                      >
-                        {number === 0 ? "★" : number}
-                      </div>
-                    ))}
+                    {winnerCard.flat().map((number, index) => {
+                      const rowIndex = Math.floor(index / 5);
+                      const columnIndex = index % 5;
+
+                      return (
+                        <div
+                          key={`${number}-${index}`}
+                          className={`w-10 h-10 flex items-center justify-center rounded text-sm font-bold ${
+                            isWinningCell(rowIndex, columnIndex)
+                              ? "bg-emerald-500 text-slate-950 ring-2 ring-emerald-200"
+                              : number === 0
+                                ? "bg-amber-500 text-white"
+                                : "bg-slate-800 text-white"
+                          }`}
+                        >
+                          {number === 0 ? "★" : number}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -1053,7 +1075,6 @@ const Bingo = ({ theme }) => {
       <WinnerModal
         open={Boolean(winner)}
         winner={winner || "Unknown Player"}
-        luckyNumber={mySelections[0] ?? null}
         isCurrentUserWinner={
           typeof winner === "object" &&
           winner?.telegramId === authUser?.telegramId

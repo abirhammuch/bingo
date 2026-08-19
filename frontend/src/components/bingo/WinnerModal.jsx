@@ -3,7 +3,6 @@ import React, { useEffect } from "react";
 const WinnerModal = ({
   open,
   winner,
-  luckyNumber,
   onClose,
   accent = {},
   isCurrentUserWinner = false,
@@ -87,19 +86,6 @@ const WinnerModal = ({
                   </div>
                 );
               })}
-            </div>
-          </div>
-        )}
-
-        {luckyNumber && (
-          <div
-            className={`mt-6 rounded-3xl border ${
-              accent.accentBg || "border-slate-700"
-            } bg-slate-950/90 p-5 text-lg font-medium text-slate-300`}
-          >
-            <div className="text-sm text-slate-400 mb-2">Winning number:</div>
-            <div className={accent.accentText || "text-emerald-300"}>
-              {luckyNumber}
             </div>
           </div>
         )}

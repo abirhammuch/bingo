@@ -25,8 +25,6 @@ const SelectionPage = ({
   };
 
   const getNumberClasses = (number) => {
-    const isCalled = calledNumbers.includes(number);
-
     const isMySelected = mySelections.includes(number);
 
     const isReservedByOther =
@@ -41,25 +39,19 @@ const SelectionPage = ({
       border
 
       ${
-        isCalled
-          ? "border-emerald-400/50 bg-emerald-500/20 text-emerald-100"
-          : ""
-      }
-
-      ${
         isMySelected
           ? "border-emerald-400 bg-emerald-600/40 text-emerald-100 ring-2 ring-emerald-400/40"
           : ""
       }
 
       ${
-        isReservedByOther && !isCalled
+        isReservedByOther
           ? "border-rose-400 bg-rose-600/30 text-rose-100 opacity-70 cursor-not-allowed"
           : ""
       }
 
       ${
-        !isCalled && !isMySelected && !isReservedByOther
+        !isMySelected && !isReservedByOther
           ? "border-slate-700 bg-slate-900 text-slate-300 hover:border-emerald-500 hover:bg-slate-800 hover:text-white"
           : ""
       }
