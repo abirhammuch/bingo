@@ -1,5 +1,4 @@
 import React, { memo } from "react";
-import Countdown from "./Countdown";
 
 const SelectionPage = ({
   selectionCountdown,
@@ -97,38 +96,7 @@ const SelectionPage = ({
         </div>
       )}
 
-      {/* =====================================================
-          NUMBER GRID
-      ===================================================== */}
-
-      <div className="h-96 overflow-y-auto bg-slate-950/30 p-4 rounded-lg mb-8 border border-slate-700">
-        <div className="grid grid-cols-8 gap-2">
-          {Array.from({ length: 300 }, (_, index) => index + 1).map(
-            (number) => (
-              <button
-                key={number}
-                type="button"
-                onClick={() => toggleLuckyNumber(number)}
-                disabled={isNumberDisabled(number)}
-                className={getNumberClasses(number)}
-              >
-                {number}
-              </button>
-            ),
-          )}
-        </div>
-      </div>
-
-      {/*}
-          SERVER TIMER
-      ===================================================== */}
-
-      <Countdown
-        selectionEndsAt={selectionEndsAt}
-        seconds={selectionCountdown}
-        label="Time To Close Selection"
-        selectedCardsCount={mySelections.length}
-      />
+     
     </div>
   );
 };

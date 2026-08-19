@@ -938,6 +938,8 @@ const Bingo = ({ theme }) => {
           timeLeft={Math.max(0, remainingSeconds)}
           stake={10}
           balance={authUser?.balance ?? 0}
+          selectionEndsAt={selectionEndsAt}
+          selectedCardsCount={mySelections.length}
         />
       ) : (
         <Header

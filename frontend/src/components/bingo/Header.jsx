@@ -1,4 +1,5 @@
 import React from "react";
+import Countdown from "./Countdown";
 
 const Header = ({
   timeLeft = 0,
@@ -9,6 +10,8 @@ const Header = ({
   called = 0,
   round = "1",
   derash = 0,
+  selectionEndsAt = null,
+  selectedCardsCount = 0,
 }) => {
   const safeCalled = Math.min(Math.max(Number(called) || 0, 0), 75);
 
@@ -18,23 +21,7 @@ const Header = ({
   if (gameType === "selection") {
     return (
       <header className="bg-slate-900 border-b border-slate-700 px-4 py-3">
-        <div className="max-w-4xl mx-auto grid grid-cols-3 gap-4 text-center">
-          <div>
-            <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
-              TIME
-            </div>
-
-            <div
-              className={`text-lg font-bold ${
-                timeLeft <= 5
-                  ? "text-rose-400 animate-pulse"
-                  : "text-emerald-400"
-              }`}
-            >
-              {Math.max(0, timeLeft)}s
-            </div>
-          </div>
-
+        <div className="max-w-4xl mx-auto grid grid-cols-2 gap-4 text-center">
           <div>
             <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide">
               STAKE
@@ -52,6 +39,15 @@ const Header = ({
               {Number(balance || 0).toFixed(2)} ETB
             </div>
           </div>
+        </div>
+
+        <div className="max-w-4xl mx-auto mt-3">
+          <Countdown
+            selectionEndsAt={selectionEndsAt}
+            seconds={timeLeft}
+            label="Time To Close Selection"
+            selectedCardsCount={selectedCardsCount}
+          />
         </div>
       </header>
     );

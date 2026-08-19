@@ -68,17 +68,17 @@ const LivePage = ({
         {/* Current Number */}
         <div className="flex items-center justify-center py-3">
           {currentNumber ? (
-            <div className="relative w-28 h-28 flex items-center justify-center">
+            <div className="relative w-14 h-14 flex items-center justify-center">
               <div className="absolute inset-0 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 opacity-20 animate-pulse" />
 
-              <div className="relative w-24 h-24 rounded-full border-4 border-purple-400 bg-purple-600/30 flex items-center justify-center shadow-lg shadow-purple-500/20">
-                <div className="text-4xl font-bold text-purple-100">
+              <div className="relative w-12 h-12 rounded-full border-2 border-purple-400 bg-purple-600/30 flex items-center justify-center shadow-lg shadow-purple-500/20">
+                <div className="text-2xl font-bold text-purple-100">
                   {currentNumber}
                 </div>
               </div>
             </div>
           ) : (
-            <div className="w-28 h-28 flex items-center justify-center border-2 border-dashed border-slate-600 rounded-full">
+            <div className="w-14 h-14 flex items-center justify-center border-2 border-dashed border-slate-600 rounded-full">
               <span className="text-slate-500 text-sm">Waiting...</span>
             </div>
           )}
