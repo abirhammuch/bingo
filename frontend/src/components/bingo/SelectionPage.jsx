@@ -90,33 +90,35 @@ const SelectionPage = ({
               key={number}
               className="px-4 py-2 rounded-lg bg-emerald-600/20 border border-emerald-500 text-emerald-300 font-bold"
             >
-              <div className="h-96 overflow-y-auto bg-slate-950/30 p-4 rounded-lg border border-slate-700">
-                <div className="grid grid-cols-8 gap-2">
-                  {Array.from({ length: 300 }, (_, index) => index + 1).map(
-                    (number) => {
-                      const disabled = isNumberDisabled(number);
-
-                      return (
-                        <button
-                          key={number}
-                          type="button"
-                          onClick={() => toggleLuckyNumber(number)}
-                          disabled={disabled}
-                          aria-label={`Lucky number ${number}`}
-                          aria-pressed={mySelections.includes(number)}
-                          className={getNumberClasses(number)}
-                        >
-                          {number}
-                        </button>
-                      );
-                    },
-                  )}
-                </div>
-              </div>
+              #{number}
             </div>
           ))}
         </div>
       )}
+
+      <div className="h-96 overflow-y-auto bg-slate-950/30 p-4 rounded-lg border border-slate-700">
+        <div className="grid grid-cols-8 gap-2">
+          {Array.from({ length: 300 }, (_, index) => index + 1).map(
+            (number) => {
+              const disabled = isNumberDisabled(number);
+
+              return (
+                <button
+                  key={number}
+                  type="button"
+                  onClick={() => toggleLuckyNumber(number)}
+                  disabled={disabled}
+                  aria-label={`Lucky number ${number}`}
+                  aria-pressed={mySelections.includes(number)}
+                  className={getNumberClasses(number)}
+                >
+                  {number}
+                </button>
+              );
+            },
+          )}
+        </div>
+      </div>
     </div>
   );
 };
