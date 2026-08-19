@@ -1,11 +1,37 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 
 const Countdown = ({
+  selectionEndsAt = null,
   seconds = 30,
   label = "Next Number In",
   selectedCardsCount = 0,
 }) => {
-  const timeLeft = Math.max(0, Number(seconds) || 0);
+  const calculateRemaining = () => {
+    if (!selectionEndsAt) {
+      return Math.max(0, Number(seconds) || 0);
+    }
+
+    return Math.max(
+      0,
+      Math.ceil((new Date(selectionEndsAt).getTime() - Date.now()) / 1000),
+    );
+  };
+
+  const [timeLeft, setTimeLeft] = useState(calculateRemaining);
+
+  useEffect(() => {
+    setTimeLeft(calculateRemaining());
+
+    if (!selectionEndsAt) {
+      return undefined;
+    }
+
+    const intervalId = setInterval(() => {
+      setTimeLeft(calculateRemaining());
+    }, 250);
+
+    return () => clearInterval(intervalId);
+  }, [selectionEndsAt, seconds]);
 
   return (
     <div className="flex items-center justify-between gap-4 rounded-lg border border-slate-700 bg-slate-900 p-3">

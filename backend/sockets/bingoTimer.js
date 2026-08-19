@@ -118,6 +118,9 @@ export const startSelectionTimer = async (io, gameId) => {
           remainingSeconds: SELECTION_TIME_SECONDS,
           selectionEndsAt: currentGame.selectionEndsAt,
           playerCount: 0,
+          selectedNumbers: [],
+          calledNumbers: [],
+          currentNumber: null,
         });
 
         await startSelectionTimer(io, gameId);
@@ -156,6 +159,16 @@ export const startSelectionTimer = async (io, gameId) => {
         currentNumber: null,
 
         remainingSeconds: 0,
+      });
+
+      io.to(`bingo:${gameId}`).emit("bingo:playerCards", {
+        gameId,
+        playerCards: liveGame.players
+          .filter((player) => !player.isSpectator && player.card?.length)
+          .map((player) => ({
+            telegramId: player.telegramId,
+            card: player.card,
+          })),
       });
 
       startCallingNumbers(io, gameId);
@@ -296,6 +309,8 @@ const createNextRound = async (io, oldGame) => {
       roomId: newGame.roomId,
 
       status: "WAITING",
+
+      selectionEndsAt: newGame.selectionEndsAt,
 
       remainingSeconds: SELECTION_TIME_SECONDS,
 

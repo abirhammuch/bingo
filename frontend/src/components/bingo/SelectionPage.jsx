@@ -3,6 +3,7 @@ import Countdown from "./Countdown";
 
 const SelectionPage = ({
   selectionCountdown,
+  selectionEndsAt,
   calledNumbers,
   selectedNumbersGlobal,
   mySelections,
@@ -131,6 +132,7 @@ const SelectionPage = ({
       ===================================================== */}
 
       <Countdown
+        selectionEndsAt={selectionEndsAt}
         seconds={selectionCountdown}
         label="Time To Close Selection"
         selectedCardsCount={mySelections.length}

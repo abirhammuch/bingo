@@ -107,6 +107,51 @@ export const initBingoSocket = (io) => {
   io.on("connection", async (socket) => {
     console.log("🟢 Bingo socket connected:", socket.id);
 
+    socket.on(
+      "bingo:getCurrentRound",
+      async ({ roomId = "default-bingo-room" } = {}, callback) => {
+        try {
+          let game = await BingoGame.findOne({
+            roomId,
+            status: { $in: ["waiting", "active"] },
+          }).sort({ roundNumber: -1 });
+
+          if (!game) {
+            game = await createBingoGame(roomId, 100, 1, 100);
+          }
+
+          socket.join(`bingo:${game.gameId}`);
+
+          if (game.status === "waiting") {
+            await startSelectionTimer(io, game.gameId);
+            game = await BingoGame.findOne({ gameId: game.gameId });
+          } else if (game.status === "active") {
+            startCallingNumbers(io, game.gameId);
+          }
+
+          const state = buildRoundState(game);
+          socket.emit("bingo:roundState", state);
+
+          if (game.status === "active") {
+            socket.emit("bingo:playerCards", {
+              gameId: game.gameId,
+              playerCards: game.players
+                .filter((player) => !player.isSpectator && player.card?.length)
+                .map((player) => ({
+                  telegramId: player.telegramId,
+                  card: player.card,
+                })),
+            });
+          }
+
+          if (callback) callback({ success: true, ...state });
+        } catch (error) {
+          console.error("❌ Current Bingo round error:", error);
+          if (callback) callback({ success: false, message: error.message });
+        }
+      },
+    );
+
     // ============================================================
     // JOIN BINGO GAME
     // ============================================================
@@ -327,6 +372,21 @@ export const initBingoSocket = (io) => {
           throw new Error("Card selection time has ended");
         }
 
+        socket.join(`bingo:${gameId}`);
+
+        const numberTakenByOther = game.players.some(
+          (entry) =>
+            String(entry.telegramId) !== String(telegramId) &&
+            !entry.isSpectator &&
+            (entry.selectedLuckyNumbers || []).some((value) =>
+              incomingNumbers.includes(Number(value)),
+            ),
+        );
+
+        if (!isDeselect && numberTakenByOther) {
+          throw new Error("Number already selected");
+        }
+
         if (
           game.selectionEndsAt &&
           new Date(game.selectionEndsAt).getTime() <= Date.now()
@@ -341,6 +401,10 @@ export const initBingoSocket = (io) => {
         );
 
         if (!player) {
+          if (isDeselect) {
+            throw new Error("Player has no selected numbers");
+          }
+
           const fallbackBetAmount = Number(data.betAmount ?? 1) || 1;
 
           await joinBingoGame(
@@ -419,6 +483,12 @@ export const initBingoSocket = (io) => {
           selectedNumbersGlobal: game.selectedNumbers,
           playerCount: game.playerCount,
           status: "WAITING",
+        });
+
+        io.to(`bingo:${gameId}`).emit("bingo:numberSelected", {
+          gameId,
+          selectedNumbers: game.selectedNumbers,
+          playerCount: game.playerCount,
         });
 
         emitRoundState(io, game);

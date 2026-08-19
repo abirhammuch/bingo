@@ -7,18 +7,13 @@ const TOTAL_LUCKY_NUMBERS = 300;
 
 const SelectionPhase = ({
   selectionCountdown,
+  selectionEndsAt,
   calledNumbers = [],
   selectedNumbersGlobal = [],
   mySelections = [],
   canSelectMore,
   showSelectionPanel,
   toggleLuckyNumber,
-  joinButtonDisabled,
-  handleJoin,
-
-  // NEW
-  selectedCard,
-  setSelectedCard,
 }) => {
   const isSelectionOpen = showSelectionPanel && selectionCountdown > 0;
 
@@ -282,48 +277,11 @@ const SelectionPhase = ({
       )}
 
       {/* =========================================
-          JOIN / CONFIRM
-      ========================================= */}
-
-      <button
-        type="button"
-        onClick={handleJoin}
-        disabled={
-          joinButtonDisabled ||
-          !selectedCard ||
-          mySelections.length === 0 ||
-          !isSelectionOpen
-        }
-        className={`
-          w-full
-          py-4
-          rounded-xl
-          font-bold
-          transition-all
-          mb-8
-
-          ${
-            !joinButtonDisabled &&
-            selectedCard &&
-            mySelections.length > 0 &&
-            isSelectionOpen
-              ? "bg-emerald-600 hover:bg-emerald-500 text-white"
-              : "bg-slate-800 text-slate-500 cursor-not-allowed"
-          }
-        `}
-      >
-        {!selectedCard
-          ? "Select a Card"
-          : mySelections.length === 0
-            ? "Select a Lucky Number"
-            : `Join Game — Card ${selectedCard}`}
-      </button>
-
-      {/* =========================================
           COUNTDOWN
       ========================================= */}
 
       <Countdown
+        selectionEndsAt={selectionEndsAt}
         seconds={selectionCountdown}
         label="Time To Close Selection"
         selectedCardsCount={mySelections.length}
