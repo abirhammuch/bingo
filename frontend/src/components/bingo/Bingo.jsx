@@ -329,6 +329,13 @@ const Bingo = ({ theme }) => {
         setRoundId(payload.gameId);
         roundIdRef.current = payload.gameId;
       }
+
+      if (
+        payload.remainingSeconds <= 0 &&
+        roundStatusRef.current === "WAITING"
+      ) {
+        autoJoinRound();
+      }
     };
 
     // ==========================================================

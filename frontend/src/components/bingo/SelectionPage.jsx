@@ -13,8 +13,6 @@ const SelectionPage = ({
   canSelectMore,
   showSelectionPanel,
   toggleLuckyNumber,
-  joinButtonDisabled,
-  handleJoin,
 }) => {
   // ============================================================
   // NUMBER DISABLED
@@ -165,27 +163,6 @@ const SelectionPage = ({
             Select up to 3 lucky numbers
           </p>
         </div>
-
-        {/* ====================================================
-            JOIN BUTTON
-        ==================================================== */}
-
-        <button
-          type="button"
-          onClick={handleJoin}
-          disabled={joinButtonDisabled || !showSelectionPanel}
-          className={`text-xs px-4 py-2 rounded-lg transition ${
-            joinButtonDisabled || !showSelectionPanel
-              ? "text-slate-500 bg-slate-800/40 cursor-not-allowed"
-              : "text-emerald-300 bg-emerald-600/10 border border-emerald-500/30 hover:bg-emerald-600/20"
-          }`}
-        >
-          {joinButtonDisabled
-            ? selectedCount > 0
-              ? "Selected"
-              : "Select Number"
-            : "Join Game"}
-        </button>
       </div>
 
       {/* ======================================================
