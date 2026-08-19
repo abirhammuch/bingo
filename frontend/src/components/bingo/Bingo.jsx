@@ -667,11 +667,39 @@ const Bingo = ({ theme }) => {
 
     socket.on("bingo:numberSelected", (payload) => {
       if (!payload) return;
+      const globalSelections =
+        payload.selectedNumbersGlobal || payload.selectedNumbers;
+
+      if (Array.isArray(globalSelections)) {
+        setSelectedNumbersGlobal(globalSelections);
+      }
+
+      if (
+        String(payload.telegramId) === String(authUser?.telegramId) &&
+        Array.isArray(payload.selectedNumbers)
+      ) {
+        mySelectionsRef.current = payload.selectedNumbers;
+        setMySelections(payload.selectedNumbers);
+      }
+
+      if (typeof payload.playerCount === "number") {
+        setParticipantCount(payload.playerCount);
+      }
+    });
+
+    socket.on("bingo:selectionUpdated", (payload) => {
+      if (!payload) return;
+
       if (Array.isArray(payload.selectedNumbers)) {
         setSelectedNumbersGlobal(payload.selectedNumbers);
       }
-      if (typeof payload.playerCount === "number") {
-        setParticipantCount(payload.playerCount);
+
+      if (
+        String(payload.telegramId) === String(authUser?.telegramId) &&
+        Array.isArray(payload.mySelections)
+      ) {
+        mySelectionsRef.current = payload.mySelections;
+        setMySelections(payload.mySelections);
       }
     });
 
@@ -717,6 +745,8 @@ const Bingo = ({ theme }) => {
       socket.off("bingo:selectionTick", handleSelectionTick);
 
       socket.off("bingo:numberSelected");
+
+      socket.off("bingo:selectionUpdated");
 
       socket.off("bingo:playerCards", handlePlayerCard);
 

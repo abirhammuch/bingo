@@ -505,7 +505,17 @@ export const initBingoSocket = (io) => {
 
         io.to(`bingo:${gameId}`).emit("bingo:numberSelected", {
           gameId,
+          telegramId,
+          selectedNumbers: finalSelected,
+          selectedNumbersGlobal: game.selectedNumbers,
+          playerCount: game.playerCount,
+        });
+
+        io.to(`bingo:${gameId}`).emit("bingo:selectionUpdated", {
+          gameId,
+          telegramId,
           selectedNumbers: game.selectedNumbers,
+          mySelections: finalSelected,
           playerCount: game.playerCount,
         });
 
