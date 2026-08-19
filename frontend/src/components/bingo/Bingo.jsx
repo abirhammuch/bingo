@@ -7,23 +7,16 @@ import WinnerModal from "./WinnerModal";
 
 import socket from "../../socket/socket";
 import { useAuth } from "../../context/AuthContext";
+import { post } from "../../utils/apiClient";
 
 const createBingoGame = async (roomId = "default-room") => {
   try {
-    const response = await fetch("/api/bingo/create", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        roomId,
-        maxPlayers: 100,
-        minBet: 1,
-        maxBet: 100,
-      }),
+    const data = await post("/api/bingo/create", {
+      roomId,
+      maxPlayers: 100,
+      minBet: 1,
+      maxBet: 100,
     });
-
-    const data = await response.json();
 
     if (!data.success) {
       console.error("❌ Failed to create bingo game:", data.message);
