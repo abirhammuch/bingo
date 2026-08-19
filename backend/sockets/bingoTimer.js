@@ -92,7 +92,12 @@ export const startSelectionTimer = async (io, gameId) => {
       clearInterval(timer);
       selectionTimers.delete(gameId);
 
-      const players = currentGame.players.filter((p) => !p.isSpectator);
+      const players = currentGame.players.filter(
+        (player) =>
+          !player.isSpectator &&
+          Array.isArray(player.selectedLuckyNumbers) &&
+          player.selectedLuckyNumbers.length > 0,
+      );
 
       // ======================================================
       // NOBODY SELECTED
@@ -108,6 +113,10 @@ export const startSelectionTimer = async (io, gameId) => {
         currentGame.selectedNumbers = [];
         currentGame.calledNumbers = [];
         currentGame.currentNumber = null;
+        currentGame.players = [];
+        currentGame.playerCount = 0;
+        currentGame.roundSummary.playerCount = 0;
+        currentGame.roundSummary.selectedNumbersCount = 0;
 
         await currentGame.save();
 

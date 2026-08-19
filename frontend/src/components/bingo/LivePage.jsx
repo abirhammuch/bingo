@@ -127,7 +127,12 @@ const LivePage = ({
                       <BingoCell
                         key={`${rowIndex}-${columnIndex}`}
                         number={cell?.value ?? cell}
-                        marked={Boolean(cell?.marked)}
+                        marked={
+                          Boolean(cell?.marked) ||
+                          safeCalledNumbers.includes(
+                            Number(cell?.value ?? cell),
+                          )
+                        }
                         accent={accent}
                       />
                     )),
