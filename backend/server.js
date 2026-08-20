@@ -20,15 +20,13 @@ const PORT = process.env.PORT || 4000;
 // Frontend URL (used to redirect SPA routes on refresh)
 // Default to the Render frontend URL per deployment request
 const FRONTEND_URL =
-  process.env.FRONTEND_URL || "https://bingo-e9bw.onrender.com";
+  process.env.FRONTEND_URL || "https://marshal-bingo.onrender.com";
 
 // Configure CORS for Express
 const corsOptions = {
   origin: [
-    
     "https://bingo-e9bw.onrender.com",
     "https://marshal-bingo.onrender.com",
-    
   ],
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
