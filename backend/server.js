@@ -58,7 +58,8 @@ app.use((req, res, next) => {
   if (
     path.startsWith("/api") ||
     path.startsWith("/socket.io") ||
-    path.startsWith("/favicon.ico")
+    path.startsWith("/favicon.ico") ||
+    path.startsWith("/admin")
   ) {
     return next();
   }
