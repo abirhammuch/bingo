@@ -47,9 +47,18 @@ const App = () => {
         </Routes>
       ) : isAdminPath ? (
         <Routes>
-          <Route path="/admin" element={<AdminLayout />} />
-          <Route path="/admin/users" element={<UserPage />} />
-          <Route path="/admin/transactions" element={<TransactionPage />} />
+          {/* ✅ Admin Login Page - optional */}
+          <Route path="/admin/login" element={<AdminLogin />} />
+
+          {/* ✅ NESTED ADMIN ROUTES */}
+          <Route path="/admin" element={<AdminLayout />}>
+            {/* This renders when you visit /admin */}
+            <Route index element={<UserPage />} />
+
+            {/* These render inside the Layout's <Outlet /> */}
+            <Route path="users" element={<UserPage />} />
+            <Route path="transactions" element={<TransactionPage />} />
+          </Route>
         </Routes>
       ) : (
         <>
@@ -63,7 +72,7 @@ const App = () => {
               <Route path="/referral" element={<Invite />} />
               <Route path="/wallet" element={<WalletPage />} />
               <Route path="/deposit" element={<DepositePage />} />
-              <Route path="settings" element={<SettingPage />} />
+              <Route path="/settings" element={<SettingPage />} />
               <Route
                 path="/telebirr-deposit"
                 element={<TelebirrDepositePage />}
