@@ -17,6 +17,7 @@ import UserPage from "./pages/admin/UserPage.jsx";
 import TransactionPage from "./pages/admin/TransactionPage.jsx";
 import { useAppContext } from "./context/AppContext.jsx";
 import Footer from "./components/footer/Footer";
+import AdminLoginPage from "./pages/admin/AdminLoginPage.jsx";
 
 const App = () => {
   const location = useLocation();
