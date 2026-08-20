@@ -18,11 +18,6 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-// Frontend URL (used to redirect SPA routes on refresh)
-// Default to the Render frontend URL per deployment request
-const FRONTEND_URL =
-  process.env.FRONTEND_URL || "https://marshal-bingo.onrender.com";
-
 // Configure CORS for Express
 const corsOptions = {
   origin: [
@@ -47,33 +42,15 @@ app.get("/", (req, res) => {
   res.send("Marshal Game backend API is running!");
 });
 
+// API Routes
 app.use("/api/users", userRouter);
 app.use("/api/bingo", bingoRouter);
 app.use("/api/rooms", roomRouter);
-
 app.use("/api/admin", adminRouter);
 
-// Handle client-side SPA routes and direct-refreshes.
-// Use `app.use` so the router doesn't try to parse '*' as a path param.
-app.use((req, res, next) => {
-  const path = req.path || "";
-  // Ignore API and socket endpoints
-  if (
-    path.startsWith("/api") ||
-    path.startsWith("/socket.io") ||
-    path.startsWith("/favicon.ico") ||
-    path.startsWith("/admin")
-  ) {
-    return next();
-  }
+// ✅ REMOVED: The redirect middleware is gone.
 
-  // Preserve the path so frontend router can handle nested routes
-  const target = `${FRONTEND_URL}${req.originalUrl}`;
-  console.log(`Redirecting ${req.originalUrl} -> ${target}`);
-  return res.redirect(302, target);
-});
-
-// Generic 404 for anything that fell through
+// Generic 404 for API routes that don't exist
 app.use((req, res) => {
   res.status(404).json({ error: "Not Found" });
 });
