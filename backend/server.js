@@ -8,6 +8,7 @@ import { setupCommands } from "./services/telegram/commands.js";
 import userRouter from "./routes/userRoute.js";
 import bingoRouter from "./routes/bingoRoute.js";
 import roomRouter from "./routes/roomRoute.js";
+import adminRouter from "./routes/adminRoute.js";
 
 // ✅ Import the MAIN socket server (not bingo directly)
 import { initSocketServer } from "./sockets/socketServer.js";
@@ -49,6 +50,8 @@ app.get("/", (req, res) => {
 app.use("/api/users", userRouter);
 app.use("/api/bingo", bingoRouter);
 app.use("/api/rooms", roomRouter);
+
+app.use("/api/admin", adminRouter);
 
 // Handle client-side SPA routes and direct-refreshes.
 // Use `app.use` so the router doesn't try to parse '*' as a path param.

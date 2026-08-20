@@ -47,15 +47,9 @@ const App = () => {
         </Routes>
       ) : isAdminPath ? (
         <Routes>
-          {/* ✅ Admin Login Page - optional */}
-          <Route path="/admin/login" element={<AdminLogin />} />
-
-          {/* ✅ NESTED ADMIN ROUTES */}
+          <Route path="/admin/login" element={<AdminLoginPage />} />
           <Route path="/admin" element={<AdminLayout />}>
-            {/* This renders when you visit /admin */}
             <Route index element={<UserPage />} />
-
-            {/* These render inside the Layout's <Outlet /> */}
             <Route path="users" element={<UserPage />} />
             <Route path="transactions" element={<TransactionPage />} />
           </Route>
