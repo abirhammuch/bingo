@@ -13,7 +13,9 @@ const Invite = () => {
     `REF${String(user?.telegramId || "PLAYER")
       .slice(-8)
       .toUpperCase()}`;
-  const referralLink = `${window.location.origin}/ref/${encodeURIComponent(referralCode)}`;
+  const telegramBotUsername =
+    import.meta.env.VITE_TELEGRAM_BOT_USERNAME || "MarshalBingoBot";
+  const referralLink = `https://t.me/${telegramBotUsername}?start=ref_${encodeURIComponent(referralCode)}`;
   const referralData = {
     referralCode,
     referrals: Number(user?.referralCount || 0),

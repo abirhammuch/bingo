@@ -66,7 +66,10 @@ const ReferralRedirect = () => {
 
   useEffect(() => {
     if (referralCode) {
-      localStorage.setItem("pendingReferralCode", referralCode);
+      localStorage.setItem(
+        "pendingReferralCode",
+        referralCode.replace(/^ref_/i, ""),
+      );
     }
     navigate(localStorage.getItem("authToken") ? "/bingopage" : "/login", {
       replace: true,

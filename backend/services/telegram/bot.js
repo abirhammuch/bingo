@@ -11,6 +11,22 @@ const TELEGRAM_BOT_LAUNCH_DISABLED =
     .toLowerCase() === "true";
 
 const bot = new Telegraf(TELEGRAM_BOT_TOKEN || "");
+const getReferralCode = (telegramId) =>
+  `REF${String(telegramId).slice(-8).toUpperCase()}`;
+
+const findReferrer = async (value, telegramId) => {
+  const code = String(value || "")
+    .replace(/^ref_/i, "")
+    .trim()
+    .toUpperCase();
+  if (!code) return null;
+  const direct = await User.findOne({ referralCode: code });
+  if (direct && String(direct.telegramId) !== String(telegramId)) return direct;
+  if (!code.startsWith("REF")) return null;
+  return User.findOne({
+    telegramId: { $regex: `${code.slice(3)}$`, $ne: String(telegramId) },
+  });
+};
 const telegramTokenLooksValid =
   !!TELEGRAM_BOT_TOKEN &&
   /^\d+:[A-Za-z0-9_-]+$/.test(String(TELEGRAM_BOT_TOKEN).trim());
@@ -210,6 +226,7 @@ bot.start(async (ctx) => {
   try {
     const telegramUser = ctx.from;
     const telegramId = telegramUser.id.toString();
+    const referrer = await findReferrer(ctx.startPayload, telegramId);
 
     let user = await User.findOne({ telegramId });
 
@@ -219,6 +236,8 @@ bot.start(async (ctx) => {
         username: telegramUser.username || "",
         firstName: telegramUser.first_name || "Player",
         lastName: telegramUser.last_name || "",
+        referralCode: getReferralCode(telegramId),
+        referredBy: referrer?.telegramId || null,
         balance: 100,
         lastLogin: new Date(),
         isRegistered: false,
@@ -228,7 +247,21 @@ bot.start(async (ctx) => {
         `Welcome to Marshal Game 🎮\n\n` +
           `Hi ${telegramUser.first_name || "Player"}! Your account has been initialized.`,
       );
+      if (referrer) {
+        await User.updateOne(
+          { _id: referrer._id },
+          { $inc: { referralCount: 1 } },
+        );
+      }
     } else {
+      if (!user.referredBy && referrer) {
+        user.referredBy = referrer.telegramId;
+        await User.updateOne(
+          { _id: referrer._id },
+          { $inc: { referralCount: 1 } },
+        );
+      }
+      user.referralCode ||= getReferralCode(telegramId);
       user.lastLogin = new Date();
       await user.save();
 
