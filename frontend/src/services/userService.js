@@ -6,6 +6,9 @@ export const getUserProfile = (telegramId) =>
 export const getUserBalance = (telegramId) =>
   api.get(`/api/users/balance/${encodeURIComponent(telegramId)}`);
 
+export const fetchWithdrawalSettings = () =>
+  api.get("/api/users/withdraw-settings");
+
 export const getUserStats = (telegramId) =>
   api.get(`/api/users/stats/${encodeURIComponent(telegramId)}`);
 

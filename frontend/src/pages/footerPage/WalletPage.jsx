@@ -1,16 +1,32 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Footer from "../../components/footer/Footer";
+import { getUserBalance } from "../../services/userService";
+import { useAuth } from "../../context/AuthContext";
 
 const WalletPage = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState("balance");
+  const { user, updateUserBalance } = useAuth();
+  const [balance, setBalance] = useState(Number(user?.balance || 0));
+  const [loading, setLoading] = useState(true);
 
-  const walletData = {
-    gameBalance: 0,
-    mainBalance: 0,
-    currency: "ETB",
-  };
+  useEffect(() => {
+    if (!user?.telegramId) return undefined;
+    let mounted = true;
+    getUserBalance(user.telegramId)
+      .then((response) => {
+        if (!mounted) return;
+        const nextBalance = Number(response.balance || 0);
+        setBalance(nextBalance);
+        updateUserBalance(nextBalance);
+      })
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [user?.telegramId]);
 
   return (
     <div className="pb-16 min-h-screen bg-gradient-to-b from-slate-950 to-slate-900">
@@ -33,7 +49,7 @@ const WalletPage = () => {
               </p>
               <div className="flex items-baseline gap-1">
                 <p className="text-4xl font-bold text-white">
-                  {walletData.gameBalance}
+                  {loading ? "..." : balance.toFixed(2)}
                 </p>
                 <p className="text-sm text-slate-400">{walletData.currency}</p>
               </div>
@@ -46,7 +62,7 @@ const WalletPage = () => {
               </p>
               <div className="flex items-baseline gap-1">
                 <p className="text-4xl font-bold text-emerald-400">
-                  {walletData.mainBalance}
+                  {loading ? "..." : balance.toFixed(2)}
                 </p>
                 <p className="text-sm text-slate-400">{walletData.currency}</p>
               </div>
@@ -96,7 +112,9 @@ const WalletPage = () => {
           {/* Empty State */}
           <div className="text-center py-12">
             <p className="text-4xl mb-3">📋</p>
-            <p className="text-slate-400 text-sm">No transactions yet</p>
+            <p className="text-slate-400 text-sm">
+              Your wallet balance is updated from the database
+            </p>
             <p className="text-slate-500 text-xs mt-1">
               Your transaction history will appear here
             </p>

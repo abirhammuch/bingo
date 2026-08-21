@@ -1,12 +1,18 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import {
+  fetchWithdrawalSettings,
+  getUserBalance,
+} from "../../services/userService";
+import { useAuth } from "../../context/AuthContext";
 
 const TeleBirrWithdrawPage = () => {
   const navigate = useNavigate();
+  const { user, updateUserBalance } = useAuth();
   const [step, setStep] = useState(1);
   const [withdrawAmount, setWithdrawAmount] = useState("");
   const [phone, setPhone] = useState("");
-  const [withdrawData] = useState({
+  const [withdrawData, setWithdrawData] = useState({
     method: "Telebirr",
     minAmount: 50,
     maxAmount: 100000,
@@ -14,8 +20,56 @@ const TeleBirrWithdrawPage = () => {
     availableBalance: 0,
     fee: 0,
   });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!user?.telegramId) return undefined;
+    let mounted = true;
+    Promise.all([getUserBalance(user.telegramId), fetchWithdrawalSettings()])
+      .then(([balanceResponse, settingsResponse]) => {
+        if (!mounted) return;
+        const settings = settingsResponse.settings || {};
+        const balance = Number(balanceResponse.balance || 0);
+        updateUserBalance(balance);
+        setWithdrawData((current) => ({
+          ...current,
+          availableBalance: balance,
+          minAmount: Number(settings.minAmount ?? current.minAmount),
+          maxAmount: Number(settings.maxAmount ?? current.maxAmount),
+          fee: Number(settings.feeAmount ?? 0),
+          feeType: settings.feeType || "fixed",
+        }));
+      })
+      .catch((requestError) =>
+        setError(requestError.message || "Failed to load wallet settings"),
+      )
+      .finally(() => mounted && setLoading(false));
+    return () => {
+      mounted = false;
+    };
+  }, [user?.telegramId]);
+
+  const amount = Number(withdrawAmount || 0);
+  const fee =
+    withdrawData.feeType === "percentage"
+      ? (amount * withdrawData.fee) / 100
+      : withdrawData.fee;
+  const total = amount + fee;
 
   const handleNextStep = () => {
+    if (amount < withdrawData.minAmount) {
+      setError(`Minimum withdrawal is ${withdrawData.minAmount} ETB`);
+      return;
+    }
+    if (
+      amount > withdrawData.maxAmount ||
+      amount + fee > withdrawData.availableBalance
+    ) {
+      setError("Insufficient balance for this withdrawal and fee");
+      return;
+    }
+    setError("");
     if (step < 4) {
       setStep(step + 1);
     }
@@ -43,7 +97,10 @@ const TeleBirrWithdrawPage = () => {
         </div>
 
         {/* Subtitle */}
-        <p className="text-slate-400 text-sm mb-6">Balance & fees</p>
+        <p className="text-slate-400 text-sm mb-6">
+          Balance & fees from database
+        </p>
+        {error && <p className="mb-4 text-sm text-rose-300">{error}</p>}
 
         {/* Progress Bar - 4 Steps */}
         <div className="mb-6">
@@ -70,7 +127,7 @@ const TeleBirrWithdrawPage = () => {
 
               <div className="mb-3">
                 <p className="text-4xl font-bold text-white">
-                  {withdrawData.availableBalance}{" "}
+                  {loading ? "..." : withdrawData.availableBalance.toFixed(2)}{" "}
                   <span className="text-xl text-slate-400">
                     {withdrawData.currency}
                   </span>
@@ -79,7 +136,8 @@ const TeleBirrWithdrawPage = () => {
 
               <p className="text-xs text-emerald-400 font-semibold">
                 Min withdrawal {withdrawData.minAmount} {withdrawData.currency}{" "}
-                · No fee
+                · Fee {withdrawData.fee}
+                {withdrawData.feeType === "percentage" ? "%" : " ETB"}
               </p>
             </div>
 
@@ -166,13 +224,13 @@ const TeleBirrWithdrawPage = () => {
                 <div className="flex justify-between">
                   <span className="text-slate-400">Fee:</span>
                   <span className="text-white font-bold">
-                    {withdrawData.fee} {withdrawData.currency}
+                    {fee.toFixed(2)} {withdrawData.currency}
                   </span>
                 </div>
                 <div className="border-t border-slate-700 pt-3 flex justify-between">
                   <span className="text-slate-400 font-semibold">Total:</span>
                   <span className="text-emerald-400 font-bold">
-                    {withdrawAmount || "0"} {withdrawData.currency}
+                    {total.toFixed(2)} {withdrawData.currency}
                   </span>
                 </div>
               </div>

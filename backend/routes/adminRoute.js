@@ -5,6 +5,7 @@ import Coupon from "../models/Coupon.js";
 import CommissionSettings from "../models/CommissionSettings.js";
 import BingoGame from "../models/BingoGame.js";
 import Transaction from "../models/Transaction.js";
+import WithdrawalSettings from "../models/WithdrawalSettings.js";
 
 const router = express.Router();
 
@@ -27,6 +28,53 @@ const requireAdmin = (req, res, next) => {
     return res.status(401).json({ success: false, message: "Invalid token" });
   }
 };
+
+router.get("/withdraw-fee", requireAdmin, async (req, res) => {
+  const settings = (await WithdrawalSettings.findOne({
+    key: "default",
+  }).lean()) || {
+    feeType: "fixed",
+    feeAmount: 0,
+    minAmount: 50,
+    maxAmount: 100000,
+  };
+  res.json({ success: true, settings });
+});
+
+router.patch("/withdraw-fee", requireAdmin, async (req, res) => {
+  try {
+    const { feeType } = req.body;
+    const feeAmount = Number(req.body.feeAmount);
+    const minAmount = Number(req.body.minAmount);
+    const maxAmount = Number(req.body.maxAmount);
+    if (
+      !["fixed", "percentage"].includes(feeType) ||
+      !Number.isFinite(feeAmount) ||
+      feeAmount < 0 ||
+      !Number.isFinite(minAmount) ||
+      !Number.isFinite(maxAmount) ||
+      minAmount < 0 ||
+      maxAmount < minAmount
+    ) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid withdrawal fee settings" });
+    }
+    const settings = await WithdrawalSettings.findOneAndUpdate(
+      { key: "default" },
+      { key: "default", feeType, feeAmount, minAmount, maxAmount },
+      { new: true, upsert: true, runValidators: true },
+    );
+    res.json({ success: true, settings });
+  } catch {
+    res
+      .status(500)
+      .json({
+        success: false,
+        message: "Failed to save withdrawal fee settings",
+      });
+  }
+});
 
 // Simple admin password login (no Telegram initData required)
 router.post("/login", async (req, res) => {

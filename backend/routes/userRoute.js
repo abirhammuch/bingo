@@ -17,6 +17,7 @@ import {
 import userHistory from "../controller/userHistoryController.js";
 import submitDeposit from "../controller/userDepositController.js";
 import { userAuth } from "../middleware/userAuth.js";
+import WithdrawalSettings from "../models/WithdrawalSettings.js";
 
 const userRouter = express.Router();
 
@@ -30,6 +31,23 @@ userRouter.get("/balance/:telegramId", getUserBalance);
 userRouter.get("/stats/:telegramId", getUserStats);
 userRouter.get("/history", userAuth, userHistory);
 userRouter.post("/deposits", userAuth, submitDeposit);
+userRouter.get("/withdraw-settings", userAuth, async (req, res) => {
+  try {
+    const settings = (await WithdrawalSettings.findOne({
+      key: "default",
+    }).lean()) || {
+      feeType: "fixed",
+      feeAmount: 0,
+      minAmount: 50,
+      maxAmount: 100000,
+    };
+    res.json({ success: true, settings });
+  } catch {
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to load withdrawal settings" });
+  }
+});
 
 // Admin user routes
 userRouter.post("/admin/add-coins", adminAddCoins);
