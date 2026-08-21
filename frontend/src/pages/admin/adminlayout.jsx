@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Link, Outlet, useLocation } from "react-router-dom";
+import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import {
   FaUsers,
   FaBan,
@@ -9,6 +9,9 @@ import {
   FaCoins,
   FaShieldAlt,
   FaChartLine,
+  FaBars,
+  FaTimes,
+  FaSignOutAlt,
 } from "react-icons/fa";
 import { fetchAdminDashboard } from "../../services/userService";
 
@@ -77,8 +80,10 @@ const stats = [
 
 const AdminLayout = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const [dashboard, setDashboard] = useState(null);
   const [dashboardError, setDashboardError] = useState("");
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const query = location.search.replace("?", "");
   const isActive = (to) => {
     const [path, mode] = to.split("?");
@@ -143,10 +148,95 @@ const AdminLayout = () => {
 
   const currentRound = dashboard?.currentRound;
 
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname, location.search]);
+
+  const handleAdminLogout = () => {
+    localStorage.removeItem("adminToken");
+    setMobileMenuOpen(false);
+    navigate("/admin/login", { replace: true });
+  };
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
       <div className="lg:grid lg:grid-cols-[280px_1fr] gap-6 max-w-[1600px] mx-auto px-4 py-6">
-        <aside className="hidden lg:flex flex-col rounded-[32px] border border-slate-800 bg-slate-900/90 p-6 shadow-xl shadow-slate-950/40">
+        <div className="mb-4 flex items-center justify-between rounded-2xl border border-slate-800 bg-slate-900/90 p-4 shadow-lg shadow-slate-950/30 lg:hidden">
+          <div className="flex items-center gap-3">
+            <div className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-500/15 text-lg text-emerald-300">
+              B
+            </div>
+            <div>
+              <div className="font-semibold">BingoX Admin</div>
+              <div className="text-[10px] uppercase tracking-[0.25em] text-slate-500">
+                Management Portal
+              </div>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setMobileMenuOpen(true)}
+            aria-label="Open admin menu"
+            className="rounded-xl border border-slate-700 p-3 text-slate-200 hover:bg-slate-800"
+          >
+            <FaBars aria-hidden="true" />
+          </button>
+        </div>
+
+        {mobileMenuOpen && (
+          <div className="fixed inset-0 z-50 lg:hidden">
+            <button
+              type="button"
+              aria-label="Close admin menu"
+              onClick={() => setMobileMenuOpen(false)}
+              className="absolute inset-0 bg-black/60"
+            />
+            <aside className="relative h-full w-[min(86vw,320px)] overflow-y-auto border-r border-slate-800 bg-slate-900 p-5 shadow-2xl shadow-black/50">
+              <div className="mb-6 flex items-center justify-between">
+                <div>
+                  <div className="font-semibold text-lg">BingoX Admin</div>
+                  <div className="text-xs uppercase tracking-[0.25em] text-slate-500">
+                    Management Portal
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setMobileMenuOpen(false)}
+                  aria-label="Close admin menu"
+                  className="rounded-xl p-2 text-slate-400 hover:bg-slate-800 hover:text-white"
+                >
+                  <FaTimes aria-hidden="true" />
+                </button>
+              </div>
+              <nav className="space-y-2">
+                {adminMenu.map((item) => (
+                  <Link
+                    key={item.to}
+                    to={item.to}
+                    className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm transition-colors ${
+                      isActive(item.to)
+                        ? "border border-slate-700 bg-slate-800 text-white"
+                        : "text-slate-300 hover:bg-slate-800/60"
+                    }`}
+                  >
+                    <span className="text-lg">{item.icon}</span>
+                    <span>{item.label}</span>
+                  </Link>
+                ))}
+              </nav>
+              <button
+                type="button"
+                onClick={handleAdminLogout}
+                className="mt-8 flex w-full items-center gap-3 rounded-2xl border border-rose-500/30 px-4 py-3 text-left text-sm text-rose-300 hover:bg-rose-500/10"
+              >
+                <FaSignOutAlt aria-hidden="true" />
+                Logout
+              </button>
+            </aside>
+          </div>
+        )}
+
+        <aside className="hidden lg:flex flex-col rounded-4xl border border-slate-800 bg-slate-900/90 p-6 shadow-xl shadow-slate-950/40">
           <div className="mb-8">
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 text-emerald-300 grid place-items-center text-xl">
@@ -199,12 +289,20 @@ const AdminLayout = () => {
               <button className="w-full rounded-2xl border border-slate-800 px-4 py-3 text-left text-slate-300 hover:bg-slate-800/60">
                 Broadcast
               </button>
+              <button
+                type="button"
+                onClick={handleAdminLogout}
+                className="flex w-full items-center gap-3 rounded-2xl border border-rose-500/30 px-4 py-3 text-left text-rose-300 hover:bg-rose-500/10"
+              >
+                <FaSignOutAlt aria-hidden="true" />
+                Logout
+              </button>
             </div>
           </div>
         </aside>
 
         <main className="space-y-6">
-          <div className="rounded-[32px] border border-slate-800 bg-slate-900/80 p-6 shadow-xl shadow-slate-950/40">
+          <div className="rounded-4xl border border-slate-800 bg-slate-900/80 p-6 shadow-xl shadow-slate-950/40">
             <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
               <div>
                 <div className="text-sm uppercase tracking-[0.3em] text-slate-500">
@@ -238,7 +336,7 @@ const AdminLayout = () => {
                 {dashboardStats.map((item) => (
                   <div
                     key={item.label}
-                    className={`rounded-3xl border border-slate-800 p-5 bg-gradient-to-br ${item.color} bg-slate-950/80 shadow-lg shadow-slate-950/20`}
+                    className={`rounded-3xl border border-slate-800 p-5 bg-linear-to-br ${item.color} bg-slate-950/80 shadow-lg shadow-slate-950/20`}
                   >
                     <div className="text-sm text-slate-400">{item.label}</div>
                     <div className="mt-4 text-3xl font-semibold">
@@ -252,7 +350,7 @@ const AdminLayout = () => {
               </div>
 
               <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-                <section className="rounded-[32px] border border-slate-800 bg-slate-900/80 p-6 shadow-xl shadow-slate-950/40">
+                <section className="rounded-4xl border border-slate-800 bg-slate-900/80 p-6 shadow-xl shadow-slate-950/40">
                   <div className="flex items-center justify-between gap-3">
                     <div>
                       <div className="text-sm uppercase tracking-[0.25em] text-slate-500">
@@ -320,7 +418,7 @@ const AdminLayout = () => {
                   </div>
                 </section>
 
-                <aside className="rounded-[32px] border border-slate-800 bg-slate-900/80 p-6 shadow-xl shadow-slate-950/40">
+                <aside className="rounded-4xl border border-slate-800 bg-slate-900/80 p-6 shadow-xl shadow-slate-950/40">
                   <div className="text-sm uppercase tracking-[0.25em] text-slate-500">
                     Quick actions
                   </div>
@@ -348,7 +446,7 @@ const AdminLayout = () => {
               </div>
 
               <div className="grid gap-6 xl:grid-cols-[1.4fr_0.6fr]">
-                <section className="rounded-[32px] border border-slate-800 bg-slate-900/80 p-6 shadow-xl shadow-slate-950/40">
+                <section className="rounded-4xl border border-slate-800 bg-slate-900/80 p-6 shadow-xl shadow-slate-950/40">
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <h2 className="text-2xl font-semibold">Analytics</h2>
@@ -372,7 +470,7 @@ const AdminLayout = () => {
                   </div>
 
                   <div className="mt-6 rounded-3xl bg-slate-950/90 p-5">
-                    <div className="h-72 rounded-3xl border border-slate-800 bg-gradient-to-b from-slate-950 to-slate-900 p-5 text-slate-500 relative overflow-hidden">
+                    <div className="h-72 rounded-3xl border border-slate-800 bg-linear-to-b from-slate-950 to-slate-900 p-5 text-slate-500 relative overflow-hidden">
                       <div className="absolute inset-x-6 bottom-6 flex justify-between text-xs text-slate-500">
                         <span>12 AM</span>
                         <span>6 AM</span>
@@ -413,7 +511,7 @@ const AdminLayout = () => {
                   </div>
                 </section>
 
-                <aside className="space-y-4 rounded-[32px] border border-slate-800 bg-slate-900/80 p-6 shadow-xl shadow-slate-950/40">
+                <aside className="space-y-4 rounded-4xl border border-slate-800 bg-slate-900/80 p-6 shadow-xl shadow-slate-950/40">
                   <div>
                     <div className="text-sm text-slate-400">
                       Pending approval
@@ -445,7 +543,7 @@ const AdminLayout = () => {
           )}
 
           {location.pathname !== "/admin" && (
-            <section className="rounded-[32px] border border-slate-800 bg-slate-900/80 p-6 shadow-xl shadow-slate-950/40">
+            <section className="rounded-4xl border border-slate-800 bg-slate-900/80 p-6 shadow-xl shadow-slate-950/40">
               <Outlet />
             </section>
           )}
