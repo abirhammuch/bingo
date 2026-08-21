@@ -719,7 +719,12 @@ export const initBingoSocket = (io) => {
         if (result.bingo) {
           stopBingoTimers(gameId);
 
-          const winner = game.winner;
+          const winner = result.winner || game.winner || null;
+
+          if (!winner) {
+            console.warn("Bingo completed without winner data", { gameId });
+            return;
+          }
 
           io.to(`bingo:${gameId}`).emit("bingo:winner", {
             gameId,

@@ -1193,12 +1193,25 @@ export const markNumber = async (gameId, telegramId, number) => {
     ? checkBingo(winningCard, player.markedNumbers)
     : { bingo: false };
 
+  const winner = bingoResult.bingo
+    ? {
+        telegramId: player.telegramId,
+        username: player.username || player.firstName || "Player",
+        firstName: player.firstName || "Player",
+        winAmount: Number(player.betAmount || 0) * 5,
+        card: winningCard,
+        bingoResult,
+      }
+    : null;
+
   return {
     marked: true,
 
     bingo: bingoResult.bingo,
 
     bingoResult,
+
+    winner,
 
     markedNumbers: player.markedNumbers,
 
