@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { Routes, Route, useLocation } from "react-router-dom";
+import { Navigate, Routes, Route, useLocation } from "react-router-dom";
 import LobbyPage from "./pages/LobbyPage";
 import LoginPage from "./pages/LoginPage";
 import LogoutPage from "./pages/LogoutPage";
@@ -21,6 +21,34 @@ import BonusPage from "./pages/admin/BonusPage.jsx";
 import { useAppContext } from "./context/AppContext.jsx";
 import Footer from "./components/footer/Footer";
 import AdminLoginPage from "./pages/admin/AdminLoginPage.jsx";
+
+const hasValidAdminSession = () => {
+  const token = localStorage.getItem("adminToken");
+  if (!token) return false;
+
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    return (
+      payload.isAdmin === true &&
+      (!payload.exp || payload.exp * 1000 > Date.now())
+    );
+  } catch {
+    return false;
+  }
+};
+
+const AdminRouteGuard = ({ children }) => {
+  const location = useLocation();
+
+  if (!hasValidAdminSession()) {
+    localStorage.removeItem("adminToken");
+    return (
+      <Navigate to="/admin/login" replace state={{ from: location.pathname }} />
+    );
+  }
+
+  return children;
+};
 
 const App = () => {
   const location = useLocation();
@@ -52,7 +80,14 @@ const App = () => {
       ) : isAdminPath ? (
         <Routes>
           <Route path="/admin/login" element={<AdminLoginPage />} />
-          <Route path="/admin" element={<AdminLayout />}>
+          <Route
+            path="/admin"
+            element={
+              <AdminRouteGuard>
+                <AdminLayout />
+              </AdminRouteGuard>
+            }
+          >
             <Route index element={<UserPage />} />
             <Route path="users" element={<UserPage />} />
             <Route path="transactions" element={<TransactionPage />} />
