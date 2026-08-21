@@ -1,4 +1,3 @@
-import BingoTicket from "../models/BingoTicket.js";
 import BingoGame from "../models/BingoGame.js";
 import Transaction from "../models/Transaction.js";
 
@@ -9,10 +8,15 @@ const userHistory = async (req, res) => {
       return res.status(401).json({ success: false, message: "Invalid user" });
     }
 
-    const [tickets, transactions] = await Promise.all([
-      BingoTicket.find({ telegramId })
-        .select("ticketId gameId betAmount winAmount isWinner purchaseTime")
-        .sort({ purchaseTime: -1 })
+    const [games, transactions] = await Promise.all([
+      BingoGame.find({
+        status: "completed",
+        players: { $elemMatch: { telegramId, isSpectator: { $ne: true } } },
+      })
+        .select(
+          "gameId roundNumber status minBet roundStartedAt roundEndedAt players roundSummary",
+        )
+        .sort({ roundEndedAt: -1 })
         .limit(100)
         .lean(),
       Transaction.find({ telegramId })
@@ -24,18 +28,40 @@ const userHistory = async (req, res) => {
         .lean(),
     ]);
 
-    const gameIds = [...new Set(tickets.map((ticket) => ticket.gameId))];
-    const games = await BingoGame.find({ gameId: { $in: gameIds } })
-      .select("gameId roundNumber status roundEndedAt")
-      .lean();
-    const gamesById = new Map(games.map((game) => [game.gameId, game]));
-
     res.json({
       success: true,
-      games: tickets.map((ticket) => ({
-        ...ticket,
-        game: gamesById.get(ticket.gameId) || null,
-      })),
+      games: games.map((game) => {
+        const player = game.players.find(
+          (entry) =>
+            String(entry.telegramId) === telegramId &&
+            entry.isSpectator !== true,
+        );
+        const cardCount = Number(
+          player.cardsSelected ||
+            player.selectedLuckyNumbers?.length ||
+            player.cards?.length ||
+            0,
+        );
+        const stake = Number(game.minBet || 0) * cardCount;
+        const won = Boolean(
+          player.hasBingo || Number(player.winAmount || 0) > 0,
+        );
+
+        return {
+          gameId: game.gameId,
+          roundNumber: game.roundNumber,
+          date: game.roundEndedAt || game.roundStartedAt,
+          cardCount,
+          stake,
+          outcome: won ? "won" : "lost",
+          amount: won ? Number(player.winAmount || 0) : stake,
+          prizePool: won ? Number(player.winAmount || 0) : 0,
+          game: {
+            status: game.status,
+            roundEndedAt: game.roundEndedAt,
+          },
+        };
+      }),
       deposits: transactions.filter((transaction) =>
         ["deposit", "DEPOSIT"].includes(transaction.type),
       ),

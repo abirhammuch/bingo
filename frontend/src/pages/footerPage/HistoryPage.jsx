@@ -67,7 +67,7 @@ const HistoryPage = () => {
 
   const renderRecord = (record, index) => {
     if (activeTab === "games") {
-      const won = Boolean(record.isWinner || Number(record.winAmount) > 0);
+      const won = record.outcome === "won";
       return (
         <div
           key={record.ticketId || index}
@@ -76,10 +76,10 @@ const HistoryPage = () => {
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="font-semibold text-slate-100">
-                Bingo Round {record.game?.roundNumber || record.gameId}
+                Bingo Round {record.roundNumber || record.gameId}
               </p>
               <p className="mt-1 text-xs text-slate-400">
-                {formatDate(record.purchaseTime)}
+                {formatDate(record.date)}
               </p>
             </div>
             <span
@@ -90,12 +90,12 @@ const HistoryPage = () => {
               }
             >
               {won
-                ? `Won ${amountLabel(record.winAmount)}`
-                : `Stake ${amountLabel(record.betAmount)}`}
+                ? `Won prize pool ${amountLabel(record.prizePool)}`
+                : `Lost ${amountLabel(record.amount)}`}
             </span>
           </div>
           <p className="mt-2 text-xs text-slate-500">
-            Ticket {record.ticketId}
+            {record.cardCount} card{record.cardCount === 1 ? "" : "s"} × stake
           </p>
         </div>
       );
