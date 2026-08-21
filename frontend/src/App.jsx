@@ -56,7 +56,24 @@ const App = () => {
             <Route index element={<UserPage />} />
             <Route path="users" element={<UserPage />} />
             <Route path="transactions" element={<TransactionPage />} />
-            <Route path="bonus" element={<BonusPage />} />
+            <Route path="bonus" element={<BonusPage section="all" />} />
+            <Route
+              path="referral-bonus"
+              element={<BonusPage section="referral" />}
+            />
+            <Route path="coupons" element={<BonusPage section="coupons" />} />
+            <Route
+              path="registration-bonus"
+              element={<BonusPage section="registration" />}
+            />
+            <Route
+              path="game-commission"
+              element={<BonusPage section="commission" />}
+            />
+            <Route
+              path="withdraw-fee"
+              element={<BonusPage section="withdrawFee" />}
+            />
             <Route path="deposit" element={<AdminDepositPage />} />
             <Route path="withdraw" element={<AdminWithdrawPage />} />
           </Route>

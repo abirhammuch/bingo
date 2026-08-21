@@ -14,7 +14,19 @@ import {
 const adminMenu = [
   { to: "/admin", label: "Dashboard", icon: <FaChartLine /> },
   { to: "/admin/users", label: "Users", icon: <FaUsers /> },
-  { to: "/admin/bonus", label: "Bonus", icon: <FaTrophy /> },
+  { to: "/admin/referral-bonus", label: "Referral Bonus", icon: <FaTrophy /> },
+  { to: "/admin/coupons", label: "Coupons", icon: <FaCoins /> },
+  {
+    to: "/admin/registration-bonus",
+    label: "Registration Bonus",
+    icon: <FaUsers />,
+  },
+  {
+    to: "/admin/game-commission",
+    label: "Game Commission",
+    icon: <FaGamepad />,
+  },
+  { to: "/admin/withdraw-fee", label: "Withdraw Fee", icon: <FaShieldAlt /> },
   {
     to: "/admin/transactions",
     label: "Transactions",
