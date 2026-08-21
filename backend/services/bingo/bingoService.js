@@ -674,32 +674,6 @@ export const joinBingoGame = async (
     0,
   );
 
-  const commissionSettings = (await CommissionSettings.findOne({
-    key: "bingo",
-  }).lean()) || {
-    below100Percentage: 20,
-    between100And1000Percentage: 25,
-    above1000Percentage: 30,
-  };
-  const totalBalance = Number(game.roundSummary.totalBetAmount);
-  const commissionPercentage =
-    totalBalance < 100
-      ? Number(commissionSettings.below100Percentage ?? 20)
-      : totalBalance <= 1000
-        ? Number(commissionSettings.between100And1000Percentage ?? 25)
-        : Number(commissionSettings.above1000Percentage ?? 30);
-  const commissionAmount = Number(
-    ((game.roundSummary.totalBetAmount * commissionPercentage) / 100).toFixed(
-      2,
-    ),
-  );
-  game.roundSummary.commissionPercentage = commissionPercentage;
-  game.roundSummary.commissionAmount = commissionAmount;
-  game.roundSummary.playerPayoutTotal = winners.reduce(
-    (sum, winner) => sum + Number(winner.winAmount || 0),
-    0,
-  );
-
   await saveWithRetry(game);
 
   return {
@@ -1048,6 +1022,30 @@ export const callNumber = async (gameId) => {
 
   game.roundSummary.totalBetAmount = getRealPlayers(game).reduce(
     (sum, player) => sum + Number(player.betAmount || 0),
+    0,
+  );
+
+  const commissionSettings = (await CommissionSettings.findOne({
+    key: "bingo",
+  }).lean()) || {
+    below100Percentage: 20,
+    between100And1000Percentage: 25,
+    above1000Percentage: 30,
+  };
+  const totalBalance = Number(game.roundSummary.totalBetAmount);
+  const commissionPercentage =
+    totalBalance < 100
+      ? Number(commissionSettings.below100Percentage ?? 20)
+      : totalBalance <= 1000
+        ? Number(commissionSettings.between100And1000Percentage ?? 25)
+        : Number(commissionSettings.above1000Percentage ?? 30);
+  const commissionAmount = Number(
+    ((totalBalance * commissionPercentage) / 100).toFixed(2),
+  );
+  game.roundSummary.commissionPercentage = commissionPercentage;
+  game.roundSummary.commissionAmount = commissionAmount;
+  game.roundSummary.playerPayoutTotal = winners.reduce(
+    (sum, winner) => sum + Number(winner.winAmount || 0),
     0,
   );
 
