@@ -1,73 +1,5 @@
-import React, { useMemo, useState } from "react";
-
-const seedUsers = [
-  {
-    id: 1,
-    name: "Abebe Bekele",
-    username: "@abebe_b",
-    phone: "+251912345678",
-    wallet: 12840,
-    status: "Active",
-    role: "Player",
-    joined: "2026-08-01",
-    telegramId: 101,
-  },
-  {
-    id: 2,
-    name: "Selam Desta",
-    username: "@selam_d",
-    phone: "+251911223344",
-    wallet: 25400,
-    status: "Active",
-    role: "Player",
-    joined: "2026-08-03",
-    telegramId: 102,
-  },
-  {
-    id: 3,
-    name: "Yared Tadesse",
-    username: "@yared_t",
-    phone: "+251922334455",
-    wallet: 540,
-    status: "Pending",
-    role: "Player",
-    joined: "2026-08-08",
-    telegramId: 103,
-  },
-  {
-    id: 4,
-    name: "Mihret Assefa",
-    username: "@mihr",
-    phone: "+251933445566",
-    wallet: 9820,
-    status: "Blocked",
-    role: "VIP",
-    joined: "2026-07-26",
-    telegramId: 104,
-  },
-  {
-    id: 5,
-    name: "Daniel Tesfaye",
-    username: "@daniel_t",
-    phone: "+251944556677",
-    wallet: 37500,
-    status: "Active",
-    role: "Affiliate",
-    joined: "2026-08-09",
-    telegramId: 105,
-  },
-  {
-    id: 6,
-    name: "Lidya Hailu",
-    username: "@lidya_h",
-    phone: "+251955667788",
-    wallet: 6940,
-    status: "Active",
-    role: "Player",
-    joined: "2026-08-10",
-    telegramId: 106,
-  },
-];
+import React, { useEffect, useMemo, useState } from "react";
+import { fetchUsers } from "../../services/userService";
 
 const statusClasses = {
   Active: "border-emerald-500/30 bg-emerald-500/15 text-emerald-300",
@@ -76,11 +8,52 @@ const statusClasses = {
 };
 
 const UserPage = () => {
+  const [users, setUsers] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
 
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadUsers = async () => {
+      try {
+        const response = await fetchUsers();
+        const databaseUsers = (response.users || []).map((user) => ({
+          id: user._id,
+          name: [user.firstName, user.lastName].filter(Boolean).join(" "),
+          username: user.username ? `@${user.username.replace(/^@/, "")}` : "",
+          phone: user.phoneNumber || "Not provided",
+          wallet: Number(user.balance) || 0,
+          status: user.isBlocked
+            ? "Blocked"
+            : user.isRegistered
+              ? "Active"
+              : "Pending",
+          role: "Player",
+          joined: user.createdAt
+            ? new Date(user.createdAt).toISOString().slice(0, 10)
+            : "Unknown",
+          telegramId: user.telegramId,
+        }));
+
+        if (isMounted) setUsers(databaseUsers);
+      } catch (error) {
+        if (isMounted) setLoadError(error.message || "Failed to load users");
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    };
+
+    loadUsers();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const filteredUsers = useMemo(() => {
-    return seedUsers.filter((user) => {
+    return users.filter((user) => {
       const matchesQuery =
         query.trim() === "" ||
         [user.name, user.username, user.phone, user.role, user.telegramId]
@@ -93,12 +66,10 @@ const UserPage = () => {
 
       return matchesQuery && matchesStatus;
     });
-  }, [query, statusFilter]);
+  }, [query, statusFilter, users]);
 
-  const totalWallet = seedUsers.reduce((total, user) => total + user.wallet, 0);
-  const activeUsers = seedUsers.filter(
-    (user) => user.status === "Active",
-  ).length;
+  const totalWallet = users.reduce((total, user) => total + user.wallet, 0);
+  const activeUsers = users.filter((user) => user.status === "Active").length;
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
@@ -169,6 +140,18 @@ const UserPage = () => {
             </div>
           </div>
 
+          {isLoading && (
+            <div className="mt-6 rounded-3xl border border-slate-800 bg-slate-950/60 p-8 text-center text-slate-400">
+              Loading users from the database...
+            </div>
+          )}
+
+          {loadError && (
+            <div className="mt-6 rounded-3xl border border-rose-500/30 bg-rose-500/10 p-8 text-center text-rose-300">
+              Unable to load users: {loadError}
+            </div>
+          )}
+
           <div className="mt-6 overflow-x-auto rounded-3xl border border-slate-800 bg-slate-950/70">
             <table className="min-w-full text-left text-sm">
               <thead className="bg-slate-900/90 text-slate-400">
@@ -199,7 +182,9 @@ const UserPage = () => {
                     </td>
 
                     <td className="px-4 py-4 text-slate-300">
-                      <div className="font-medium text-sky-300">#{user.telegramId}</div>
+                      <div className="font-medium text-sky-300">
+                        #{user.telegramId}
+                      </div>
                     </td>
                     <td className="px-4 py-4 text-slate-300">{user.role}</td>
                     <td className="px-4 py-4 text-slate-300">{user.phone}</td>

@@ -7,7 +7,8 @@ const defaultHeaders = {
   "Content-Type": "application/json",
 };
 
-const getAuthToken = () => localStorage.getItem("authToken");
+const getAuthToken = () =>
+  localStorage.getItem("adminToken") || localStorage.getItem("authToken");
 
 const buildUrl = (path) => `${API_BASE_URL}${path}`;
 
