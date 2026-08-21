@@ -7,7 +7,6 @@ import {
 
 const statusClasses = {
   Active: "border-emerald-500/30 bg-emerald-500/15 text-emerald-300",
-  Pending: "border-amber-500/30 bg-amber-500/15 text-amber-300",
   Blocked: "border-rose-500/30 bg-rose-500/15 text-rose-300",
   Inactive: "border-slate-500/30 bg-slate-500/15 text-slate-300",
 };
@@ -34,11 +33,9 @@ const UserPage = () => {
           wallet: Number(user.balance) || 0,
           status: user.isBlocked
             ? "Blocked"
-            : !user.isActive
+            : user.isActive === false
               ? "Inactive"
-              : user.isRegistered
-                ? "Active"
-                : "Pending",
+              : "Active",
           role: "Player",
           joined: user.createdAt
             ? new Date(user.createdAt).toISOString().slice(0, 10)
@@ -162,21 +159,19 @@ const UserPage = () => {
             </div>
 
             <div className="flex flex-wrap gap-2">
-              {["All", "Active", "Inactive", "Pending", "Blocked"].map(
-                (option) => (
-                  <button
-                    key={option}
-                    onClick={() => setStatusFilter(option)}
-                    className={`rounded-full px-3 py-2 text-sm transition ${
-                      statusFilter === option
-                        ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30"
-                        : "border border-slate-700 bg-slate-950/70 text-slate-300 hover:bg-slate-800"
-                    }`}
-                  >
-                    {option}
-                  </button>
-                ),
-              )}
+              {["All", "Active", "Inactive", "Blocked"].map((option) => (
+                <button
+                  key={option}
+                  onClick={() => setStatusFilter(option)}
+                  className={`rounded-full px-3 py-2 text-sm transition ${
+                    statusFilter === option
+                      ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30"
+                      : "border border-slate-700 bg-slate-950/70 text-slate-300 hover:bg-slate-800"
+                  }`}
+                >
+                  {option}
+                </button>
+              ))}
             </div>
           </div>
 
