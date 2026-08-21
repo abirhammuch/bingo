@@ -21,7 +21,22 @@ export const saveWithRetry = async (document, maxRetries = 3) => {
       if (error.name === "VersionError" && retries > 1) {
         retries--;
 
-        await new Promise((resolve) => setTimeout(resolve, 20));
+        const latestDocument = await document.constructor.findById(
+          document._id,
+        );
+
+        if (!latestDocument) {
+          throw new Error(
+            `Bingo round ${document._id} no longer exists while saving updates`,
+          );
+        }
+
+        // Reapply only this request's changes onto the newest document version.
+        for (const path of document.modifiedPaths()) {
+          latestDocument.set(path, document.get(path));
+        }
+
+        document = latestDocument;
       } else {
         throw error;
       }
