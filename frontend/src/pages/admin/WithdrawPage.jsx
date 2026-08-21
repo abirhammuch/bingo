@@ -6,10 +6,10 @@ import {
 import { FaCopy } from "react-icons/fa";
 
 const statusStyles = {
-  Pending: "bg-amber-100 text-amber-700",
-  Approved: "bg-emerald-100 text-emerald-700",
-  Flagged: "bg-rose-100 text-rose-700",
-  Denied: "bg-rose-100 text-rose-700",
+  Pending: "border border-amber-500/30 bg-amber-500/15 text-amber-300",
+  Approved: "border border-emerald-500/30 bg-emerald-500/15 text-emerald-300",
+  Flagged: "border border-rose-500/30 bg-rose-500/15 text-rose-300",
+  Denied: "border border-rose-500/30 bg-rose-500/15 text-rose-300",
 };
 
 const WithdrawPage = () => {
@@ -164,33 +164,33 @@ const WithdrawPage = () => {
     .reduce((total, request) => total + request.amountValue, 0);
 
   return (
-    <div className="space-y-5 text-slate-900">
+    <div className="space-y-5 text-slate-100">
       {error && (
-        <div className="rounded-lg border border-rose-300 bg-rose-50 p-3 text-sm text-rose-700">
+        <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-300">
           {error}
         </div>
       )}
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {[
-          ["Pending Requests", pendingCount, "bg-sky-100 text-sky-700"],
+          ["Pending Requests", pendingCount, "bg-sky-500/15 text-sky-300"],
           [
             "Approved Withdrawals",
             `${totalAmount.toFixed(2)} ETB`,
-            "bg-teal-100 text-teal-700",
+            "bg-teal-500/15 text-teal-300",
           ],
-          ["Denied Requests", deniedCount, "bg-rose-100 text-rose-700"],
+          ["Denied Requests", deniedCount, "bg-rose-500/15 text-rose-300"],
           [
             "Total Withdrawn (MTD)",
             `${totalAmount.toFixed(2)} ETB`,
-            "bg-slate-100 text-slate-600",
+            "bg-slate-500/15 text-slate-300",
           ],
         ].map(([label, value, color]) => (
           <div
             key={label}
-            className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4 shadow-sm"
+            className="flex items-center justify-between rounded-2xl border border-slate-800 bg-slate-900/90 p-4 shadow-lg shadow-slate-950/20"
           >
             <div>
-              <div className="text-xs text-slate-500">{label}</div>
+              <div className="text-xs text-slate-400">{label}</div>
               <div className="mt-1 text-2xl font-bold">{value}</div>
             </div>
             <div
@@ -202,34 +202,34 @@ const WithdrawPage = () => {
         ))}
       </div>
 
-      <div className="flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-white p-3 shadow-sm">
-        <label className="text-xs text-slate-500">
+      <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-slate-800 bg-slate-900/90 p-4 shadow-lg shadow-slate-950/20">
+        <label className="text-xs text-slate-400">
           Search
           <input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Search"
-            className="mt-1 block h-9 w-44 rounded-md border border-slate-300 px-3 text-sm outline-none focus:border-teal-500"
+            className="mt-1 block h-9 w-44 rounded-lg border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 outline-none placeholder:text-slate-600 focus:border-teal-500"
           />
         </label>
-        <label className="text-xs text-slate-500">
+        <label className="text-xs text-slate-400">
           Date Range
           <select
             value={dateRange}
             onChange={(event) => setDateRange(event.target.value)}
-            className="mt-1 block h-9 rounded-md border border-slate-300 px-2 text-sm"
+            className="mt-1 block h-9 rounded-lg border border-slate-700 bg-slate-950 px-2 text-sm text-slate-200"
           >
             <option>Date Range</option>
             <option>Today</option>
             <option>This month</option>
           </select>
         </label>
-        <label className="text-xs text-slate-500">
+        <label className="text-xs text-slate-400">
           Status
           <select
             value={status}
             onChange={(event) => setStatus(event.target.value)}
-            className="mt-1 block h-9 rounded-md border border-slate-300 px-2 text-sm"
+            className="mt-1 block h-9 rounded-lg border border-slate-700 bg-slate-950 px-2 text-sm text-slate-200"
           >
             <option>All</option>
             <option>Pending</option>
@@ -238,12 +238,12 @@ const WithdrawPage = () => {
             <option>Denied</option>
           </select>
         </label>
-        <label className="text-xs text-slate-500">
+        <label className="text-xs text-slate-400">
           Method
           <select
             value={method}
             onChange={(event) => setMethod(event.target.value)}
-            className="mt-1 block h-9 rounded-md border border-slate-300 px-2 text-sm"
+            className="mt-1 block h-9 rounded-lg border border-slate-700 bg-slate-950 px-2 text-sm text-slate-200"
           >
             <option>All methods</option>
             <option>PayPal</option>
@@ -251,19 +251,19 @@ const WithdrawPage = () => {
             <option>Crypto</option>
           </select>
         </label>
-        <label className="text-xs text-slate-500">
+        <label className="text-xs text-slate-400">
           Min/Max Amount
           <input
             value={amountRange}
             onChange={(event) => setAmountRange(event.target.value)}
             placeholder="Min amount"
-            className="mt-1 block h-9 w-28 rounded-md border border-slate-300 px-3 text-sm"
+            className="mt-1 block h-9 w-28 rounded-lg border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 placeholder:text-slate-600"
           />
         </label>
       </div>
 
-      <section className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+      <section className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/90 shadow-lg shadow-slate-950/20">
+        <div className="flex items-center justify-between border-b border-slate-800 px-4 py-3">
           <h2 className="font-semibold">Player Withdrawal Requests</h2>
           <span className="text-xs text-slate-500">
             {loading
@@ -273,7 +273,7 @@ const WithdrawPage = () => {
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-262.5 text-left text-xs">
-            <thead className="bg-slate-50 text-[10px] uppercase text-slate-500">
+            <thead className="bg-slate-950/80 text-[10px] uppercase text-slate-500">
               <tr>
                 {[
                   "Request ID",
@@ -292,7 +292,7 @@ const WithdrawPage = () => {
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-slate-800">
               {!loading && filteredWithControls.length === 0 && (
                 <tr>
                   <td
@@ -306,7 +306,7 @@ const WithdrawPage = () => {
               {filteredWithControls.map((request, index) => (
                 <tr
                   key={`${request.id}-${index}`}
-                  className="hover:bg-slate-50"
+                  className="hover:bg-slate-800/40"
                 >
                   <td className="px-3 py-3 font-medium">
                     <input
@@ -323,7 +323,7 @@ const WithdrawPage = () => {
                     />
                     {request.id}
                   </td>
-                  <td className="px-3 py-3 text-teal-700">{request.user} ↗</td>
+                  <td className="px-3 py-3 text-teal-300">{request.user} ↗</td>
                   <td className="px-3 py-3 font-medium">{request.amount}</td>
                   <td className="px-3 py-3">{request.method}</td>
                   <td className="px-3 py-3 whitespace-nowrap">
@@ -338,12 +338,12 @@ const WithdrawPage = () => {
                         disabled={!request.account || request.account === "-"}
                         title="Copy withdrawal phone"
                         aria-label={`Copy withdrawal phone for ${request.user}`}
-                        className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-teal-700 disabled:opacity-30"
+                        className="rounded p-1 text-slate-500 hover:bg-slate-800 hover:text-teal-300 disabled:opacity-30"
                       >
                         <FaCopy aria-hidden="true" />
                       </button>
                       {copiedAccount === request.transactionId && (
-                        <span className="text-[10px] text-teal-700">
+                        <span className="text-[10px] text-teal-300">
                           Copied
                         </span>
                       )}
@@ -364,18 +364,18 @@ const WithdrawPage = () => {
                       <button
                         onClick={() => handleAction(request, "approve")}
                         disabled={request.status !== "Pending"}
-                        className="rounded bg-teal-600 px-2 py-1 text-[10px] text-white disabled:opacity-40"
+                        className="rounded bg-teal-600 px-2 py-1 text-[10px] text-white hover:bg-teal-500 disabled:opacity-40"
                       >
                         Approve
                       </button>
                       <button
                         onClick={() => handleAction(request, "reject")}
                         disabled={request.status !== "Pending"}
-                        className="rounded border border-slate-300 px-2 py-1 text-[10px] disabled:opacity-40"
+                        className="rounded border border-slate-700 px-2 py-1 text-[10px] text-slate-300 hover:bg-slate-800 disabled:opacity-40"
                       >
                         Deny
                       </button>
-                      <button className="rounded border border-slate-300 px-2 py-1 text-[10px] whitespace-nowrap">
+                      <button className="rounded border border-slate-700 px-2 py-1 text-[10px] text-slate-300 whitespace-nowrap hover:bg-slate-800">
                         View Profile
                       </button>
                     </div>
@@ -385,20 +385,20 @@ const WithdrawPage = () => {
             </tbody>
           </table>
         </div>
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 px-4 py-3 text-xs">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-800 px-4 py-3 text-xs">
           <div className="flex items-center gap-2">
             <span>Bulk Actions</span>
             <button
               onClick={() => updateSelected("approve")}
               disabled={!selected.length}
-              className="rounded border border-slate-300 px-2 py-1 disabled:opacity-40"
+              className="rounded border border-slate-700 px-2 py-1 text-slate-300 disabled:opacity-40"
             >
               Approve Selected
             </button>
             <button
               onClick={() => updateSelected("reject")}
               disabled={!selected.length}
-              className="rounded border border-slate-300 px-2 py-1 disabled:opacity-40"
+              className="rounded border border-slate-700 px-2 py-1 text-slate-300 disabled:opacity-40"
             >
               Deny Selected
             </button>

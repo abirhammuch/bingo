@@ -18,6 +18,8 @@ export const updateAdminWithdrawalSettings = (payload) =>
 export const fetchAdminWalletRequests = () =>
   api.get("/api/admin/transactions/requests");
 
+export const fetchAdminTransactions = () => api.get("/api/admin/transactions");
+
 export const updateAdminWalletRequest = (transactionId, action) =>
   api.patch(
     `/api/admin/transactions/${encodeURIComponent(transactionId)}/${action}`,

@@ -394,6 +394,21 @@ router.get("/transactions/requests", requireAdmin, async (req, res) => {
   }
 });
 
+router.get("/transactions", requireAdmin, async (req, res) => {
+  try {
+    const transactions = await Transaction.find()
+      .populate("userId", "firstName username telegramId")
+      .sort({ createdAt: -1 })
+      .limit(500)
+      .lean();
+    res.json({ success: true, transactions });
+  } catch {
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to load transactions" });
+  }
+});
+
 router.patch(
   "/transactions/:transactionId/:action",
   requireAdmin,

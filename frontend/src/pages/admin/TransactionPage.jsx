@@ -1,67 +1,5 @@
-import React, { useMemo, useState } from "react";
-
-const seedTransactions = [
-  {
-    id: 1,
-    user: "Abebe Bekele",
-    telegram: "@abebe_b",
-    amount: 250,
-    type: "Deposit",
-    method: "Telebirr",
-    status: "Completed",
-    date: "2026-08-14 09:12",
-  },
-  {
-    id: 2,
-    user: "Selam Desta",
-    telegram: "@selam_d",
-    amount: 100,
-    type: "Withdraw",
-    method: "CBE",
-    status: "Pending",
-    date: "2026-08-14 10:45",
-  },
-  {
-    id: 3,
-    user: "Mihret Assefa",
-    telegram: "@mihr",
-    amount: 500,
-    type: "Deposit",
-    method: "Telebirr",
-    status: "Completed",
-    date: "2026-08-13 18:30",
-  },
-  {
-    id: 4,
-    user: "Daniel Tesfaye",
-    telegram: "@daniel_t",
-    amount: 75,
-    type: "Bet",
-    method: "Wallet",
-    status: "Completed",
-    date: "2026-08-13 22:15",
-  },
-  {
-    id: 5,
-    user: "Lidya Hailu",
-    telegram: "@lidya_h",
-    amount: 1200,
-    type: "Win",
-    method: "Wallet",
-    status: "Completed",
-    date: "2026-08-12 14:20",
-  },
-  {
-    id: 6,
-    user: "Yared Tadesse",
-    telegram: "@yared_t",
-    amount: 200,
-    type: "Withdraw",
-    method: "CBE",
-    status: "Rejected",
-    date: "2026-08-11 11:05",
-  },
-];
+import React, { useEffect, useMemo, useState } from "react";
+import { fetchAdminTransactions } from "../../services/userService";
 
 const statusClasses = {
   Completed: "border-emerald-500/30 bg-emerald-500/15 text-emerald-300",
@@ -70,99 +8,137 @@ const statusClasses = {
 };
 
 const typeClasses = {
-  Deposit: "text-sky-300",
-  Withdraw: "text-violet-300",
-  Bet: "text-amber-300",
-  Win: "text-emerald-300",
+  deposit: "text-sky-300",
+  withdraw: "text-violet-300",
+  bet: "text-amber-300",
+  reward: "text-emerald-300",
+  refund: "text-emerald-300",
+  BET: "text-amber-300",
+  WIN: "text-emerald-300",
+  REFUND: "text-emerald-300",
+  COMMISSION: "text-violet-300",
 };
+
+const normalizeTransaction = (transaction) => ({
+  ...transaction,
+  user:
+    transaction.userId?.username ||
+    transaction.userId?.firstName ||
+    transaction.telegramId,
+  telegram: transaction.telegramId,
+  method: transaction.metadata?.method || "Wallet",
+  status:
+    transaction.status === "completed"
+      ? "Completed"
+      : transaction.status === "failed"
+        ? "Rejected"
+        : "Pending",
+});
 
 const TransactionPage = () => {
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
+  const [transactions, setTransactions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    fetchAdminTransactions()
+      .then((response) =>
+        setTransactions(
+          (response.transactions || []).map(normalizeTransaction),
+        ),
+      )
+      .catch((requestError) =>
+        setError(requestError.message || "Failed to load transactions"),
+      )
+      .finally(() => setLoading(false));
+  }, []);
 
   const filteredTransactions = useMemo(() => {
-    return seedTransactions.filter((tx) => {
+    const normalizedQuery = query.trim().toLowerCase();
+    return transactions.filter((transaction) => {
       const matchesQuery =
-        query.trim() === "" ||
-        [tx.user, tx.telegram, tx.method, tx.type, tx.status]
+        !normalizedQuery ||
+        [
+          transaction.user,
+          transaction.telegram,
+          transaction.method,
+          transaction.type,
+          transaction.status,
+        ]
           .join(" ")
           .toLowerCase()
-          .includes(query.toLowerCase());
-
-      const matchesStatus =
-        statusFilter === "All" || tx.status === statusFilter;
-
-      return matchesQuery && matchesStatus;
+          .includes(normalizedQuery);
+      return (
+        matchesQuery &&
+        (statusFilter === "All" || transaction.status === statusFilter)
+      );
     });
-  }, [query, statusFilter]);
+  }, [query, statusFilter, transactions]);
 
-  const totalVolume = seedTransactions.reduce((sum, tx) => sum + tx.amount, 0);
-  const completedCount = seedTransactions.filter(
-    (tx) => tx.status === "Completed",
+  const totalVolume = transactions.reduce(
+    (sum, transaction) => sum + Number(transaction.amount || 0),
+    0,
+  );
+  const completedCount = transactions.filter(
+    (transaction) => transaction.status === "Completed",
+  ).length;
+  const pendingCount = transactions.filter(
+    (transaction) => transaction.status === "Pending",
   ).length;
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
-      <div className="max-w-[1500px] mx-auto px-4 py-8">
-        <div className="rounded-4xl border border-slate-800 bg-slate-900/80 p-6 shadow-xl shadow-slate-950/40">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <div className="text-sm uppercase tracking-[0.25em] text-slate-500">
-                Transactions
-              </div>
-              <h1 className="mt-2 text-4xl font-semibold">Financial Activity</h1>
-            </div>
-
-            <button className="rounded-full border border-violet-500/30 bg-violet-500/15 px-4 py-2 text-sm font-medium text-violet-300 hover:bg-violet-500/20">
-              Export CSV
-            </button>
+      <div className="mx-auto max-w-375 px-4 py-8">
+        {error && (
+          <div className="mb-6 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-300">
+            {error}
           </div>
+        )}
+        <div className="rounded-4xl border border-slate-800 bg-slate-900/80 p-6 shadow-xl shadow-slate-950/40">
+          <div className="text-sm uppercase tracking-[0.25em] text-slate-500">
+            Transactions
+          </div>
+          <h1 className="mt-2 text-4xl font-semibold">Financial Activity</h1>
         </div>
 
         <div className="mt-6 grid gap-4 md:grid-cols-3">
-          <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5">
-            <div className="text-sm text-slate-400">Total Volume</div>
-            <div className="mt-4 text-3xl font-semibold">
-              {totalVolume.toLocaleString()} ETB
+          {[
+            [
+              "Total Volume",
+              `${totalVolume.toLocaleString()} ETB`,
+              "text-slate-100",
+            ],
+            ["Completed", completedCount, "text-emerald-300"],
+            ["Pending", pendingCount, "text-amber-300"],
+          ].map(([label, value, color]) => (
+            <div
+              key={label}
+              className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5"
+            >
+              <div className="text-sm text-slate-400">{label}</div>
+              <div className={`mt-4 text-3xl font-semibold ${color}`}>
+                {value}
+              </div>
             </div>
-          </div>
-
-          <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5">
-            <div className="text-sm text-slate-400">Completed</div>
-            <div className="mt-4 text-3xl font-semibold text-emerald-300">
-              {completedCount}
-            </div>
-          </div>
-
-          <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5">
-            <div className="text-sm text-slate-400">Pending</div>
-            <div className="mt-4 text-3xl font-semibold text-amber-300">
-              {seedTransactions.filter((tx) => tx.status === "Pending").length}
-            </div>
-          </div>
+          ))}
         </div>
 
         <div className="mt-6 rounded-4xl border border-slate-800 bg-slate-900/80 p-6 shadow-xl shadow-slate-950/40">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex-1">
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search by user, telegram, method, type, status..."
-                className="w-full rounded-2xl border border-slate-700 bg-slate-950/80 px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-violet-500"
-              />
-            </div>
-
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search by user, telegram, method, type, status..."
+              className="w-full rounded-2xl border border-slate-700 bg-slate-950/80 px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-violet-500"
+            />
             <div className="flex flex-wrap gap-2">
-              {['All', 'Completed', 'Pending', 'Rejected'].map((option) => (
+              {["All", "Completed", "Pending", "Rejected"].map((option) => (
                 <button
                   key={option}
                   onClick={() => setStatusFilter(option)}
-                  className={`rounded-full px-3 py-2 text-sm transition ${
-                    statusFilter === option
-                      ? 'bg-violet-500/15 text-violet-300 border border-violet-500/30'
-                      : 'border border-slate-700 bg-slate-950/70 text-slate-300 hover:bg-slate-800'
-                  }`}
+                  className={`rounded-full px-3 py-2 text-sm transition ${statusFilter === option ? "border border-violet-500/30 bg-violet-500/15 text-violet-300" : "border border-slate-700 bg-slate-950/70 text-slate-300 hover:bg-slate-800"}`}
                 >
                   {option}
                 </button>
@@ -174,47 +150,71 @@ const TransactionPage = () => {
             <table className="min-w-full text-left text-sm">
               <thead className="bg-slate-900/90 text-slate-400">
                 <tr>
-                  <th className="px-4 py-3 font-medium">User</th>
-                  <th className="px-4 py-3 font-medium">Telegram</th>
-                  <th className="px-4 py-3 font-medium">Type</th>
-                  <th className="px-4 py-3 font-medium">Method</th>
-                  <th className="px-4 py-3 font-medium">Amount</th>
-                  <th className="px-4 py-3 font-medium">Status</th>
-                  <th className="px-4 py-3 font-medium">Date</th>
+                  {[
+                    "User",
+                    "Telegram",
+                    "Type",
+                    "Method",
+                    "Amount",
+                    "Status",
+                    "Date",
+                  ].map((heading) => (
+                    <th key={heading} className="px-4 py-3 font-medium">
+                      {heading}
+                    </th>
+                  ))}
                 </tr>
               </thead>
-
               <tbody>
-                {filteredTransactions.map((tx) => (
-                  <tr key={tx.id} className="border-t border-slate-800">
-                    <td className="px-4 py-4">
-                      <div className="font-semibold text-slate-100">{tx.user}</div>
+                {loading && (
+                  <tr>
+                    <td
+                      colSpan="7"
+                      className="px-4 py-10 text-center text-slate-400"
+                    >
+                      Loading transactions...
                     </td>
-                    <td className="px-4 py-4 text-slate-300">{tx.telegram}</td>
-                    <td className="px-4 py-4">
-                      <span className={`font-medium ${typeClasses[tx.type]}`}>
-                        {tx.type}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4 text-slate-300">{tx.method}</td>
-                    <td className="px-4 py-4 font-semibold text-slate-100">
-                      {tx.amount.toLocaleString()} ETB
-                    </td>
-                    <td className="px-4 py-4">
-                      <span
-                        className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${statusClasses[tx.status]}`}
-                      >
-                        {tx.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-4 text-slate-300">{tx.date}</td>
                   </tr>
-                ))}
+                )}
+                {!loading &&
+                  filteredTransactions.map((transaction) => (
+                    <tr
+                      key={transaction.transactionId}
+                      className="border-t border-slate-800"
+                    >
+                      <td className="px-4 py-4 font-semibold text-slate-100">
+                        {transaction.user}
+                      </td>
+                      <td className="px-4 py-4 text-slate-300">
+                        {transaction.telegram}
+                      </td>
+                      <td
+                        className={`px-4 py-4 font-medium ${typeClasses[transaction.type] || "text-slate-300"}`}
+                      >
+                        {transaction.type}
+                      </td>
+                      <td className="px-4 py-4 text-slate-300">
+                        {transaction.method}
+                      </td>
+                      <td className="px-4 py-4 font-semibold text-slate-100">
+                        {Number(transaction.amount || 0).toLocaleString()} ETB
+                      </td>
+                      <td className="px-4 py-4">
+                        <span
+                          className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${statusClasses[transaction.status]}`}
+                        >
+                          {transaction.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-4 text-slate-300">
+                        {new Date(transaction.createdAt).toLocaleString()}
+                      </td>
+                    </tr>
+                  ))}
               </tbody>
             </table>
           </div>
-
-          {filteredTransactions.length === 0 && (
+          {!loading && filteredTransactions.length === 0 && (
             <div className="mt-6 rounded-3xl border border-dashed border-slate-700 bg-slate-950/60 p-8 text-center text-slate-400">
               No transactions match your search.
             </div>
