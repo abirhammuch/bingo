@@ -59,12 +59,12 @@ const SelectionPage = ({
         <div className="text-xs text-slate-400">{mySelections.length}/3</div>
       </div>
 
-      {selectionError && (
+      {/*{selectionError && (
         <div className="mb-4 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-xs text-rose-300">
           {selectionError}
         </div>
       )}
-
+*/}
       {/* =====================================================
           SELECTED NUMBERS
       ===================================================== */}
