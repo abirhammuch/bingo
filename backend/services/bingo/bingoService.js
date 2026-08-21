@@ -676,8 +676,18 @@ export const joinBingoGame = async (
 
   const commissionSettings = (await CommissionSettings.findOne({
     key: "bingo",
-  }).lean()) || { percentage: 5 };
-  const commissionPercentage = Number(commissionSettings.percentage) || 0;
+  }).lean()) || {
+    below100Percentage: 20,
+    between100And1000Percentage: 25,
+    above1000Percentage: 30,
+  };
+  const totalBalance = Number(game.roundSummary.totalBetAmount);
+  const commissionPercentage =
+    totalBalance < 100
+      ? Number(commissionSettings.below100Percentage ?? 20)
+      : totalBalance <= 1000
+        ? Number(commissionSettings.between100And1000Percentage ?? 25)
+        : Number(commissionSettings.above1000Percentage ?? 30);
   const commissionAmount = Number(
     ((game.roundSummary.totalBetAmount * commissionPercentage) / 100).toFixed(
       2,

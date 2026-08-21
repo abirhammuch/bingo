@@ -42,9 +42,9 @@ const BonusPage = ({ section = "all" }) => {
   const [couponForm, setCouponForm] = useState(null);
   const [commissionData, setCommissionData] = useState(null);
   const [commissionForm, setCommissionForm] = useState({
-    percentage: 5,
-    tierOnePercentage: 4,
-    tierTwoPercentage: 6,
+    below100Percentage: 20,
+    between100And1000Percentage: 25,
+    above1000Percentage: 30,
   });
   const [commissionError, setCommissionError] = useState("");
 
@@ -507,9 +507,9 @@ const BonusPage = ({ section = "all" }) => {
             )}
             <form onSubmit={saveCommission} className="space-y-3 p-4 text-xs">
               {[
-                ["percentage", "Commission Percentage"],
-                ["tierOnePercentage", "Tier 1 (<$10 pot)"],
-                ["tierTwoPercentage", "Tier 2 (>$10 pot)"],
+                ["below100Percentage", "Total below 100 ETB"],
+                ["between100And1000Percentage", "Total 100-1000 ETB"],
+                ["above1000Percentage", "Total greater than 1000 ETB"],
               ].map(([field, label]) => (
                 <label
                   key={field}
@@ -568,6 +568,7 @@ const BonusPage = ({ section = "all" }) => {
                   <tr>
                     <th className="py-2">Game ID</th>
                     <th>Pot Size</th>
+                    <th>Rate</th>
                     <th>Commission Earned</th>
                     <th>Date</th>
                   </tr>
@@ -581,6 +582,12 @@ const BonusPage = ({ section = "all" }) => {
                           round.roundSummary?.totalBetAmount || 0,
                         ).toFixed(2)}{" "}
                         ETB
+                      </td>
+                      <td>
+                        {Number(
+                          round.roundSummary?.commissionPercentage || 0,
+                        ).toFixed(2)}
+                        %
                       </td>
                       <td className="text-teal-300">
                         {Number(

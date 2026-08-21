@@ -157,12 +157,14 @@ router.patch("/coupons/:id/toggle", requireAdmin, async (req, res) => {
 
 router.get("/commission", requireAdmin, async (req, res) => {
   try {
-    const settings = (await CommissionSettings.findOne({
-      key: "bingo",
-    }).lean()) || {
-      percentage: 5,
-      tierOnePercentage: 4,
-      tierTwoPercentage: 6,
+    const defaults = {
+      below100Percentage: 20,
+      between100And1000Percentage: 25,
+      above1000Percentage: 30,
+    };
+    const settings = {
+      ...defaults,
+      ...((await CommissionSettings.findOne({ key: "bingo" }).lean()) || {}),
     };
     const rounds = await BingoGame.find({
       "roundSummary.commissionAmount": { $gt: 0 },
@@ -196,9 +198,9 @@ router.get("/commission", requireAdmin, async (req, res) => {
 router.patch("/commission", requireAdmin, async (req, res) => {
   try {
     const values = [
-      req.body.percentage,
-      req.body.tierOnePercentage,
-      req.body.tierTwoPercentage,
+      req.body.below100Percentage,
+      req.body.between100And1000Percentage,
+      req.body.above1000Percentage,
     ];
     if (
       values.some(
@@ -208,31 +210,29 @@ router.patch("/commission", requireAdmin, async (req, res) => {
           Number(value) > 100,
       )
     ) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Commission percentages must be between 0 and 100",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Commission percentages must be between 0 and 100",
+      });
     }
     const settings = await CommissionSettings.findOneAndUpdate(
       { key: "bingo" },
       {
         key: "bingo",
-        percentage: Number(req.body.percentage),
-        tierOnePercentage: Number(req.body.tierOnePercentage),
-        tierTwoPercentage: Number(req.body.tierTwoPercentage),
+        below100Percentage: Number(req.body.below100Percentage),
+        between100And1000Percentage: Number(
+          req.body.between100And1000Percentage,
+        ),
+        above1000Percentage: Number(req.body.above1000Percentage),
       },
       { new: true, upsert: true, runValidators: true },
     );
     res.json({ success: true, settings });
   } catch (error) {
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: "Failed to update commission settings",
-      });
+    res.status(500).json({
+      success: false,
+      message: "Failed to update commission settings",
+    });
   }
 });
 
