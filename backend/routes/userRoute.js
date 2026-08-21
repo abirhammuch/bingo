@@ -14,6 +14,8 @@ import {
   toggleUserBlock,
   toggleUserActive,
 } from "../controller/userController.js";
+import userHistory from "../controller/userHistoryController.js";
+import { userAuth } from "../middleware/userAuth.js";
 
 const userRouter = express.Router();
 
@@ -25,6 +27,7 @@ userRouter.get("/profile/:telegramId", getUserProfile);
 userRouter.patch("/profile/:telegramId", updateUserProfile);
 userRouter.get("/balance/:telegramId", getUserBalance);
 userRouter.get("/stats/:telegramId", getUserStats);
+userRouter.get("/history", userAuth, userHistory);
 
 // Admin user routes
 userRouter.post("/admin/add-coins", adminAddCoins);
