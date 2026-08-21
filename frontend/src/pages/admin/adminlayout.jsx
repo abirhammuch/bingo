@@ -22,7 +22,7 @@ const adminMenu = [
   },
   { to: "/admin/wallet?mode=deposit", label: "Deposit", icon: <FaCoins /> },
   {
-    to: "/admin/wallet?mode=withdraw",
+    to: "/admin/withdraw",
     label: "Withdraw",
     icon: <FaShieldAlt />,
   },

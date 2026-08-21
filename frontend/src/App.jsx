@@ -15,6 +15,7 @@ import SettingPage from "./pages/footerPage/SettingPage";
 import AdminLayout from "./pages/admin/adminlayout.jsx";
 import UserPage from "./pages/admin/UserPage.jsx";
 import TransactionPage from "./pages/admin/TransactionPage.jsx";
+import AdminWithdrawPage from "./pages/admin/WithdrawPage.jsx";
 import { useAppContext } from "./context/AppContext.jsx";
 import Footer from "./components/footer/Footer";
 import AdminLoginPage from "./pages/admin/AdminLoginPage.jsx";
@@ -53,6 +54,7 @@ const App = () => {
             <Route index element={<UserPage />} />
             <Route path="users" element={<UserPage />} />
             <Route path="transactions" element={<TransactionPage />} />
+            <Route path="withdraw" element={<AdminWithdrawPage />} />
           </Route>
         </Routes>
       ) : (
