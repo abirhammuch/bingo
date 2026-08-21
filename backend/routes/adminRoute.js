@@ -267,8 +267,7 @@ router.get("/stake", requireAdmin, async (req, res) => {
         gameId: game?.gameId || null,
         roomId: game?.roomId || "default-bingo-room",
         status: game?.status || "waiting",
-        minBet: game?.minBet ?? 1,
-        maxBet: game?.maxBet ?? 100,
+        stakeAmount: game?.minBet ?? 10,
         maxPlayers: game?.maxPlayers ?? 10,
       },
     });
@@ -281,21 +280,12 @@ router.get("/stake", requireAdmin, async (req, res) => {
 
 router.patch("/stake", requireAdmin, async (req, res) => {
   try {
-    const minBet = Number(req.body.minBet);
-    const maxBet = Number(req.body.maxBet);
-    if (
-      !Number.isFinite(minBet) ||
-      !Number.isFinite(maxBet) ||
-      minBet < 0 ||
-      maxBet < minBet
-    ) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message:
-            "Maximum stake must be greater than or equal to minimum stake",
-        });
+    const stakeAmount = Number(req.body.stakeAmount);
+    if (!Number.isFinite(stakeAmount) || stakeAmount <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Stake amount must be greater than zero",
+      });
     }
     const game = await BingoGame.findOne({
       status: { $in: ["waiting", "active"] },
@@ -304,8 +294,8 @@ router.patch("/stake", requireAdmin, async (req, res) => {
       return res
         .status(404)
         .json({ success: false, message: "No active Bingo round found" });
-    game.minBet = minBet;
-    game.maxBet = maxBet;
+    game.minBet = stakeAmount;
+    game.maxBet = stakeAmount;
     await game.save();
     res.json({
       success: true,
@@ -314,8 +304,7 @@ router.patch("/stake", requireAdmin, async (req, res) => {
         gameId: game.gameId,
         roomId: game.roomId,
         status: game.status,
-        minBet: game.minBet,
-        maxBet: game.maxBet,
+        stakeAmount: game.minBet,
         maxPlayers: game.maxPlayers,
       },
     });

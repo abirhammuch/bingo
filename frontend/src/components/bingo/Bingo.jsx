@@ -75,6 +75,8 @@ const Bingo = ({ theme }) => {
 
   const [participantCount, setParticipantCount] = useState(0);
 
+  const [stakeAmount, setStakeAmount] = useState(10);
+
   const [spectatorCount, setSpectatorCount] = useState(0);
 
   // All numbers selected by all players.
@@ -223,6 +225,10 @@ const Bingo = ({ theme }) => {
 
       if (payload.selectionEndsAt) {
         setSelectionEndsAt(payload.selectionEndsAt);
+      }
+
+      if (payload.stakeAmount !== undefined) {
+        setStakeAmount(Number(payload.stakeAmount));
       }
 
       // ----------------------------------------------------------
@@ -993,7 +999,7 @@ const Bingo = ({ theme }) => {
         <Header
           gameType="selection"
           timeLeft={Math.max(0, remainingSeconds)}
-          stake={10}
+          stake={stakeAmount}
           balance={authUser?.balance ?? 0}
           selectionEndsAt={selectionEndsAt}
           selectedCardsCount={mySelections.length}
@@ -1005,7 +1011,7 @@ const Bingo = ({ theme }) => {
           called={calledNumbers.length}
           derash={1250}
           round="LIVE"
-          stake={10}
+          stake={stakeAmount}
         />
       )}
 

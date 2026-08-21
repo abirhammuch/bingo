@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { fetchAdminStake, updateAdminStake } from "../../services/userService";
+import { useAppContext } from "../../context/AppContext";
 
 const StakePage = () => {
-  const [stake, setStake] = useState({ minBet: 1, maxBet: 100 });
+  const [stake, setStake] = useState({ stakeAmount: 10 });
+  const { currency, formatCurrency } = useAppContext();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState("");
@@ -24,8 +26,7 @@ const StakePage = () => {
     setIsSaving(true);
     try {
       const response = await updateAdminStake({
-        minBet: stake.minBet,
-        maxBet: stake.maxBet,
+        stakeAmount: stake.stakeAmount,
       });
       setStake(response.stake);
       setMessage(response.message);
@@ -52,8 +53,7 @@ const StakePage = () => {
         </div>
         <h1 className="mt-2 text-3xl font-semibold">Stake Management</h1>
         <p className="mt-2 text-sm text-slate-400">
-          Set the minimum and maximum amount players can stake in the current
-          Bingo round.
+          Set the fixed amount players stake in the current Bingo round.
         </p>
       </div>
 
@@ -79,15 +79,15 @@ const StakePage = () => {
           </div>
         </div>
         <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-5">
-          <div className="text-xs text-slate-500">Minimum stake</div>
+          <div className="text-xs text-slate-500">Fixed stake</div>
           <div className="mt-2 text-2xl font-semibold text-sky-300">
-            {Number(stake.minBet).toFixed(2)} ETB
+            {formatCurrency(Number(stake.stakeAmount).toFixed(2))}
           </div>
         </div>
         <div className="rounded-2xl border border-slate-800 bg-slate-900/90 p-5">
-          <div className="text-xs text-slate-500">Maximum stake</div>
+          <div className="text-xs text-slate-500">Currency</div>
           <div className="mt-2 text-2xl font-semibold text-teal-300">
-            {Number(stake.maxBet).toFixed(2)} ETB
+            {currency}
           </div>
         </div>
       </div>
@@ -96,36 +96,38 @@ const StakePage = () => {
         onSubmit={saveStake}
         className="max-w-2xl rounded-2xl border border-slate-800 bg-slate-900/90 p-6 shadow-lg shadow-slate-950/20"
       >
-        <h2 className="font-semibold">Edit Stake Limits</h2>
-        <div className="mt-5 grid gap-4 sm:grid-cols-2">
+        <h2 className="font-semibold">Edit Fixed Stake</h2>
+        <div className="mt-5 flex max-w-sm items-end gap-3">
           <label className="text-sm text-slate-400">
-            Minimum stake (ETB)
+            Fixed stake amount
             <input
               required
               type="number"
-              min="0"
+              min="0.01"
               step="0.01"
-              value={stake.minBet}
+              value={stake.stakeAmount}
               onChange={(event) =>
-                setStake({ ...stake, minBet: event.target.value })
+                setStake({ ...stake, stakeAmount: event.target.value })
               }
               className="mt-2 block w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100"
             />
           </label>
-          <label className="text-sm text-slate-400">
-            Maximum stake (ETB)
-            <input
-              required
-              type="number"
-              min="0"
-              step="0.01"
-              value={stake.maxBet}
-              onChange={(event) =>
-                setStake({ ...stake, maxBet: event.target.value })
-              }
-              className="mt-2 block w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100"
-            />
-          </label>
+          <span className="mb-2 text-sm font-semibold text-teal-300">
+            {currency}
+          </span>
+        </div>
+        <div className="mt-4 flex flex-wrap gap-2 text-xs">
+          <span className="text-slate-500">Quick amount:</span>
+          {[10, 20].map((amount) => (
+            <button
+              type="button"
+              key={amount}
+              onClick={() => setStake({ ...stake, stakeAmount: amount })}
+              className="rounded-lg border border-slate-700 px-3 py-1 text-slate-300 hover:border-teal-500 hover:text-teal-300"
+            >
+              {formatCurrency(amount)}
+            </button>
+          ))}
         </div>
         <button
           disabled={isSaving}

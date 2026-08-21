@@ -70,6 +70,8 @@ const buildRoundState = (game) => {
 
     selectionEndsAt: game.selectionEndsAt || null,
 
+    stakeAmount: game.minBet ?? 10,
+
     remainingSeconds:
       game.status === "waiting" ? getRemainingSeconds(game.selectionEndsAt) : 0,
 
@@ -410,7 +412,8 @@ export const initBingoSocket = (io) => {
             throw new Error("Player has no selected numbers");
           }
 
-          const fallbackBetAmount = Number(data.betAmount ?? 1) || 1;
+          const fallbackBetAmount =
+            Number(game.minBet ?? data.betAmount ?? 10) || 10;
 
           await joinBingoGame(
             gameId,
