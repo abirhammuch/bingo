@@ -1,26 +1,33 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Footer from "../../components/footer/Footer";
+import { useAuth } from "../../context/AuthContext";
 
 const ProfilePage = () => {
   const navigate = useNavigate();
-  const [copied, setCopied] = useState(false);
+  const { user: authUser } = useAuth();
+  const [copied, setCopied] = useState("");
 
-  // Mock user data
+  const referralCode =
+    authUser?.referralCode ||
+    `REF${String(authUser?.telegramId || "PLAYER")
+      .slice(-8)
+      .toUpperCase()}`;
+  const referralLink = `${window.location.origin}/ref/${encodeURIComponent(referralCode)}`;
   const user = {
-    name: "abm2997",
-    handle: "@abm2997",
+    name: authUser?.firstName || authUser?.username || "Player",
+    handle: authUser?.username ? `@${authUser.username}` : "",
     avatar: "👤",
-    referralCode: "LY9NEFCG",
+    referralCode,
     referrals: 0,
     earned: "0 ETB",
     isOnline: true,
   };
 
-  const handleCopyCode = () => {
-    navigator.clipboard.writeText(user.referralCode);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const copyValue = async (value, type) => {
+    await navigator.clipboard.writeText(value);
+    setCopied(type);
+    setTimeout(() => setCopied(""), 2000);
   };
 
   return (
@@ -55,14 +62,26 @@ const ProfilePage = () => {
                   </p>
                 </div>
                 <button
-                  onClick={handleCopyCode}
+                  onClick={() => copyValue(user.referralCode, "code")}
                   className={`px-3 py-1 rounded border text-xs font-semibold uppercase tracking-wide transition ${
                     copied
                       ? "bg-emerald-500/20 border-emerald-400 text-emerald-300"
                       : "bg-slate-700/50 border-slate-600 text-slate-300 hover:bg-slate-700 hover:border-slate-500"
                   }`}
                 >
-                  {copied ? "✓ COPIED" : "COPY"}
+                  {copied === "code" ? "✓ COPIED" : "COPY"}
+                </button>
+              </div>
+
+              <div className="mt-3 flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-950/50 p-3">
+                <p className="min-w-0 flex-1 truncate text-xs text-slate-400">
+                  {referralLink}
+                </p>
+                <button
+                  onClick={() => copyValue(referralLink, "link")}
+                  className="shrink-0 rounded border border-slate-600 px-3 py-1 text-xs font-semibold text-slate-300 hover:bg-slate-700"
+                >
+                  {copied === "link" ? "COPIED" : "COPY LINK"}
                 </button>
               </div>
             </div>
@@ -141,23 +160,23 @@ const ProfilePage = () => {
               </span>
             </button>
 
-            {/* Logout */}
+            {/* Coupon Code */}
             <button
-              onClick={() => navigate("/logout")}
-              className="w-full bg-slate-800/40 border border-slate-700 rounded-lg p-4 flex items-center justify-between hover:bg-red-950/40 hover:border-red-700 transition group"
+              onClick={() => navigate("/coupon")}
+              className="w-full bg-slate-800/40 border border-slate-700 rounded-lg p-4 flex items-center justify-between hover:bg-amber-950/40 hover:border-amber-700 transition group"
             >
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-lg bg-red-500/20 border border-red-400/30 flex items-center justify-center group-hover:bg-red-600/40">
-                  <span className="text-xl">🚪</span>
+                <div className="w-12 h-12 rounded-lg bg-amber-500/20 border border-amber-400/30 flex items-center justify-center group-hover:bg-amber-600/40">
+                  <span className="text-xl">🎟️</span>
                 </div>
                 <div className="text-left">
-                  <h3 className="font-bold text-white">Logout</h3>
+                  <h3 className="font-bold text-white">Coupon Code</h3>
                   <p className="text-xs text-slate-400">
-                    Sign out of your account
+                    Redeem a promotional code
                   </p>
                 </div>
               </div>
-              <span className="text-slate-400 group-hover:text-red-400 transition">
+              <span className="text-slate-400 group-hover:text-amber-400 transition">
                 →
               </span>
             </button>

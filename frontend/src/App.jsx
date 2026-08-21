@@ -22,6 +22,7 @@ import StakePage from "./pages/admin/StakePage.jsx";
 import { useAppContext } from "./context/AppContext.jsx";
 import Footer from "./components/footer/Footer";
 import AdminLoginPage from "./pages/admin/AdminLoginPage.jsx";
+import Coupon from "./pages/footerPage/Coupon.jsx";
 
 const hasValidAdminSession = () => {
   const token = localStorage.getItem("adminToken");
@@ -138,6 +139,7 @@ const App = () => {
                 element={<TeleBirrWithdrawPage />}
               />
               <Route path="/appearance" element={<SettingPage />} />
+              <Route path="/coupon" element={<Coupon />} />
             </Routes>
           </main>
           {!isLivePage && <Footer />}
