@@ -6,6 +6,8 @@ import CommissionSettings from "../models/CommissionSettings.js";
 import BingoGame from "../models/BingoGame.js";
 import Transaction from "../models/Transaction.js";
 import WithdrawalSettings from "../models/WithdrawalSettings.js";
+import ReferralSettings from "../models/ReferralSettings.js";
+import { creditReferralReward } from "../services/wallet/referralService.js";
 
 const router = express.Router();
 
@@ -377,6 +379,41 @@ router.delete("/commission", requireAdmin, async (req, res) => {
   }
 });
 
+router.get("/referral-settings", requireAdmin, async (req, res) => {
+  const settings = (await ReferralSettings.findOne({
+    key: "default",
+  }).lean()) || {
+    key: "default",
+    depositPercentage: 5,
+    wagerPercentage: 1,
+  };
+  res.json({ success: true, settings });
+});
+
+router.patch("/referral-settings", requireAdmin, async (req, res) => {
+  const depositPercentage = Number(req.body.depositPercentage);
+  const wagerPercentage = Number(req.body.wagerPercentage);
+  if (
+    !Number.isFinite(depositPercentage) ||
+    !Number.isFinite(wagerPercentage) ||
+    depositPercentage < 0 ||
+    depositPercentage > 100 ||
+    wagerPercentage < 0 ||
+    wagerPercentage > 100
+  ) {
+    return res.status(400).json({
+      success: false,
+      message: "Referral percentages must be between 0 and 100",
+    });
+  }
+  const settings = await ReferralSettings.findOneAndUpdate(
+    { key: "default" },
+    { key: "default", depositPercentage, wagerPercentage },
+    { new: true, upsert: true, runValidators: true },
+  );
+  res.json({ success: true, settings });
+});
+
 router.get("/transactions/requests", requireAdmin, async (req, res) => {
   try {
     const transactions = await Transaction.find({
@@ -492,6 +529,14 @@ router.patch(
       user.balance = nextBalance;
       await user.save();
       await transaction.save();
+      if (transaction.type === "deposit") {
+        await creditReferralReward({
+          referredTelegramId: transaction.telegramId,
+          baseAmount: transaction.amount,
+          kind: "deposit",
+          reference: transaction.reference || transaction.transactionId,
+        });
+      }
 
       res.json({ success: true, transaction, balance: nextBalance });
     } catch (error) {

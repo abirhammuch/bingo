@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import User from "../../models/User.js";
 import Transaction from "../../models/Transaction.js";
+import { creditReferralReward } from "./referralService.js";
 
 const withSession = async (callback) => {
   const session = await mongoose.startSession();
@@ -34,7 +35,7 @@ export const chargeBingoCard = async ({
   }
 
   try {
-    return await withSession(async (session) => {
+    const result = await withSession(async (session) => {
       const user = await User.findOneAndUpdate(
         { telegramId: String(telegramId), balance: { $gte: amount } },
         { $inc: { balance: -amount } },
@@ -85,6 +86,13 @@ export const chargeBingoCard = async ({
 
       return { balance: balanceAfter, amount, alreadyCharged: false };
     });
+    await creditReferralReward({
+      referredTelegramId: String(telegramId),
+      baseAmount: amount,
+      kind: "wager",
+      reference,
+    });
+    return result;
   } catch (error) {
     if (
       error.code === "DUPLICATE_CARD_PURCHASE" &&

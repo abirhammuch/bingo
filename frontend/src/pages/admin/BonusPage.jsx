@@ -5,9 +5,11 @@ import {
   fetchAdminCoupons,
   fetchAdminWithdrawalSettings,
   fetchCommissionData,
+  fetchAdminReferralSettings,
   toggleAdminCoupon,
   updateAdminWithdrawalSettings,
   updateCommissionSettings,
+  updateAdminReferralSettings,
   updateAdminCoupon,
 } from "../../services/userService";
 
@@ -49,6 +51,12 @@ const BonusPage = ({ section = "all" }) => {
     above1000Percentage: 30,
   });
   const [commissionError, setCommissionError] = useState("");
+  const [referralForm, setReferralForm] = useState({
+    depositPercentage: 5,
+    wagerPercentage: 1,
+  });
+  const [referralError, setReferralError] = useState("");
+  const [referralMessage, setReferralMessage] = useState("");
   const [withdrawFeeForm, setWithdrawFeeForm] = useState({
     feeType: "fixed",
     feeAmount: 0,
@@ -66,6 +74,31 @@ const BonusPage = ({ section = "all" }) => {
         setCouponError(error.message || "Failed to load coupons"),
       );
   }, [section]);
+
+  useEffect(() => {
+    if (section !== "referral" && section !== "all") return;
+    fetchAdminReferralSettings()
+      .then((response) => setReferralForm(response.settings))
+      .catch((error) =>
+        setReferralError(error.message || "Failed to load referral settings"),
+      );
+  }, [section]);
+
+  const saveReferralSettings = async (event) => {
+    event.preventDefault();
+    setReferralError("");
+    setReferralMessage("");
+    try {
+      const response = await updateAdminReferralSettings({
+        depositPercentage: Number(referralForm.depositPercentage),
+        wagerPercentage: Number(referralForm.wagerPercentage),
+      });
+      setReferralForm(response.settings);
+      setReferralMessage("Referral rules saved");
+    } catch (error) {
+      setReferralError(error.message || "Failed to save referral settings");
+    }
+  };
 
   useEffect(() => {
     if (section !== "withdrawFee" && section !== "all") return;
@@ -410,45 +443,66 @@ const BonusPage = ({ section = "all" }) => {
         )}
 
         {show("referral") && (
-          <Panel title="Referral Bonus Rules" action="Edit Rules">
-            <div className="grid gap-x-8 gap-y-3 p-4 text-xs sm:grid-cols-2">
-              <div className="space-y-3">
-                {[
-                  ["Referrer Bonus Amount", "5%"],
-                  ["Referee Bonus Amount", "2%"],
-                  ["Min. Spend to Qualify", "$10"],
-                ].map(([label, value]) => (
-                  <label
-                    key={label}
-                    className="flex items-center justify-between gap-3 text-slate-400"
-                  >
-                    {label}
+          <Panel title="Referral Bonus Rules">
+            <form
+              onSubmit={saveReferralSettings}
+              className="border-b border-slate-800"
+            >
+              <div className="grid gap-x-8 gap-y-3 p-4 text-xs sm:grid-cols-2">
+                <div className="space-y-3">
+                  <label className="flex items-center justify-between gap-3 text-slate-400">
+                    Deposit reward for inviter (%)
                     <input
-                      defaultValue={value}
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={referralForm.depositPercentage}
+                      onChange={(event) =>
+                        setReferralForm({
+                          ...referralForm,
+                          depositPercentage: event.target.value,
+                        })
+                      }
                       className="h-8 w-20 rounded-lg border border-slate-700 bg-slate-950 px-2 text-right text-slate-100"
                     />
                   </label>
-                ))}
-              </div>
-              <div className="space-y-3">
-                {[
-                  ["Wagering Requirement (x)", "3"],
-                  ["Validity Period (Days)", "30"],
-                  ["Max Cashout Amount", "$500"],
-                ].map(([label, value]) => (
-                  <label
-                    key={label}
-                    className="flex items-center justify-between gap-3 text-slate-400"
-                  >
-                    {label}
+                </div>
+                <div className="space-y-3">
+                  <label className="flex items-center justify-between gap-3 text-slate-400">
+                    Wager reward for inviter (%)
                     <input
-                      defaultValue={value}
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={referralForm.wagerPercentage}
+                      onChange={(event) =>
+                        setReferralForm({
+                          ...referralForm,
+                          wagerPercentage: event.target.value,
+                        })
+                      }
                       className="h-8 w-20 rounded-lg border border-slate-700 bg-slate-950 px-2 text-right text-slate-100"
                     />
                   </label>
-                ))}
+                </div>
               </div>
-            </div>
+              <div className="flex items-center gap-3 px-4 pb-4">
+                <button
+                  type="submit"
+                  className="rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-500"
+                >
+                  Save Rules
+                </button>
+                {referralMessage && (
+                  <span className="text-xs text-emerald-300">
+                    {referralMessage}
+                  </span>
+                )}
+                {referralError && (
+                  <span className="text-xs text-rose-300">{referralError}</span>
+                )}
+              </div>
+            </form>
             <div className="border-t border-slate-800">
               <table className="w-full text-left text-xs">
                 <thead className="bg-slate-950/80 text-[10px] uppercase text-slate-500">

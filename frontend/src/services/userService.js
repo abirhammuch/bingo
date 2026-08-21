@@ -81,6 +81,12 @@ export const fetchCommissionData = () => api.get("/api/admin/commission");
 export const updateCommissionSettings = (payload) =>
   api.patch("/api/admin/commission", payload);
 
+export const fetchAdminReferralSettings = () =>
+  api.get("/api/admin/referral-settings");
+
+export const updateAdminReferralSettings = (payload) =>
+  api.patch("/api/admin/referral-settings", payload);
+
 export const deleteCommissionSettings = () => api.del("/api/admin/commission");
 
 export const fetchAdminStake = () => api.get("/api/admin/stake");
