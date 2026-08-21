@@ -14,7 +14,7 @@ import {
 const adminMenu = [
   { to: "/admin", label: "Dashboard", icon: <FaChartLine /> },
   { to: "/admin/users", label: "Users", icon: <FaUsers /> },
-  { to: "/admin/rooms", label: "Rooms", icon: <FaGamepad /> },
+  { to: "/admin/bonus", label: "Bonus", icon: <FaTrophy /> },
   {
     to: "/admin/transactions",
     label: "Transactions",
