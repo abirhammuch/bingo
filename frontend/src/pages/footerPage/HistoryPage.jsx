@@ -90,7 +90,7 @@ const HistoryPage = () => {
               }
             >
               {won
-                ? `Won${amountLabel(record.prizePool)}`
+                ? `Won  ${amountLabel(record.prizePool)}`
                 : `Lost ${amountLabel(record.amount)}`}
             </span>
           </div>
