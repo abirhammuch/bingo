@@ -15,6 +15,7 @@ import {
   toggleUserActive,
 } from "../controller/userController.js";
 import userHistory from "../controller/userHistoryController.js";
+import submitDeposit from "../controller/userDepositController.js";
 import { userAuth } from "../middleware/userAuth.js";
 
 const userRouter = express.Router();
@@ -28,6 +29,7 @@ userRouter.patch("/profile/:telegramId", updateUserProfile);
 userRouter.get("/balance/:telegramId", getUserBalance);
 userRouter.get("/stats/:telegramId", getUserStats);
 userRouter.get("/history", userAuth, userHistory);
+userRouter.post("/deposits", userAuth, submitDeposit);
 
 // Admin user routes
 userRouter.post("/admin/add-coins", adminAddCoins);

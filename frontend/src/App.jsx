@@ -30,6 +30,7 @@ import { useAppContext } from "./context/AppContext.jsx";
 import Footer from "./components/footer/Footer";
 import AdminLoginPage from "./pages/admin/AdminLoginPage.jsx";
 import Coupon from "./pages/footerPage/Coupon.jsx";
+import CBEDepositePage from "./pages/footerPage/CBEDepositePage.jsx";
 
 const hasValidAdminSession = () => {
   const token = localStorage.getItem("adminToken");
@@ -152,6 +153,7 @@ const App = () => {
               <Route path="/referral" element={<Invite />} />
               <Route path="/wallet" element={<WalletPage />} />
               <Route path="/deposit" element={<DepositePage />} />
+              <Route path="/cbe-deposit" element={<CBEDepositePage />} />
               <Route path="/settings" element={<SettingPage />} />
               <Route
                 path="/telebirr-deposit"

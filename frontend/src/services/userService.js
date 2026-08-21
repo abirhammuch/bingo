@@ -11,6 +11,9 @@ export const getUserStats = (telegramId) =>
 
 export const fetchUserHistory = () => api.get("/api/users/history");
 
+export const submitDeposit = (payload) =>
+  api.post("/api/users/deposits", payload);
+
 export const telegramLogin = (payload) =>
   api.post(`/api/users/telegram-login`, payload);
 export const telegramLoginWithCode = (payload) =>

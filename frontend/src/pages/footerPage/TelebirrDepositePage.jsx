@@ -1,10 +1,15 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { submitDeposit } from "../../services/userService";
 
 const TelebirrDepositePage = () => {
   const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
   const [step, setStep] = useState(1); // Step 1: Send money, Step 2: Enter receipt
+  const [amount, setAmount] = useState("");
+  const [receipt, setReceipt] = useState("");
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
   const telebirrData = {
     method: "Telebirr",
@@ -23,7 +28,33 @@ const TelebirrDepositePage = () => {
   };
 
   const handleNextStep = () => {
+    if (Number(amount) < telebirrData.minAmount) {
+      setError(`Minimum deposit is ${telebirrData.minAmount} ETB`);
+      return;
+    }
+    setError("");
     setStep(2);
+  };
+
+  const handleSubmit = async () => {
+    if (!receipt.trim()) {
+      setError("Paste the payment receipt");
+      return;
+    }
+    setSubmitting(true);
+    setError("");
+    try {
+      await submitDeposit({
+        amount: Number(amount),
+        method: telebirrData.method,
+        receipt,
+      });
+      navigate("/history");
+    } catch (submitError) {
+      setError(submitError.message || "Failed to submit deposit");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -46,6 +77,7 @@ const TelebirrDepositePage = () => {
           Send via {telebirrData.method} Min {telebirrData.minAmount}{" "}
           {telebirrData.currency}
         </p>
+        {error && <p className="mb-4 text-sm text-rose-300">{error}</p>}
 
         {/* Progress Bar */}
         <div className="mb-6">
@@ -93,6 +125,15 @@ const TelebirrDepositePage = () => {
               </div>
             </div>
 
+            <input
+              type="number"
+              min={telebirrData.minAmount}
+              value={amount}
+              onChange={(event) => setAmount(event.target.value)}
+              placeholder={`Deposit amount (min ${telebirrData.minAmount} ETB)`}
+              className="mb-4 w-full rounded-lg border border-slate-700 bg-slate-800/50 p-4 text-white outline-none focus:border-emerald-500"
+            />
+
             {/* Instructions */}
             <div className="mb-6 bg-slate-800/30 border border-slate-700 rounded-lg p-4 flex gap-3">
               <div className="text-slate-500 flex-shrink-0">
@@ -121,6 +162,8 @@ const TelebirrDepositePage = () => {
                 Paste SMS Receipt
               </label>
               <textarea
+                value={receipt}
+                onChange={(event) => setReceipt(event.target.value)}
                 placeholder="Paste the full SMS you received after sending money..."
                 className="w-full bg-slate-800/50 border border-slate-700 rounded-lg p-4 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 resize-none"
                 rows="5"
@@ -129,10 +172,11 @@ const TelebirrDepositePage = () => {
 
             {/* Submit Button */}
             <button
-              onClick={() => navigate("/wallet")}
+              onClick={handleSubmit}
+              disabled={submitting}
               className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white font-bold py-3 rounded-lg uppercase tracking-wide transition shadow-lg"
             >
-              VERIFY & DEPOSIT
+              {submitting ? "SUBMITTING..." : "SUBMIT FOR REVIEW"}
             </button>
 
             {/* Back to previous step */}
