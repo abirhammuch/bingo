@@ -16,8 +16,8 @@ const Invite = () => {
   const referralLink = `${window.location.origin}/ref/${encodeURIComponent(referralCode)}`;
   const referralData = {
     referralCode,
-    referrals: 0,
-    earned: "0 ETB",
+    referrals: Number(user?.referralCount || 0),
+    earned: `${Number(user?.referralEarnings || 0).toFixed(2)} ETB`,
   };
 
   const copyReferralValue = async (value) => {

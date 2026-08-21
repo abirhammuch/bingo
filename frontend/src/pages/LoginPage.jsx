@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { promptTelegramShareContact } from "../utils/telegramWebApp";
 
 const LoginPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const { login, loginWithTelegramInitData, loading } = useAuth();
 
@@ -13,6 +14,10 @@ const LoginPage = () => {
   const [error, setError] = useState(null);
   const [isTelegramWebApp, setIsTelegramWebApp] = useState(false);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const referralCode =
+    new URLSearchParams(location.search).get("ref") ||
+    localStorage.getItem("pendingReferralCode") ||
+    "";
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -22,7 +27,10 @@ const LoginPage = () => {
       await login({
         telegramId,
         loginCode,
+        referralCode,
       });
+
+      localStorage.removeItem("pendingReferralCode");
 
       navigate("/wallet", {
         replace: true,
@@ -73,7 +81,10 @@ const LoginPage = () => {
 
         const result = await loginWithTelegramInitData({
           initData,
+          referralCode,
         });
+
+        localStorage.removeItem("pendingReferralCode");
 
         console.log("✅ Telegram WebApp authentication successful");
         console.log("👤 Telegram user:", result?.user);
@@ -112,7 +123,7 @@ const LoginPage = () => {
     };
 
     doWebAppLogin();
-  }, [loginWithTelegramInitData, navigate]);
+  }, [loginWithTelegramInitData, navigate, referralCode]);
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center px-4 py-10">

@@ -3,13 +3,42 @@ import jwt from "jsonwebtoken";
 import { generateToken } from "../utils/generateToken.js";
 import { verifyTelegramInitData } from "../utils/telegramAuth.js";
 
+const getReferralCode = (telegramId) =>
+  `REF${String(telegramId).slice(-8).toUpperCase()}`;
+
+const findReferrer = async (referralCode, telegramId) => {
+  const normalizedCode = String(referralCode || "")
+    .trim()
+    .toUpperCase();
+  if (!normalizedCode) return null;
+
+  const direct = await User.findOne({ referralCode: normalizedCode });
+  if (direct && String(direct.telegramId) !== String(telegramId)) return direct;
+
+  if (!normalizedCode.startsWith("REF")) return null;
+  const suffix = normalizedCode.slice(3);
+  if (!suffix) return null;
+  return User.findOne({
+    $and: [
+      { telegramId: { $regex: `${suffix}$` } },
+      { telegramId: { $ne: String(telegramId) } },
+    ],
+  });
+};
+
 // ==========================================
 // 1. Register or Login User via Telegram
 // ==========================================
 export const telegramLogin = async (req, res) => {
   try {
-    const { telegramId, firstName, lastName, username, profilePhoto } =
-      req.body;
+    const {
+      telegramId,
+      firstName,
+      lastName,
+      username,
+      profilePhoto,
+      referralCode,
+    } = req.body;
 
     if (!telegramId || !firstName) {
       return res.status(400).json({
@@ -22,6 +51,7 @@ export const telegramLogin = async (req, res) => {
     let user = await User.findOne({ telegramId: telegramId.toString() });
 
     if (!user) {
+      const referrer = await findReferrer(referralCode, telegramId);
       // Create new user with a Welcome Bonus
       user = new User({
         telegramId: telegramId.toString(),
@@ -29,10 +59,18 @@ export const telegramLogin = async (req, res) => {
         lastName: lastName || "",
         username: username || "",
         profilePhoto: profilePhoto || "",
+        referralCode: getReferralCode(telegramId),
+        referredBy: referrer?.telegramId || null,
         balance: 100, // 🎁 Welcome Bonus
         lastLogin: new Date(),
       });
       await user.save();
+      if (referrer) {
+        await User.updateOne(
+          { _id: referrer._id },
+          { $inc: { referralCount: 1 } },
+        );
+      }
 
       const token = generateToken({
         id: user._id,
@@ -54,6 +92,9 @@ export const telegramLogin = async (req, res) => {
           username: user.username,
           balance: user.balance,
           profilePhoto: user.profilePhoto,
+          referralCode: user.referralCode,
+          referralCount: user.referralCount,
+          referralEarnings: user.referralEarnings,
           isRegistered: user.isRegistered,
           gamesPlayed: user.gamesPlayed,
           gamesWon: user.gamesWon,
@@ -65,6 +106,7 @@ export const telegramLogin = async (req, res) => {
     }
 
     // Update last login for returning user
+    user.referralCode ||= getReferralCode(user.telegramId);
     user.lastLogin = new Date();
     await user.save();
 
@@ -88,6 +130,9 @@ export const telegramLogin = async (req, res) => {
         username: user.username,
         balance: user.balance,
         profilePhoto: user.profilePhoto,
+        referralCode: user.referralCode,
+        referralCount: user.referralCount,
+        referralEarnings: user.referralEarnings,
         gamesPlayed: user.gamesPlayed,
         gamesWon: user.gamesWon,
         bingoGames: user.bingoGames,
@@ -114,7 +159,7 @@ export const telegramLogin = async (req, res) => {
 // ==========================================
 export const telegramWebAppLogin = async (req, res) => {
   try {
-    const { initData } = req.body;
+    const { initData, referralCode } = req.body;
 
     if (!initData) {
       return res.status(400).json({
@@ -165,6 +210,7 @@ export const telegramWebAppLogin = async (req, res) => {
     let user = await User.findOne({ telegramId });
 
     if (!user) {
+      const referrer = await findReferrer(referralCode, telegramId);
       console.log("👤 [USER NOT FOUND] Creating new user from WebApp login", {
         telegramId,
         firstName,
@@ -176,10 +222,18 @@ export const telegramWebAppLogin = async (req, res) => {
         lastName,
         username,
         profilePhoto,
+        referralCode: getReferralCode(telegramId),
+        referredBy: referrer?.telegramId || null,
         balance: 100,
         isRegistered: false,
         lastLogin: new Date(),
       });
+      if (referrer) {
+        await User.updateOne(
+          { _id: referrer._id },
+          { $inc: { referralCount: 1 } },
+        );
+      }
       console.log("✅ [NEW USER CREATED]", {
         telegramId,
         userId: user._id,
@@ -196,6 +250,7 @@ export const telegramWebAppLogin = async (req, res) => {
       user.lastName = lastName || user.lastName;
       user.username = username || user.username;
       user.profilePhoto = profilePhoto || user.profilePhoto;
+      user.referralCode ||= getReferralCode(user.telegramId);
       user.lastLogin = new Date();
       await user.save();
       console.log("✅ [USER UPDATED]", {
@@ -229,6 +284,9 @@ export const telegramWebAppLogin = async (req, res) => {
         username: user.username,
         balance: user.balance,
         profilePhoto: user.profilePhoto,
+        referralCode: user.referralCode,
+        referralCount: user.referralCount,
+        referralEarnings: user.referralEarnings,
         isRegistered: user.isRegistered,
         gamesPlayed: user.gamesPlayed,
         gamesWon: user.gamesWon,

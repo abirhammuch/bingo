@@ -1,5 +1,12 @@
 import React, { useEffect } from "react";
-import { Navigate, Routes, Route, useLocation } from "react-router-dom";
+import {
+  Navigate,
+  Routes,
+  Route,
+  useLocation,
+  useNavigate,
+  useParams,
+} from "react-router-dom";
 import LobbyPage from "./pages/LobbyPage";
 import LoginPage from "./pages/LoginPage";
 import LogoutPage from "./pages/LogoutPage";
@@ -50,6 +57,22 @@ const AdminRouteGuard = ({ children }) => {
   }
 
   return children;
+};
+
+const ReferralRedirect = () => {
+  const { referralCode } = useParams();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (referralCode) {
+      localStorage.setItem("pendingReferralCode", referralCode);
+    }
+    navigate(localStorage.getItem("authToken") ? "/bingopage" : "/login", {
+      replace: true,
+    });
+  }, [navigate, referralCode]);
+
+  return null;
 };
 
 const App = () => {
@@ -122,10 +145,7 @@ const App = () => {
             <Routes>
               <Route path="/" element={<LobbyPage theme={theme} />} />
               <Route path="/lobby" element={<LobbyPage theme={theme} />} />
-              <Route
-                path="/ref/:referralCode"
-                element={<LobbyPage theme={theme} />}
-              />
+              <Route path="/ref/:referralCode" element={<ReferralRedirect />} />
               <Route path="/bingopage" element={<LobbyPage theme={theme} />} />
               <Route path="/history" element={<HistoryPage />} />
               <Route path="/profile" element={<ProfilePage />} />

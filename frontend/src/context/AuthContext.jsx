@@ -98,7 +98,7 @@ export const AuthProvider = ({ children }) => {
   /*
    * Telegram WebApp login.
    */
-  const loginWithTelegramInitData = async ({ initData }) => {
+  const loginWithTelegramInitData = async ({ initData, referralCode }) => {
     setLoading(true);
 
     try {
@@ -108,6 +108,7 @@ export const AuthProvider = ({ children }) => {
 
       const data = await apiTelegramWebAppLogin({
         initData,
+        referralCode,
       });
 
       if (!data?.token) {
