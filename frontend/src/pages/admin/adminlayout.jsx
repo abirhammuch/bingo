@@ -20,7 +20,7 @@ const adminMenu = [
     label: "Transactions",
     icon: <FaMoneyBillWave />,
   },
-  { to: "/admin/wallet?mode=deposit", label: "Deposit", icon: <FaCoins /> },
+  { to: "/admin/deposit", label: "Deposit", icon: <FaCoins /> },
   {
     to: "/admin/withdraw",
     label: "Withdraw",
