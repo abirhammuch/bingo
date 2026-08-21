@@ -161,6 +161,10 @@ export const startSelectionTimer = async (io, gameId) => {
 
         playerCount: liveGame.players.filter((p) => !p.isSpectator).length,
 
+        prizePool: liveGame.players
+          .filter((p) => !p.isSpectator)
+          .reduce((sum, player) => sum + Number(player.betAmount || 0), 0),
+
         spectatorCount: liveGame.players.filter((p) => p.isSpectator).length,
 
         calledNumbers: liveGame.calledNumbers,

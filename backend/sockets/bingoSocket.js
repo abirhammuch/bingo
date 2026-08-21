@@ -46,6 +46,11 @@ const buildRoundState = (game) => {
     (player) => player.isSpectator,
   );
 
+  const prizePool = realPlayers.reduce(
+    (sum, player) => sum + Number(player.betAmount || 0),
+    0,
+  );
+
   return {
     gameId: game.gameId,
     roomId: game.roomId,
@@ -59,6 +64,7 @@ const buildRoundState = (game) => {
 
     playerCount: realPlayers.length,
     spectatorCount: spectators.length,
+    prizePool,
 
     players: getPlayerSummary(game.players),
 

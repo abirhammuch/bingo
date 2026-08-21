@@ -77,6 +77,8 @@ const Bingo = ({ theme }) => {
 
   const [stakeAmount, setStakeAmount] = useState(10);
 
+  const [prizePool, setPrizePool] = useState(0);
+
   const [spectatorCount, setSpectatorCount] = useState(0);
 
   // All numbers selected by all players.
@@ -229,6 +231,10 @@ const Bingo = ({ theme }) => {
 
       if (payload.stakeAmount !== undefined) {
         setStakeAmount(Number(payload.stakeAmount));
+      }
+
+      if (payload.prizePool !== undefined) {
+        setPrizePool(Number(payload.prizePool) || 0);
       }
 
       // ----------------------------------------------------------
@@ -455,6 +461,10 @@ const Bingo = ({ theme }) => {
         setParticipantCount(payload.playerCount);
       }
 
+      if (payload?.prizePool !== undefined) {
+        setPrizePool(Number(payload.prizePool) || 0);
+      }
+
       setSelectionEndsAt(null);
     };
 
@@ -483,6 +493,8 @@ const Bingo = ({ theme }) => {
           : DEFAULT_SELECTION_TIME;
 
       setParticipantCount(0);
+
+      setPrizePool(0);
 
       setSpectatorCount(0);
 
@@ -1013,7 +1025,7 @@ const Bingo = ({ theme }) => {
           gameType="live"
           players={participantCount}
           called={calledNumbers.length}
-          derash={1250}
+          derash={prizePool}
           round="LIVE"
           stake={stakeAmount}
         />
