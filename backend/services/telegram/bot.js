@@ -48,6 +48,22 @@ const rawWebAppUrl =
 const telegramWebAppUrl = rawWebAppUrl
   .replace(/\/login\/?$/, "")
   .replace(/\/$/, "");
+const telegramBotUsername =
+  process.env.TELEGRAM_BOT_USERNAME || "MarshalBingoBot";
+const telegramSupportUrl =
+  process.env.TELEGRAM_SUPPORT_URL || "https://t.me/MarshalSupport";
+
+const accountKeyboard = () =>
+  Markup.keyboard([
+    ["🎮 Play Game", "🔗 Referral Link"],
+    ["👤 My Profile", "💰 Wallet"],
+    ["🆘 Support"],
+  ])
+    .resize()
+    .persistent();
+
+const getReferralLink = (user) =>
+  `https://t.me/${telegramBotUsername}?start=ref_${user.referralCode || getReferralCode(user.telegramId)}`;
 
 const openGameKeyboard = () =>
   Markup.inlineKeyboard([
@@ -107,10 +123,6 @@ const needsPhoneRegistration = (user) => {
 };
 
 const sendLoginPrompt = async (ctx, user) => {
-  const keyboard = Markup.keyboard([["👤 My Profile", "💰 Wallet"]])
-    .resize()
-    .oneTime();
-
   const message =
     user && needsPhoneRegistration(user)
       ? "Your account is created but not fully registered yet. Please share your phone number or use Login once complete."
@@ -124,7 +136,7 @@ const sendLoginPrompt = async (ctx, user) => {
     },
   });
 
-  await ctx.reply("You can also use the buttons below.", keyboard);
+  await ctx.reply("You can also use the buttons below.", accountKeyboard());
 };
 
 bot.command("login", async (ctx) => {
@@ -185,6 +197,8 @@ bot.hears("👤 My Profile", async (ctx) => {
         `Username: ${user.username ? `@${user.username}` : "(none)"}\n` +
         `Phone: ${user.phoneNumber || "Not shared"}\n` +
         `Balance: ${user.balance ?? 0}\n` +
+        `Referrals: ${user.referralCount ?? 0}\n` +
+        `Referral link: ${getReferralLink(user)}\n` +
         `Registered: ${user.isRegistered ? "Yes" : "No"}`,
     );
   } catch (error) {
@@ -219,6 +233,28 @@ bot.hears("💰 Wallet", async (ctx) => {
     console.error("Wallet error:", error);
     await ctx.reply("❌ Could not load your wallet. Please try again.");
   }
+});
+
+bot.hears("🎮 Play Game", async (ctx) => {
+  await ctx.reply("🎮 Open the game and start playing.", openGameKeyboard());
+});
+
+bot.hears("🆘 Support", async (ctx) => {
+  await ctx.reply(`🆘 Support: ${telegramSupportUrl}`);
+});
+
+bot.hears("🔗 Referral Link", async (ctx) => {
+  const telegramId = ctx.from.id.toString();
+  const user = await User.findOne({ telegramId });
+  if (!user) return ctx.reply("Please start the bot first with /start.");
+  const code = user.referralCode || getReferralCode(telegramId);
+  if (!user.referralCode) {
+    user.referralCode = code;
+    await user.save();
+  }
+  await ctx.reply(
+    `🔗 Your referral link:\nhttps://t.me/${telegramBotUsername}?start=ref_${code}`,
+  );
 });
 
 // /start
@@ -282,13 +318,9 @@ bot.start(async (ctx) => {
       return;
     }
 
-    const replyMarkup = Markup.keyboard([["👤 My Profile", "💰 Wallet"]])
-      .resize()
-      .oneTime();
-
     await ctx.reply(
       `You are all set! Use the button below to continue.`,
-      replyMarkup,
+      accountKeyboard(),
     );
 
     await ctx.reply("🎮 Start the game in Telegram.", openGameKeyboard());

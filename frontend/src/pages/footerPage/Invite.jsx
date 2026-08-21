@@ -1,16 +1,31 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Footer from "../../components/footer/Footer";
 import { useAuth } from "../../context/AuthContext";
+import { getUserProfile } from "../../services/userService";
 
 const Invite = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, updateUserBalance } = useAuth();
   const [copied, setCopied] = useState(false);
+  const [referralUser, setReferralUser] = useState(user);
+
+  useEffect(() => {
+    if (!user?.telegramId) return undefined;
+    let active = true;
+    getUserProfile(user.telegramId)
+      .then((response) => {
+        if (active && response.user) setReferralUser(response.user);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [user?.telegramId]);
 
   const referralCode =
-    user?.referralCode ||
-    `REF${String(user?.telegramId || "PLAYER")
+    referralUser?.referralCode ||
+    `REF${String(referralUser?.telegramId || "PLAYER")
       .slice(-8)
       .toUpperCase()}`;
   const telegramBotUsername =
@@ -18,8 +33,8 @@ const Invite = () => {
   const referralLink = `https://t.me/${telegramBotUsername}?start=ref_${encodeURIComponent(referralCode)}`;
   const referralData = {
     referralCode,
-    referrals: Number(user?.referralCount || 0),
-    earned: `${Number(user?.referralEarnings || 0).toFixed(2)} ETB`,
+    referrals: Number(referralUser?.referralCount || 0),
+    earned: `${Number(referralUser?.referralEarnings || 0).toFixed(2)} ETB`,
   };
 
   const copyReferralValue = async (value) => {
@@ -137,7 +152,7 @@ const Invite = () => {
           {/* Copy Link Button */}
           <button
             onClick={handleCopyLink}
-            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-bold py-3 rounded-lg uppercase tracking-wide transition shadow-lg"
+            className="w-full bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-bold py-3 rounded-lg uppercase tracking-wide transition shadow-lg"
           >
             COPY LINK
           </button>
