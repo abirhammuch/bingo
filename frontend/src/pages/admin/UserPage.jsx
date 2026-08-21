@@ -92,9 +92,7 @@ const UserPage = () => {
         <div className="mt-6 grid gap-4 md:grid-cols-3">
           <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5">
             <div className="text-sm text-slate-400">Total Users</div>
-            <div className="mt-4 text-3xl font-semibold">
-              {seedUsers.length}
-            </div>
+            <div className="mt-4 text-3xl font-semibold">{users.length}</div>
           </div>
 
           <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5">
