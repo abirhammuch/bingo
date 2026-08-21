@@ -1,6 +1,9 @@
 ﻿import BingoGame from "../models/BingoGame.js";
 import User from "../models/User.js";
-import { chargeBingoCard } from "../services/wallet/bingoWalletService.js";
+import {
+  chargeBingoCard,
+  refundBingoPlayer,
+} from "../services/wallet/bingoWalletService.js";
 import {
   SELECTION_TIME_SECONDS,
   joinBingoGame,
@@ -476,6 +479,26 @@ export const initBingoSocket = (io) => {
           ? []
           : finalSelected.filter((value) => !currentSelected.includes(value));
         const stakePerCard = Number(game.minBet ?? 0);
+
+        if (isDeselect) {
+          for (const cardNumber of currentSelected.filter((value) =>
+            incomingNumbers.includes(Number(value)),
+          )) {
+            const refund = await refundBingoPlayer({
+              telegramId,
+              gameId,
+              amount: stakePerCard,
+              cardReference: cardNumber,
+            });
+            purchaseBalance = refund.balance;
+          }
+          player.betAmount = Math.max(
+            0,
+            Number(player.betAmount || 0) -
+              (currentSelected.length - finalSelected.length) * stakePerCard,
+          );
+        }
+
         for (const cardNumber of newCardNumbers) {
           const charge = await chargeBingoCard({
             telegramId,
@@ -571,6 +594,7 @@ export const initBingoSocket = (io) => {
 
         const response = {
           success: false,
+          code: error.code,
           message: error.message || "Failed to select card",
           balance: error.balance,
           required: error.required,

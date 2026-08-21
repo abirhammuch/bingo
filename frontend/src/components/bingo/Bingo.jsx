@@ -109,6 +109,8 @@ const Bingo = ({ theme }) => {
 
   const [selectionError, setSelectionError] = useState("");
 
+  const [toastMessage, setToastMessage] = useState("");
+
   // ============================================================
   // REFS
   // ============================================================
@@ -146,6 +148,17 @@ const Bingo = ({ theme }) => {
   useEffect(() => {
     winnerRef.current = winner;
   }, [winner]);
+
+  useEffect(() => {
+    if (!toastMessage) return undefined;
+
+    const timeout = setTimeout(() => setToastMessage(""), 3000);
+    return () => clearTimeout(timeout);
+  }, [toastMessage]);
+
+  const showToast = useCallback((message) => {
+    setToastMessage(message);
+  }, []);
 
   // ============================================================
   // HELPER: APPLY SERVER TIMER
@@ -881,6 +894,10 @@ const Bingo = ({ theme }) => {
 
             mySelectionsRef.current = confirmedSelections;
             setMySelections(confirmedSelections);
+
+            if (typeof response.balance === "number") {
+              updateUserBalance(response.balance);
+            }
           },
         );
 
@@ -894,6 +911,11 @@ const Bingo = ({ theme }) => {
       if (currentSelections.length >= MAX_LUCKY_NUMBERS) {
         console.log(`❌ Maximum ${MAX_LUCKY_NUMBERS} numbers allowed.`);
 
+        return;
+      }
+
+      if (Number(authUser.balance ?? 0) < Number(stakeAmount)) {
+        showToast("Insufficient balance");
         return;
       }
 
@@ -935,6 +957,12 @@ const Bingo = ({ theme }) => {
 
           if (!response?.success) {
             console.error("❌ Number selection failed:", response?.message);
+            if (
+              response?.code === "INSUFFICIENT_BALANCE" ||
+              response?.message?.toLowerCase().includes("insufficient")
+            ) {
+              showToast("Insufficient balance");
+            }
             setSelectionError(
               response?.message || "The server rejected this number.",
             );
@@ -974,7 +1002,13 @@ const Bingo = ({ theme }) => {
         },
       );
     },
-    [authUser?.telegramId, selectedNumbersGlobal, updateUserBalance],
+    [
+      authUser,
+      selectedNumbersGlobal,
+      showToast,
+      stakeAmount,
+      updateUserBalance,
+    ],
   );
 
   // ============================================================
@@ -1007,6 +1041,12 @@ const Bingo = ({ theme }) => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-slate-950 to-slate-900 flex flex-col">
+      {toastMessage && (
+        <div className="fixed right-4 top-4 z-50 rounded-lg border border-rose-400/40 bg-rose-950 px-4 py-3 text-sm font-semibold text-rose-100 shadow-lg">
+          {toastMessage}
+        </div>
+      )}
+
       {/* ======================================================
           HEADER
       ====================================================== */}

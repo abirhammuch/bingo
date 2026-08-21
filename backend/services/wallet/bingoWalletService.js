@@ -183,9 +183,16 @@ export const recordBingoCommission = async ({ gameId, amount }) => {
   }
 };
 
-export const refundBingoPlayer = async ({ telegramId, gameId, amount }) => {
+export const refundBingoPlayer = async ({
+  telegramId,
+  gameId,
+  amount,
+  cardReference,
+}) => {
   const refundAmount = Number(amount);
-  const reference = `bingo-refund:${gameId}:${telegramId}`;
+  const reference = cardReference
+    ? `bingo-refund:${gameId}:${telegramId}:${cardReference}`
+    : `bingo-refund:${gameId}:${telegramId}`;
   const existing = await findExistingTransaction(reference);
   if (existing) return { alreadyRefunded: true };
 
