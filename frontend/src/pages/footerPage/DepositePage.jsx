@@ -1,9 +1,50 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Footer from "../../components/footer/Footer";
+import { fetchUserHistory } from "../../services/userService";
 
 const DepositePage = () => {
   const navigate = useNavigate();
+  const [history, setHistory] = useState({ deposits: [], withdrawals: [] });
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [historyError, setHistoryError] = useState("");
+
+  useEffect(() => {
+    let mounted = true;
+    fetchUserHistory()
+      .then((response) => {
+        if (!mounted) return;
+        setHistory({
+          deposits: response.deposits || [],
+          withdrawals: response.withdrawals || [],
+        });
+      })
+      .catch((error) => {
+        if (mounted) setHistoryError(error.message || "Failed to load history");
+      })
+      .finally(() => {
+        if (mounted) setHistoryLoading(false);
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const recentHistory = [
+    ...history.deposits.map((item) => ({ ...item, activityType: "Deposit" })),
+    ...history.withdrawals.map((item) => ({
+      ...item,
+      activityType: "Withdraw",
+    })),
+  ]
+    .sort(
+      (first, second) => new Date(second.createdAt) - new Date(first.createdAt),
+    )
+    .slice(0, 6);
+
+  const formatDate = (value) =>
+    value ? new Date(value).toLocaleString() : "Unknown date";
 
   const paymentMethods = [
     {
@@ -72,6 +113,72 @@ const DepositePage = () => {
           ))}
         </div>
       </div>
+
+      <section className="border-t border-slate-700/50 px-4 py-6">
+        <div className="mx-auto max-w-4xl">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-bold text-white">
+                Deposit & Withdraw History
+              </h2>
+              <p className="mt-1 text-xs text-slate-500">
+                Recent wallet requests and their status
+              </p>
+            </div>
+            <button
+              onClick={() => navigate("/history")}
+              className="text-xs font-semibold text-emerald-400 hover:text-emerald-300"
+            >
+              VIEW ALL
+            </button>
+          </div>
+
+          {historyLoading && (
+            <p className="py-8 text-center text-sm text-slate-400">
+              Loading history...
+            </p>
+          )}
+          {!historyLoading && historyError && (
+            <p className="rounded-lg border border-rose-400/30 bg-rose-950/30 p-3 text-sm text-rose-300">
+              {historyError}
+            </p>
+          )}
+          {!historyLoading && !historyError && recentHistory.length === 0 && (
+            <p className="rounded-lg border border-dashed border-slate-700 p-8 text-center text-sm text-slate-500">
+              No deposit or withdrawal history yet.
+            </p>
+          )}
+          {!historyLoading && !historyError && recentHistory.length > 0 && (
+            <div className="space-y-2">
+              {recentHistory.map((item, index) => (
+                <div
+                  key={item.transactionId || item._id || index}
+                  className="flex items-center justify-between rounded-lg border border-slate-700 bg-slate-800/40 p-3"
+                >
+                  <div>
+                    <p
+                      className={`font-semibold ${item.activityType === "Deposit" ? "text-sky-300" : "text-violet-300"}`}
+                    >
+                      {item.activityType}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {formatDate(item.createdAt)}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-semibold text-slate-100">
+                      {Number(item.amount || 0).toFixed(2)} ETB
+                    </p>
+                    <p className="text-xs capitalize text-slate-400">
+                      {item.status || "pending"}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
 
       {/* Back Button */}
       <div className="px-4 py-4 border-t border-slate-700/50">
