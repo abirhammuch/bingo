@@ -28,7 +28,7 @@ const requireAdmin = (req, res, next) => {
 // Simple admin password login (no Telegram initData required)
 router.post("/login", async (req, res) => {
   const { password } = req.body;
-  const ADMIN_SECRET = process.env.ADMIN_SECRET;
+  const ADMIN_SECRET = process.env.ADMIN_PASSWORD || process.env.ADMIN_SECRET;
 
   if (!ADMIN_SECRET || password !== ADMIN_SECRET) {
     return res
