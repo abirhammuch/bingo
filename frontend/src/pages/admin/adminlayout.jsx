@@ -133,33 +133,33 @@ const AdminLayout = () => {
         </aside>
 
         <main className="space-y-6">
+          <div className="rounded-[32px] border border-slate-800 bg-slate-900/80 p-6 shadow-xl shadow-slate-950/40">
+            <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+              <div>
+                <div className="text-sm uppercase tracking-[0.3em] text-slate-500">
+                  Dashboard
+                </div>
+                <h1 className="mt-2 text-4xl font-semibold">
+                  Welcome back, yegna$bingo!
+                </h1>
+                <p className="mt-2 text-slate-400 max-w-2xl">
+                  Review platform performance, manage users, monitor
+                  transactions, and oversee active rooms from one place.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <button className="rounded-full border border-slate-700 bg-slate-800/80 px-4 py-2 text-sm text-slate-200 hover:bg-slate-800">
+                  Today
+                </button>
+                <button className="rounded-full border border-slate-700 bg-slate-800/80 px-4 py-2 text-sm text-slate-200 hover:bg-slate-800">
+                  Reports
+                </button>
+              </div>
+            </div>
+          </div>
+
           {location.pathname === "/admin" && (
             <>
-              <div className="rounded-[32px] border border-slate-800 bg-slate-900/80 p-6 shadow-xl shadow-slate-950/40">
-                <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-                  <div>
-                    <div className="text-sm uppercase tracking-[0.3em] text-slate-500">
-                      Dashboard
-                    </div>
-                    <h1 className="mt-2 text-4xl font-semibold">
-                      Welcome back, yegna$bingo!
-                    </h1>
-                    <p className="mt-2 text-slate-400 max-w-2xl">
-                      Review platform performance, manage users, monitor
-                      transactions, and oversee active rooms from one place.
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap gap-3">
-                    <button className="rounded-full border border-slate-700 bg-slate-800/80 px-4 py-2 text-sm text-slate-200 hover:bg-slate-800">
-                      Today
-                    </button>
-                    <button className="rounded-full border border-slate-700 bg-slate-800/80 px-4 py-2 text-sm text-slate-200 hover:bg-slate-800">
-                      Reports
-                    </button>
-                  </div>
-                </div>
-              </div>
-
               <div className="grid gap-4 xl:grid-cols-5 lg:grid-cols-2">
                 {stats.map((item) => (
                   <div
