@@ -2,7 +2,9 @@ import React, { useEffect, useState } from "react";
 import {
   createAdminCoupon,
   fetchAdminCoupons,
+  fetchCommissionData,
   toggleAdminCoupon,
+  updateCommissionSettings,
   updateAdminCoupon,
 } from "../../services/userService";
 
@@ -38,6 +40,13 @@ const BonusPage = ({ section = "all" }) => {
   const [activeCoupons, setActiveCoupons] = useState([]);
   const [couponError, setCouponError] = useState("");
   const [couponForm, setCouponForm] = useState(null);
+  const [commissionData, setCommissionData] = useState(null);
+  const [commissionForm, setCommissionForm] = useState({
+    percentage: 5,
+    tierOnePercentage: 4,
+    tierTwoPercentage: 6,
+  });
+  const [commissionError, setCommissionError] = useState("");
 
   useEffect(() => {
     if (section !== "coupons" && section !== "all") return;
@@ -47,6 +56,29 @@ const BonusPage = ({ section = "all" }) => {
         setCouponError(error.message || "Failed to load coupons"),
       );
   }, [section]);
+
+  useEffect(() => {
+    if (section !== "commission" && section !== "all") return;
+    fetchCommissionData()
+      .then((response) => {
+        setCommissionData(response);
+        setCommissionForm(response.settings);
+      })
+      .catch((error) =>
+        setCommissionError(error.message || "Failed to load commission data"),
+      );
+  }, [section]);
+
+  const saveCommission = async (event) => {
+    event.preventDefault();
+    setCommissionError("");
+    try {
+      const response = await updateCommissionSettings(commissionForm);
+      setCommissionForm(response.settings);
+    } catch (error) {
+      setCommissionError(error.message || "Failed to save commission settings");
+    }
+  };
 
   const saveCoupon = async (event) => {
     event.preventDefault();
@@ -467,27 +499,65 @@ const BonusPage = ({ section = "all" }) => {
         )}
 
         {show("commission") && (
-          <Panel
-            title="Game Round Commission (Bingo)"
-            action="Edit Commission Rules"
-          >
-            <div className="space-y-3 p-4 text-xs">
+          <Panel title="Game Round Commission (Bingo)">
+            {commissionError && (
+              <div className="m-4 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-300">
+                {commissionError}
+              </div>
+            )}
+            <form onSubmit={saveCommission} className="space-y-3 p-4 text-xs">
               {[
-                ["Commission Percentage (e.g. 5%)", "5%"],
-                ["Tier 1 (<$10 pot: 4%)", "4%"],
-                ["Tier 2 (>$10 pot: 6%)", "6%"],
-              ].map(([label, value]) => (
+                ["percentage", "Commission Percentage"],
+                ["tierOnePercentage", "Tier 1 (<$10 pot)"],
+                ["tierTwoPercentage", "Tier 2 (>$10 pot)"],
+              ].map(([field, label]) => (
                 <label
-                  key={label}
+                  key={field}
                   className="flex items-center justify-between gap-3 text-slate-400"
                 >
                   {label}
                   <input
-                    defaultValue={value}
+                    type="number"
+                    min="0"
+                    max="100"
+                    step="0.01"
+                    value={commissionForm[field]}
+                    onChange={(event) =>
+                      setCommissionForm({
+                        ...commissionForm,
+                        [field]: event.target.value,
+                      })
+                    }
                     className="h-8 w-24 rounded-lg border border-slate-700 bg-slate-950 px-2 text-slate-100"
                   />
                 </label>
               ))}
+              <button
+                type="submit"
+                className="rounded-lg bg-teal-600 px-3 py-2 text-xs font-medium text-white"
+              >
+                Save Commission Rules
+              </button>
+            </form>
+            <div className="grid gap-3 border-t border-slate-800 p-4 sm:grid-cols-2">
+              <div className="rounded-lg bg-slate-950 p-3">
+                <div className="text-xs text-slate-500">
+                  Total round balance
+                </div>
+                <div className="mt-1 text-xl font-semibold">
+                  {Number(commissionData?.totals?.totalBalance || 0).toFixed(2)}{" "}
+                  ETB
+                </div>
+              </div>
+              <div className="rounded-lg bg-slate-950 p-3">
+                <div className="text-xs text-slate-500">Commission earned</div>
+                <div className="mt-1 text-xl font-semibold text-teal-300">
+                  {Number(commissionData?.totals?.totalCommission || 0).toFixed(
+                    2,
+                  )}{" "}
+                  ETB
+                </div>
+              </div>
             </div>
             <div className="border-t border-slate-800 px-4 py-3">
               <div className="mb-2 text-xs text-slate-400">
@@ -503,12 +573,28 @@ const BonusPage = ({ section = "all" }) => {
                   </tr>
                 </thead>
                 <tbody>
-                  <tr className="border-t border-slate-800">
-                    <td className="py-2">365026489</td>
-                    <td>Pot Size</td>
-                    <td>$2.50</td>
-                    <td>Oct 27, 2023, 11:30</td>
-                  </tr>
+                  {(commissionData?.rounds || []).map((round) => (
+                    <tr key={round._id} className="border-t border-slate-800">
+                      <td className="py-2">{round.gameId}</td>
+                      <td>
+                        {Number(
+                          round.roundSummary?.totalBetAmount || 0,
+                        ).toFixed(2)}{" "}
+                        ETB
+                      </td>
+                      <td className="text-teal-300">
+                        {Number(
+                          round.roundSummary?.commissionAmount || 0,
+                        ).toFixed(2)}{" "}
+                        ETB
+                      </td>
+                      <td>
+                        {round.roundEndedAt
+                          ? new Date(round.roundEndedAt).toLocaleString()
+                          : "-"}
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>

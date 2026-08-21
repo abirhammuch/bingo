@@ -46,3 +46,8 @@ export const updateAdminCoupon = (id, payload) =>
 
 export const toggleAdminCoupon = (id) =>
   api.patch(`/api/admin/coupons/${id}/toggle`);
+
+export const fetchCommissionData = () => api.get("/api/admin/commission");
+
+export const updateCommissionSettings = (payload) =>
+  api.patch("/api/admin/commission", payload);

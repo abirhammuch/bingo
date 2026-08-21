@@ -343,6 +343,12 @@ const bingoGameSchema = new mongoose.Schema(
         default: 0,
       },
 
+      commissionPercentage: { type: Number, default: 0 },
+
+      commissionAmount: { type: Number, default: 0 },
+
+      playerPayoutTotal: { type: Number, default: 0 },
+
       calledNumbersCount: {
         type: Number,
         default: 0,

@@ -2,6 +2,8 @@ import express from "express";
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 import Coupon from "../models/Coupon.js";
+import CommissionSettings from "../models/CommissionSettings.js";
+import BingoGame from "../models/BingoGame.js";
 
 const router = express.Router();
 
@@ -150,6 +152,87 @@ router.patch("/coupons/:id/toggle", requireAdmin, async (req, res) => {
     res
       .status(500)
       .json({ success: false, message: "Failed to update coupon status" });
+  }
+});
+
+router.get("/commission", requireAdmin, async (req, res) => {
+  try {
+    const settings = (await CommissionSettings.findOne({
+      key: "bingo",
+    }).lean()) || {
+      percentage: 5,
+      tierOnePercentage: 4,
+      tierTwoPercentage: 6,
+    };
+    const rounds = await BingoGame.find({
+      "roundSummary.commissionAmount": { $gt: 0 },
+    })
+      .select("gameId roundSummary roundEndedAt")
+      .sort({ roundEndedAt: -1 })
+      .limit(20)
+      .lean();
+    const [totalsResult] = await BingoGame.aggregate([
+      { $match: { "roundSummary.commissionAmount": { $gt: 0 } } },
+      {
+        $group: {
+          _id: null,
+          totalBalance: { $sum: "$roundSummary.totalBetAmount" },
+          totalCommission: { $sum: "$roundSummary.commissionAmount" },
+        },
+      },
+    ]);
+    const totals = {
+      totalBalance: totalsResult?.totalBalance || 0,
+      totalCommission: totalsResult?.totalCommission || 0,
+    };
+    res.json({ success: true, settings, rounds, totals });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to load commission data" });
+  }
+});
+
+router.patch("/commission", requireAdmin, async (req, res) => {
+  try {
+    const values = [
+      req.body.percentage,
+      req.body.tierOnePercentage,
+      req.body.tierTwoPercentage,
+    ];
+    if (
+      values.some(
+        (value) =>
+          !Number.isFinite(Number(value)) ||
+          Number(value) < 0 ||
+          Number(value) > 100,
+      )
+    ) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message: "Commission percentages must be between 0 and 100",
+        });
+    }
+    const settings = await CommissionSettings.findOneAndUpdate(
+      { key: "bingo" },
+      {
+        key: "bingo",
+        percentage: Number(req.body.percentage),
+        tierOnePercentage: Number(req.body.tierOnePercentage),
+        tierTwoPercentage: Number(req.body.tierTwoPercentage),
+      },
+      { new: true, upsert: true, runValidators: true },
+    );
+    res.json({ success: true, settings });
+  } catch (error) {
+    res
+      .status(500)
+      .json({
+        success: false,
+        message: "Failed to update commission settings",
+      });
   }
 });
 

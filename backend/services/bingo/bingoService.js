@@ -1,6 +1,7 @@
 import BingoGame from "../../models/BingoGame.js";
 import BingoTicket from "../../models/BingoTicket.js";
 import User from "../../models/User.js";
+import CommissionSettings from "../../models/CommissionSettings.js";
 import { v4 as uuidv4 } from "uuid";
 
 export const SELECTION_TIME_SECONDS = 30;
@@ -670,6 +671,22 @@ export const joinBingoGame = async (
 
   game.roundSummary.totalBetAmount = getRealPlayers(game).reduce(
     (sum, player) => sum + Number(player.betAmount || 0),
+    0,
+  );
+
+  const commissionSettings = (await CommissionSettings.findOne({
+    key: "bingo",
+  }).lean()) || { percentage: 5 };
+  const commissionPercentage = Number(commissionSettings.percentage) || 0;
+  const commissionAmount = Number(
+    ((game.roundSummary.totalBetAmount * commissionPercentage) / 100).toFixed(
+      2,
+    ),
+  );
+  game.roundSummary.commissionPercentage = commissionPercentage;
+  game.roundSummary.commissionAmount = commissionAmount;
+  game.roundSummary.playerPayoutTotal = winners.reduce(
+    (sum, winner) => sum + Number(winner.winAmount || 0),
     0,
   );
 
