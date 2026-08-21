@@ -256,4 +256,74 @@ router.delete("/commission", requireAdmin, async (req, res) => {
   }
 });
 
+router.get("/stake", requireAdmin, async (req, res) => {
+  try {
+    const game = await BingoGame.findOne({
+      status: { $in: ["waiting", "active"] },
+    }).sort({ roundNumber: -1 });
+    res.json({
+      success: true,
+      stake: {
+        gameId: game?.gameId || null,
+        roomId: game?.roomId || "default-bingo-room",
+        status: game?.status || "waiting",
+        minBet: game?.minBet ?? 1,
+        maxBet: game?.maxBet ?? 100,
+        maxPlayers: game?.maxPlayers ?? 10,
+      },
+    });
+  } catch {
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to load stake settings" });
+  }
+});
+
+router.patch("/stake", requireAdmin, async (req, res) => {
+  try {
+    const minBet = Number(req.body.minBet);
+    const maxBet = Number(req.body.maxBet);
+    if (
+      !Number.isFinite(minBet) ||
+      !Number.isFinite(maxBet) ||
+      minBet < 0 ||
+      maxBet < minBet
+    ) {
+      return res
+        .status(400)
+        .json({
+          success: false,
+          message:
+            "Maximum stake must be greater than or equal to minimum stake",
+        });
+    }
+    const game = await BingoGame.findOne({
+      status: { $in: ["waiting", "active"] },
+    }).sort({ roundNumber: -1 });
+    if (!game)
+      return res
+        .status(404)
+        .json({ success: false, message: "No active Bingo round found" });
+    game.minBet = minBet;
+    game.maxBet = maxBet;
+    await game.save();
+    res.json({
+      success: true,
+      message: "Stake settings updated for the current round",
+      stake: {
+        gameId: game.gameId,
+        roomId: game.roomId,
+        status: game.status,
+        minBet: game.minBet,
+        maxBet: game.maxBet,
+        maxPlayers: game.maxPlayers,
+      },
+    });
+  } catch {
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to update stake settings" });
+  }
+});
+
 export default router;

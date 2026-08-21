@@ -18,6 +18,7 @@ import TransactionPage from "./pages/admin/TransactionPage.jsx";
 import AdminWithdrawPage from "./pages/admin/WithdrawPage.jsx";
 import AdminDepositPage from "./pages/admin/DepositePage.jsx";
 import BonusPage from "./pages/admin/BonusPage.jsx";
+import StakePage from "./pages/admin/StakePage.jsx";
 import { useAppContext } from "./context/AppContext.jsx";
 import Footer from "./components/footer/Footer";
 import AdminLoginPage from "./pages/admin/AdminLoginPage.jsx";
@@ -97,6 +98,7 @@ const App = () => {
               element={<BonusPage section="referral" />}
             />
             <Route path="coupons" element={<BonusPage section="coupons" />} />
+            <Route path="stake" element={<StakePage />} />
             <Route
               path="registration-bonus"
               element={<BonusPage section="registration" />}

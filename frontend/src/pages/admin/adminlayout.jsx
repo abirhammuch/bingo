@@ -16,6 +16,7 @@ const adminMenu = [
   { to: "/admin/users", label: "Users", icon: <FaUsers /> },
   { to: "/admin/referral-bonus", label: "Referral Bonus", icon: <FaTrophy /> },
   { to: "/admin/coupons", label: "Coupons", icon: <FaCoins /> },
+  { to: "/admin/stake", label: "Stake", icon: <FaCoins /> },
   {
     to: "/admin/registration-bonus",
     label: "Registration Bonus",
