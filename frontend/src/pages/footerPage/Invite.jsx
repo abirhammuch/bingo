@@ -1,38 +1,44 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import Footer from "../../components/footer/Footer";
+import { useAuth } from "../../context/AuthContext";
 
 const Invite = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [copied, setCopied] = useState(false);
 
-  // Mock user data
+  const referralCode =
+    user?.referralCode ||
+    `REF${String(user?.telegramId || "PLAYER")
+      .slice(-8)
+      .toUpperCase()}`;
+  const referralLink = `${window.location.origin}/ref/${encodeURIComponent(referralCode)}`;
   const referralData = {
-    referralCode: "LY9NEFCG",
+    referralCode,
     referrals: 0,
     earned: "0 ETB",
   };
 
-  const handleCopyCode = () => {
-    navigator.clipboard.writeText(referralData.referralCode);
+  const copyReferralValue = async (value) => {
+    await navigator.clipboard.writeText(value);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
   const handleCopyLink = () => {
-    const referralLink = `https://yourapp.com/ref/${referralData.referralCode}`;
-    navigator.clipboard.writeText(referralLink);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    copyReferralValue(referralLink);
   };
 
   const handleShare = () => {
-    const referralLink = `https://yourapp.com/ref/${referralData.referralCode}`;
     if (navigator.share) {
-      navigator.share({
-        title: "Invite Friends",
-        text: "Earn ETB for every friend you bring",
-        url: referralLink,
-      });
+      navigator
+        .share({
+          title: "Invite Friends",
+          text: "Earn ETB for every friend you bring",
+          url: referralLink,
+        })
+        .catch(() => {});
     } else {
       // Fallback: copy link
       handleCopyLink();
@@ -94,7 +100,7 @@ const Invite = () => {
               {referralData.referralCode}
             </p>
             <button
-              onClick={handleCopyCode}
+              onClick={() => copyReferralValue(referralData.referralCode)}
               className={`px-4 py-2 rounded-lg border text-xs font-semibold uppercase tracking-wide transition flex items-center gap-2 ${
                 copied
                   ? "bg-emerald-500/20 border-emerald-400 text-emerald-300"
@@ -102,6 +108,23 @@ const Invite = () => {
               }`}
             >
               <span className="text-sm">{copied ? "✓" : "📋"}</span>
+              {copied ? "COPIED" : "COPY"}
+            </button>
+          </div>
+        </div>
+
+        <div className="mb-6 rounded-xl border border-slate-700 bg-slate-800/30 p-4">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-widest text-slate-500">
+            YOUR INVITE LINK
+          </p>
+          <div className="flex items-center gap-2">
+            <p className="min-w-0 flex-1 truncate text-sm text-slate-300">
+              {referralLink}
+            </p>
+            <button
+              onClick={handleCopyLink}
+              className="shrink-0 rounded-lg border border-slate-600 px-3 py-2 text-xs font-semibold text-slate-300 hover:bg-slate-700"
+            >
               {copied ? "COPIED" : "COPY"}
             </button>
           </div>
@@ -126,6 +149,7 @@ const Invite = () => {
           </button>
         </div>
       </div>
+      <Footer />
     </div>
   );
 };
