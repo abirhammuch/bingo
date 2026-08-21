@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import {
   FaUsers,
@@ -10,6 +10,7 @@ import {
   FaShieldAlt,
   FaChartLine,
 } from "react-icons/fa";
+import { fetchAdminDashboard } from "../../services/userService";
 
 const adminMenu = [
   { to: "/admin", label: "Dashboard", icon: <FaChartLine /> },
@@ -76,6 +77,8 @@ const stats = [
 
 const AdminLayout = () => {
   const location = useLocation();
+  const [dashboard, setDashboard] = useState(null);
+  const [dashboardError, setDashboardError] = useState("");
   const query = location.search.replace("?", "");
   const isActive = (to) => {
     const [path, mode] = to.split("?");
@@ -84,6 +87,61 @@ const AdminLayout = () => {
     }
     return location.pathname === to;
   };
+
+  useEffect(() => {
+    if (location.pathname !== "/admin") return undefined;
+
+    let active = true;
+    setDashboardError("");
+    fetchAdminDashboard()
+      .then((response) => {
+        if (active) setDashboard(response);
+      })
+      .catch((error) => {
+        if (active) setDashboardError(error.message || "Dashboard unavailable");
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [location.pathname]);
+
+  const dashboardStats = dashboard?.stats
+    ? [
+        {
+          label: "Total Users",
+          value: dashboard.stats.totalUsers.toLocaleString(),
+          meta: `Active: ${dashboard.stats.activeUsers.toLocaleString()}`,
+          color: "from-slate-900 to-slate-800",
+        },
+        {
+          label: "Total Games",
+          value: dashboard.stats.totalGames.toLocaleString(),
+          meta: `Active: ${dashboard.stats.activeGames.toLocaleString()}`,
+          color: "from-emerald-950 to-emerald-800",
+        },
+        {
+          label: "Revenue",
+          value: `${Number(dashboard.stats.revenue).toFixed(2)} ETB`,
+          meta: "Completed bets",
+          color: "from-violet-950 to-violet-800",
+        },
+        {
+          label: "Commission",
+          value: `${Number(dashboard.stats.commission).toFixed(2)} ETB`,
+          meta: "Recorded commission",
+          color: "from-amber-950 to-amber-800",
+        },
+        {
+          label: "Referral",
+          value: dashboard.stats.referralCount.toLocaleString(),
+          meta: `Earnings: ${Number(dashboard.stats.referralEarnings).toFixed(2)} ETB`,
+          color: "from-cyan-950 to-cyan-800",
+        },
+      ]
+    : stats;
+
+  const currentRound = dashboard?.currentRound;
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
@@ -160,21 +218,24 @@ const AdminLayout = () => {
                   transactions, and oversee active rooms from one place.
                 </p>
               </div>
-              <div className="flex flex-wrap gap-3">
-                <button className="rounded-full border border-slate-700 bg-slate-800/80 px-4 py-2 text-sm text-slate-200 hover:bg-slate-800">
-                  Today
-                </button>
-                <button className="rounded-full border border-slate-700 bg-slate-800/80 px-4 py-2 text-sm text-slate-200 hover:bg-slate-800">
-                  Reports
-                </button>
-              </div>
+              <Link
+                to="/admin/transactions"
+                className="rounded-full border border-slate-700 bg-slate-800/80 px-4 py-2 text-sm text-slate-200 hover:bg-slate-800"
+              >
+                View reports
+              </Link>
             </div>
           </div>
 
           {location.pathname === "/admin" && (
             <>
               <div className="grid gap-4 xl:grid-cols-5 lg:grid-cols-2">
-                {stats.map((item) => (
+                {dashboardError && (
+                  <div className="xl:col-span-5 lg:col-span-2 rounded-2xl border border-rose-400/30 bg-rose-950/40 p-4 text-sm text-rose-200">
+                    {dashboardError}
+                  </div>
+                )}
+                {dashboardStats.map((item) => (
                   <div
                     key={item.label}
                     className={`rounded-3xl border border-slate-800 p-5 bg-gradient-to-br ${item.color} bg-slate-950/80 shadow-lg shadow-slate-950/20`}
@@ -202,7 +263,7 @@ const AdminLayout = () => {
                       </h2>
                     </div>
                     <span className="rounded-full border border-emerald-500/30 bg-emerald-500/15 px-3 py-1 text-sm font-medium text-emerald-300">
-                      Live
+                      {currentRound?.status === "active" ? "Live" : "Waiting"}
                     </span>
                   </div>
 
@@ -212,7 +273,9 @@ const AdminLayout = () => {
                         Phase
                       </div>
                       <div className="mt-3 text-2xl font-semibold text-white">
-                        Selection
+                        {currentRound?.status === "active"
+                          ? "Live"
+                          : "Selection"}
                       </div>
                     </div>
 
@@ -221,7 +284,9 @@ const AdminLayout = () => {
                         Timer
                       </div>
                       <div className="mt-3 text-2xl font-semibold text-amber-300">
-                        23s
+                        {currentRound?.selectionEndsAt
+                          ? `${Math.max(0, Math.ceil((new Date(currentRound.selectionEndsAt).getTime() - Date.now()) / 1000))}s`
+                          : "--"}
                       </div>
                     </div>
 
@@ -230,7 +295,7 @@ const AdminLayout = () => {
                         Players
                       </div>
                       <div className="mt-3 text-2xl font-semibold text-emerald-300">
-                        18
+                        {currentRound?.playerCount ?? 0}
                       </div>
                     </div>
                   </div>
@@ -245,9 +310,12 @@ const AdminLayout = () => {
                           Selection closes at 0s, then live game begins.
                         </div>
                       </div>
-                      <button className="rounded-full border border-slate-700 bg-slate-800 px-4 py-2 text-sm text-slate-200 hover:bg-slate-700">
+                      <Link
+                        to="/admin/stake"
+                        className="rounded-full border border-slate-700 bg-slate-800 px-4 py-2 text-sm text-slate-200 hover:bg-slate-700"
+                      >
                         Manage Round
-                      </button>
+                      </Link>
                     </div>
                   </div>
                 </section>
@@ -257,15 +325,24 @@ const AdminLayout = () => {
                     Quick actions
                   </div>
                   <div className="mt-5 space-y-3">
-                    <button className="w-full rounded-2xl border border-slate-700 bg-slate-800 px-4 py-3 text-left text-slate-100 hover:bg-slate-700">
+                    <Link
+                      to="/admin/stake"
+                      className="block w-full rounded-2xl border border-slate-700 bg-slate-800 px-4 py-3 text-left text-slate-100 hover:bg-slate-700"
+                    >
                       Start new round
-                    </button>
-                    <button className="w-full rounded-2xl border border-slate-700 bg-slate-800 px-4 py-3 text-left text-slate-100 hover:bg-slate-700">
-                      Pause live draw
-                    </button>
-                    <button className="w-full rounded-2xl border border-slate-700 bg-slate-800 px-4 py-3 text-left text-slate-100 hover:bg-slate-700">
-                      Reset winner state
-                    </button>
+                    </Link>
+                    <Link
+                      to="/admin/stake"
+                      className="block w-full rounded-2xl border border-slate-700 bg-slate-800 px-4 py-3 text-left text-slate-100 hover:bg-slate-700"
+                    >
+                      Manage live draw
+                    </Link>
+                    <Link
+                      to="/admin/transactions"
+                      className="block w-full rounded-2xl border border-slate-700 bg-slate-800 px-4 py-3 text-left text-slate-100 hover:bg-slate-700"
+                    >
+                      Review transactions
+                    </Link>
                   </div>
                 </aside>
               </div>

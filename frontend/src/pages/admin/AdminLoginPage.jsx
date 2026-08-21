@@ -15,7 +15,7 @@ const AdminLoginPage = () => {
       const data = await api.post("/api/admin/login", { password });
 
       localStorage.setItem("adminToken", data.token);
-      navigate("/admin/users");
+      navigate("/admin");
     } catch (err) {
       setError(err.message);
     }

@@ -30,6 +30,8 @@ export const fetchUsers = (query = {}) => {
   return api.get(`/api/users/admin/users${params ? `?${params}` : ""}`);
 };
 
+export const fetchAdminDashboard = () => api.get("/api/admin/dashboard");
+
 export const toggleUserBlock = (telegramId) =>
   api.patch(`/api/users/admin/block/${encodeURIComponent(telegramId)}`);
 

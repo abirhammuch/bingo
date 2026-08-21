@@ -4,6 +4,7 @@ import User from "../models/User.js";
 import Coupon from "../models/Coupon.js";
 import CommissionSettings from "../models/CommissionSettings.js";
 import BingoGame from "../models/BingoGame.js";
+import Transaction from "../models/Transaction.js";
 
 const router = express.Router();
 
@@ -66,6 +67,80 @@ router.get("/users", async (req, res) => {
     res.json({ success: true, users });
   } catch (error) {
     res.status(401).json({ success: false, message: "Invalid token" });
+  }
+});
+
+router.get("/dashboard", requireAdmin, async (req, res) => {
+  try {
+    const [
+      totalUsers,
+      activeUsers,
+      totalGames,
+      activeGames,
+      transactionTotals,
+      currentRound,
+    ] = await Promise.all([
+      User.countDocuments(),
+      User.countDocuments({ isActive: true, isBlocked: false }),
+      BingoGame.countDocuments(),
+      BingoGame.countDocuments({ status: { $in: ["waiting", "active"] } }),
+      Transaction.aggregate([
+        {
+          $match: {
+            status: "completed",
+            type: { $in: ["BET", "COMMISSION"] },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            revenue: {
+              $sum: { $cond: [{ $eq: ["$type", "BET"] }, "$amount", 0] },
+            },
+            commission: {
+              $sum: {
+                $cond: [{ $eq: ["$type", "COMMISSION"] }, "$amount", 0],
+              },
+            },
+          },
+        },
+      ]),
+      BingoGame.findOne({ status: { $in: ["waiting", "active"] } })
+        .sort({ roundNumber: -1 })
+        .select("status minBet players selectionEndsAt roundNumber")
+        .lean(),
+    ]);
+
+    const totals = transactionTotals[0] || {};
+    const players = currentRound?.players || [];
+
+    res.json({
+      success: true,
+      stats: {
+        totalUsers,
+        activeUsers,
+        totalGames,
+        activeGames,
+        revenue: totals.revenue || 0,
+        commission: totals.commission || 0,
+        referralCount: 0,
+        referralEarnings: 0,
+      },
+      currentRound: currentRound
+        ? {
+            status: currentRound.status,
+            stakeAmount: currentRound.minBet ?? 0,
+            playerCount: players.filter((player) => !player.isSpectator).length,
+            selectionEndsAt: currentRound.selectionEndsAt || null,
+            roundNumber: currentRound.roundNumber || null,
+          }
+        : null,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to load admin dashboard",
+    });
   }
 });
 
