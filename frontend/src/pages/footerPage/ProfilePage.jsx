@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import { useNavigate } from "react-router-dom";
 import Footer from "../../components/footer/Footer";
 import { useAuth } from "../../context/AuthContext";
@@ -6,28 +6,14 @@ import { useAuth } from "../../context/AuthContext";
 const ProfilePage = () => {
   const navigate = useNavigate();
   const { user: authUser } = useAuth();
-  const [copied, setCopied] = useState("");
 
-  const referralCode =
-    authUser?.referralCode ||
-    `REF${String(authUser?.telegramId || "PLAYER")
-      .slice(-8)
-      .toUpperCase()}`;
-  const referralLink = `${window.location.origin}/ref/${encodeURIComponent(referralCode)}`;
   const user = {
     name: authUser?.firstName || authUser?.username || "Player",
     handle: authUser?.username ? `@${authUser.username}` : "",
     avatar: "👤",
-    referralCode,
     referrals: 0,
     earned: "0 ETB",
     isOnline: true,
-  };
-
-  const copyValue = async (value, type) => {
-    await navigator.clipboard.writeText(value);
-    setCopied(type);
-    setTimeout(() => setCopied(""), 2000);
   };
 
   return (
@@ -50,40 +36,6 @@ const ProfilePage = () => {
             <div className="flex-1">
               <h1 className="text-xl font-bold text-white">{user.name}</h1>
               <p className="text-slate-400 text-sm">{user.handle}</p>
-
-              {/* Referral Code */}
-              <div className="mt-4 p-3 bg-slate-800/60 border border-slate-700 rounded-lg flex items-center justify-between">
-                <div>
-                  <p className="text-xs uppercase tracking-widest text-slate-500 font-semibold">
-                    REF CODE
-                  </p>
-                  <p className="text-lg font-mono font-bold text-emerald-400">
-                    {user.referralCode}
-                  </p>
-                </div>
-                <button
-                  onClick={() => copyValue(user.referralCode, "code")}
-                  className={`px-3 py-1 rounded border text-xs font-semibold uppercase tracking-wide transition ${
-                    copied
-                      ? "bg-emerald-500/20 border-emerald-400 text-emerald-300"
-                      : "bg-slate-700/50 border-slate-600 text-slate-300 hover:bg-slate-700 hover:border-slate-500"
-                  }`}
-                >
-                  {copied === "code" ? "✓ COPIED" : "COPY"}
-                </button>
-              </div>
-
-              <div className="mt-3 flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-950/50 p-3">
-                <p className="min-w-0 flex-1 truncate text-xs text-slate-400">
-                  {referralLink}
-                </p>
-                <button
-                  onClick={() => copyValue(referralLink, "link")}
-                  className="shrink-0 rounded border border-slate-600 px-3 py-1 text-xs font-semibold text-slate-300 hover:bg-slate-700"
-                >
-                  {copied === "link" ? "COPIED" : "COPY LINK"}
-                </button>
-              </div>
             </div>
           </div>
         </div>
