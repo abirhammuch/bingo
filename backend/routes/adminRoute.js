@@ -412,18 +412,41 @@ router.patch(
         status: "pending",
       });
       if (!transaction) {
-        return res
-          .status(404)
-          .json({
-            success: false,
-            message: "Pending wallet request not found",
-          });
+        return res.status(404).json({
+          success: false,
+          message: "Pending wallet request not found",
+        });
       }
 
       if (action === "reject") {
+        const user = await User.findOne({ telegramId: transaction.telegramId });
+        const balanceBefore = user ? Number(user.balance) : null;
+        const refundAmount =
+          transaction.type === "withdraw" && transaction.metadata?.walletDebited
+            ? Number(transaction.metadata.total ?? transaction.amount)
+            : 0;
+
+        if (user && refundAmount > 0) {
+          user.balance = Number(user.balance) + refundAmount;
+          await user.save();
+        }
         transaction.status = "failed";
+        transaction.balanceBefore = balanceBefore;
+        transaction.balanceAfter = user
+          ? Number(user.balance)
+          : transaction.balanceAfter;
+        if (refundAmount > 0) {
+          transaction.metadata = {
+            ...(transaction.metadata || {}),
+            walletRefunded: true,
+          };
+        }
         await transaction.save();
-        return res.json({ success: true, transaction });
+        return res.json({
+          success: true,
+          transaction,
+          balance: user?.balance,
+        });
       }
 
       const user = await User.findOne({ telegramId: transaction.telegramId });
@@ -432,10 +455,15 @@ router.patch(
           .status(404)
           .json({ success: false, message: "User not found" });
 
+      const walletAlreadyDebited =
+        transaction.type === "withdraw" &&
+        transaction.metadata?.walletDebited === true;
       const walletChange =
         transaction.type === "deposit"
           ? Number(transaction.amount)
-          : -Number(transaction.metadata?.total ?? transaction.amount);
+          : walletAlreadyDebited
+            ? 0
+            : -Number(transaction.metadata?.total ?? transaction.amount);
       const nextBalance = Number(user.balance) + walletChange;
       if (nextBalance < 0) {
         return res

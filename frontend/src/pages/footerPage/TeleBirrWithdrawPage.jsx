@@ -90,11 +90,18 @@ const TeleBirrWithdrawPage = () => {
     }
     setError("");
     try {
-      await submitWithdrawal({
+      const response = await submitWithdrawal({
         amount,
         method: withdrawData.method,
         account: phone,
       });
+      if (typeof response.transaction?.balance === "number") {
+        updateUserBalance(response.transaction.balance);
+        setWithdrawData((current) => ({
+          ...current,
+          availableBalance: response.transaction.balance,
+        }));
+      }
       setStep(4);
     } catch (submitError) {
       setError(submitError.message || "Failed to submit withdrawal");

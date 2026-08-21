@@ -25,24 +25,20 @@ const submitWithdrawal = async (req, res) => {
     const total = amount + fee;
 
     if (!telegramId || !method || !account) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Method, account, and amount are required",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Method, account, and amount are required",
+      });
     }
     if (
       !Number.isFinite(amount) ||
       amount < settings.minAmount ||
       amount > settings.maxAmount
     ) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Withdrawal amount is outside the allowed range",
-        });
+      return res.status(400).json({
+        success: false,
+        message: "Withdrawal amount is outside the allowed range",
+      });
     }
 
     const user = await User.findOne({ telegramId });
@@ -50,25 +46,37 @@ const submitWithdrawal = async (req, res) => {
       return res
         .status(404)
         .json({ success: false, message: "User not found" });
-    if (Number(user.balance) < total) {
-      return res
-        .status(400)
-        .json({
-          success: false,
-          message: "Insufficient balance for withdrawal and fee",
-        });
+    const balanceBefore = Number(user.balance);
+    const updatedUser = await User.findOneAndUpdate(
+      { telegramId, balance: { $gte: total } },
+      { $inc: { balance: -total } },
+      { new: true },
+    );
+    if (!updatedUser) {
+      return res.status(400).json({
+        success: false,
+        message: "Insufficient balance for withdrawal and fee",
+      });
     }
 
-    const transaction = await Transaction.create({
-      transactionId: `withdraw:${randomUUID()}`,
-      telegramId,
-      userId: user._id,
-      type: "withdraw",
-      amount,
-      status: "pending",
-      description: `${method} withdrawal request`,
-      metadata: { method, account, fee, total },
-    });
+    let transaction;
+    try {
+      transaction = await Transaction.create({
+        transactionId: `withdraw:${randomUUID()}`,
+        telegramId,
+        userId: user._id,
+        type: "withdraw",
+        amount,
+        status: "pending",
+        description: `${method} withdrawal request`,
+        balanceBefore,
+        balanceAfter: updatedUser.balance,
+        metadata: { method, account, fee, total, walletDebited: true },
+      });
+    } catch (error) {
+      await User.updateOne({ _id: user._id }, { $inc: { balance: total } });
+      throw error;
+    }
 
     res.status(201).json({
       success: true,
@@ -79,6 +87,7 @@ const submitWithdrawal = async (req, res) => {
         fee,
         total,
         status: transaction.status,
+        balance: updatedUser.balance,
       },
     });
   } catch (error) {
