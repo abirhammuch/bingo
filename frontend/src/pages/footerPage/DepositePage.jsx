@@ -31,7 +31,7 @@ const DepositePage = () => {
   };
 
   return (
-    <div className="pb-16 min-h-screen bg-gradient-to-b from-slate-950 to-slate-900">
+    <div className="pb-16 min-h-screen bg-linear-to-b from-slate-950 to-slate-900">
       {/* Page Header */}
       <div className="bg-slate-900/60 border-b border-slate-700 p-4">
         <div className="max-w-4xl mx-auto">
@@ -52,7 +52,7 @@ const DepositePage = () => {
               {/* Icon and Details */}
               <div className="flex items-center gap-4">
                 <div
-                  className={`w-14 h-14 rounded-lg bg-gradient-to-br ${method.color} flex items-center justify-center shadow-lg`}
+                  className={`w-14 h-14 rounded-lg bg-linear-to-br ${method.color} flex items-center justify-center shadow-lg`}
                 >
                   <span className="text-2xl">{method.icon}</span>
                 </div>

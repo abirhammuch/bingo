@@ -136,7 +136,7 @@ const TelebirrDepositePage = () => {
 
             {/* Instructions */}
             <div className="mb-6 bg-slate-800/30 border border-slate-700 rounded-lg p-4 flex gap-3">
-              <div className="text-slate-500 flex-shrink-0">
+              <div className="text-slate-500 shrink-0">
                 <span className="text-lg">ℹ️</span>
               </div>
               <p className="text-sm text-slate-400">
@@ -147,7 +147,7 @@ const TelebirrDepositePage = () => {
             {/* Next Step Button */}
             <button
               onClick={handleNextStep}
-              className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white font-bold py-3 rounded-lg uppercase tracking-wide transition shadow-lg"
+              className="w-full bg-linear-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white font-bold py-3 rounded-lg uppercase tracking-wide transition shadow-lg"
             >
               I'VE SENT — ENTER RECEIPT &gt;
             </button>
@@ -174,7 +174,7 @@ const TelebirrDepositePage = () => {
             <button
               onClick={handleSubmit}
               disabled={submitting}
-              className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white font-bold py-3 rounded-lg uppercase tracking-wide transition shadow-lg"
+              className="w-full bg-linear-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white font-bold py-3 rounded-lg uppercase tracking-wide transition shadow-lg"
             >
               {submitting ? "SUBMITTING..." : "SUBMIT FOR REVIEW"}
             </button>
