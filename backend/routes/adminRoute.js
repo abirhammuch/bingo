@@ -80,7 +80,7 @@ router.get("/coupons", requireAdmin, async (req, res) => {
 
 router.post("/coupons", requireAdmin, async (req, res) => {
   try {
-    const { code, type, value, expiry } = req.body;
+    const { code, type, value, expiry, perUserLimit } = req.body;
     const normalizedCode = String(code || "")
       .trim()
       .toUpperCase();
@@ -95,6 +95,7 @@ router.post("/coupons", requireAdmin, async (req, res) => {
       type: type || "Bonus Type",
       value: numericValue,
       expiry: expiry || null,
+      perUserLimit: Math.max(1, Number(perUserLimit) || 1),
     });
     res.status(201).json({ success: true, coupon });
   } catch (error) {
@@ -116,6 +117,9 @@ router.patch("/coupons/:id", requireAdmin, async (req, res) => {
     if (req.body.type !== undefined) updates.type = req.body.type;
     if (req.body.value !== undefined) updates.value = Number(req.body.value);
     if (req.body.expiry !== undefined) updates.expiry = req.body.expiry || null;
+    if (req.body.perUserLimit !== undefined) {
+      updates.perUserLimit = Math.max(1, Number(req.body.perUserLimit) || 1);
+    }
     const coupon = await Coupon.findByIdAndUpdate(req.params.id, updates, {
       new: true,
       runValidators: true,

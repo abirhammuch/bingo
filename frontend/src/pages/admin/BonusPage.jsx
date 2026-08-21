@@ -139,6 +139,7 @@ const BonusPage = ({ section = "all" }) => {
                     type: "Bonus Type",
                     value: "",
                     expiry: "",
+                    perUserLimit: 1,
                   })
                 }
                 className="rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-500"
@@ -197,6 +198,21 @@ const BonusPage = ({ section = "all" }) => {
                   }
                   className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
                 />
+                <input
+                  required
+                  min="1"
+                  step="1"
+                  type="number"
+                  placeholder="Uses per user"
+                  value={couponForm.perUserLimit ?? 1}
+                  onChange={(event) =>
+                    setCouponForm({
+                      ...couponForm,
+                      perUserLimit: event.target.value,
+                    })
+                  }
+                  className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm"
+                />
                 <div className="flex gap-2 sm:col-span-4">
                   <button
                     type="submit"
@@ -223,6 +239,7 @@ const BonusPage = ({ section = "all" }) => {
                       "Bonus Type",
                       "Value",
                       "Usage",
+                      "Per User",
                       "Expiry",
                       "Status",
                       "Actions",
@@ -242,6 +259,9 @@ const BonusPage = ({ section = "all" }) => {
                         ${Number(coupon.value).toFixed(2)}
                       </td>
                       <td className="px-3 py-2.5">{coupon.usage}</td>
+                      <td className="px-3 py-2.5">
+                        {coupon.perUserLimit || 1}
+                      </td>
                       <td className="px-3 py-2.5 whitespace-nowrap">
                         {coupon.expiry
                           ? new Date(coupon.expiry).toLocaleDateString()
@@ -260,6 +280,7 @@ const BonusPage = ({ section = "all" }) => {
                             setCouponForm({
                               ...coupon,
                               value: String(coupon.value),
+                              perUserLimit: coupon.perUserLimit || 1,
                             })
                           }
                           className="mr-1 rounded border border-slate-700 px-2 py-1 text-[10px] text-slate-300"

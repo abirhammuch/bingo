@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import api from "../../utils/apiClient";
 
 const AdminLoginPage = () => {
   const [password, setPassword] = useState("");
@@ -11,14 +12,7 @@ const AdminLoginPage = () => {
     setError("");
 
     try {
-      const res = await fetch("/api/admin/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
-      });
-
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Invalid password");
+      const data = await api.post("/api/admin/login", { password });
 
       localStorage.setItem("adminToken", data.token);
       navigate("/admin/users");
