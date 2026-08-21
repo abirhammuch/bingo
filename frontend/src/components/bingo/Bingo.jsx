@@ -103,6 +103,8 @@ const Bingo = ({ theme }) => {
 
   const [noSelectionsMessage, setNoSelectionsMessage] = useState(null);
 
+  const [selectionError, setSelectionError] = useState("");
+
   // ============================================================
   // REFS
   // ============================================================
@@ -775,6 +777,7 @@ const Bingo = ({ theme }) => {
   const toggleLuckyNumber = useCallback(
     (number) => {
       console.log("🎯 SELECT NUMBER:", number);
+      setSelectionError("");
 
       // --------------------------------------------------------
       // ROUND MUST BE WAITING
@@ -782,6 +785,7 @@ const Bingo = ({ theme }) => {
 
       if (roundStatusRef.current !== "WAITING") {
         console.log("❌ Selection phase closed.");
+        setSelectionError("Number selection is not open for this round yet.");
 
         return;
       }
@@ -792,6 +796,9 @@ const Bingo = ({ theme }) => {
 
       if (remainingSecondsRef.current <= 0) {
         console.log("❌ Selection timer expired.");
+        setSelectionError(
+          "The selection timer has expired. Please wait for the next round.",
+        );
 
         return;
       }
@@ -802,6 +809,9 @@ const Bingo = ({ theme }) => {
 
       if (!authUser?.telegramId) {
         console.warn("❌ Telegram user not authenticated.");
+        setSelectionError(
+          "Please log in with Telegram before selecting a number.",
+        );
 
         return;
       }
@@ -812,6 +822,7 @@ const Bingo = ({ theme }) => {
 
       if (!roundIdRef.current) {
         console.warn("❌ No active Bingo game.");
+        setSelectionError("No active Bingo round is available.");
 
         return;
       }
@@ -906,6 +917,9 @@ const Bingo = ({ theme }) => {
 
           if (!response?.success) {
             console.error("❌ Number selection failed:", response?.message);
+            setSelectionError(
+              response?.message || "The server rejected this number.",
+            );
 
             return;
           }
@@ -1016,6 +1030,7 @@ const Bingo = ({ theme }) => {
               roundStatus === "WAITING" && remainingSeconds > 0
             }
             toggleLuckyNumber={toggleLuckyNumber}
+            selectionError={selectionError}
           />
         )}
 
