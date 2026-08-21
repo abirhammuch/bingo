@@ -11,7 +11,6 @@ import {
 
 const referrals = [
   ["BingoStar99", "LucyLy", "BingoStar99", "Oct 27, 2023, 11:15 GMT", "Paid"],
-  ["LuckyDip22", "LuckyDip22", "LucyLy", "Oct 27, 2023, 11:20 GMT", "Approved"],
 ];
 
 const statusStyles = {
