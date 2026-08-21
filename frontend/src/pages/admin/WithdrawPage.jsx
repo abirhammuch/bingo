@@ -4,79 +4,6 @@ import {
   updateAdminWalletRequest,
 } from "../../services/userService";
 
-const requests = [
-  {
-    id: "#WD-12345",
-    user: "BingoStar99",
-    amount: "$150.00",
-    method: "PayPal",
-    date: "Oct 26, 2023, 14:30 GMT",
-    account: "paypal@email.com",
-    activity: "55 Games, 1 Win",
-    status: "Pending",
-  },
-  {
-    id: "#WD-12346",
-    user: "LucyLy",
-    amount: "$500.00",
-    method: "Bank Transfer",
-    date: "Oct 26, 2023, 14:30 GMT",
-    account: "****6789",
-    activity: "120 Games, 3 Wins",
-    status: "Approved",
-  },
-  {
-    id: "#WD-12347",
-    user: "LuckyDip22",
-    amount: "$75.50",
-    method: "Bank Transfer",
-    date: "Oct 26, 2023, 14:30 GMT",
-    account: "****6789",
-    activity: "120 Games, 3 Wins",
-    status: "Approved",
-  },
-  {
-    id: "#WD-12348",
-    user: "LuckyDip22",
-    amount: "$75.50",
-    method: "Crypto",
-    date: "Oct 26, 2023, 14:30 GMT",
-    account: "BTC Address",
-    activity: "120 Games, 1 Win",
-    status: "Flagged",
-  },
-  {
-    id: "#WD-12345",
-    user: "BingoStar99",
-    amount: "$150.00",
-    method: "PayPal",
-    date: "Oct 26, 2023, 14:30 GMT",
-    account: "paypal@email.com",
-    activity: "120 Games, 3 Wins",
-    status: "Approved",
-  },
-  {
-    id: "#WD-12346",
-    user: "LucyLy",
-    amount: "$500.00",
-    method: "Bank Transfer",
-    date: "Oct 26, 2023, 14:30 GMT",
-    account: "****6789",
-    activity: "120 Games, 3 Wins",
-    status: "Flagged",
-  },
-  {
-    id: "#WD-12347",
-    user: "LuckyDip22",
-    amount: "$75.50",
-    method: "Crypto",
-    date: "Oct 26, 2023, 14:30 GMT",
-    account: "BTC Address",
-    activity: "120 Games, 3 Wins",
-    status: "Flagged",
-  },
-];
-
 const statusStyles = {
   Pending: "bg-amber-100 text-amber-700",
   Approved: "bg-emerald-100 text-emerald-700",
@@ -86,7 +13,12 @@ const statusStyles = {
 const WithdrawPage = () => {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("All");
+  const [method, setMethod] = useState("All methods");
+  const [dateRange, setDateRange] = useState("Date Range");
+  const [amountRange, setAmountRange] = useState("");
   const [withdrawalRequests, setWithdrawalRequests] = useState([]);
+  const [selected, setSelected] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -102,7 +34,8 @@ const WithdrawPage = () => {
                 transaction.userId?.username ||
                 transaction.userId?.firstName ||
                 transaction.telegramId,
-              amount: `${Number(transaction.amount).toFixed(2)} ETB`,
+              amountValue: Number(transaction.amount || 0),
+              amount: `${Number(transaction.amount || 0).toFixed(2)} ETB`,
               method: transaction.metadata?.method || "Unknown",
               date: new Date(transaction.createdAt).toLocaleString(),
               account: transaction.metadata?.account || "-",
@@ -118,7 +51,8 @@ const WithdrawPage = () => {
       )
       .catch((requestError) =>
         setError(requestError.message || "Failed to load withdrawals"),
-      );
+      )
+      .finally(() => setLoading(false));
   }, []);
 
   const handleAction = async (request, action) => {
@@ -130,6 +64,9 @@ const WithdrawPage = () => {
             ? { ...item, status: action === "approve" ? "Approved" : "Flagged" }
             : item,
         ),
+      );
+      setSelected((items) =>
+        items.filter((id) => id !== request.transactionId),
       );
     } catch (requestError) {
       setError(requestError.message || "Failed to update withdrawal");
@@ -144,8 +81,65 @@ const WithdrawPage = () => {
           .includes(search.toLowerCase());
         return matchesSearch && (status === "All" || request.status === status);
       }),
-    [search, status],
+    [search, status, withdrawalRequests],
   );
+
+  const filteredWithControls = filteredRequests.filter((request) => {
+    const minimumAmount = Number(amountRange);
+    const requestDate = new Date(request.createdAt);
+    const today = new Date();
+    const matchesDate =
+      dateRange === "Date Range" ||
+      (dateRange === "Today" &&
+        requestDate.toDateString() === today.toDateString()) ||
+      (dateRange === "This month" &&
+        requestDate.getMonth() === today.getMonth() &&
+        requestDate.getFullYear() === today.getFullYear());
+    return (
+      matchesDate &&
+      (method === "All methods" || request.method === method) &&
+      (!amountRange ||
+        (Number.isFinite(minimumAmount) &&
+          request.amountValue >= minimumAmount))
+    );
+  });
+
+  const updateSelected = (action) => {
+    const rows = withdrawalRequests.filter((request) =>
+      selected.includes(request.transactionId),
+    );
+    Promise.all(
+      rows.map((request) =>
+        updateAdminWalletRequest(request.transactionId, action),
+      ),
+    )
+      .then(() => {
+        setWithdrawalRequests((items) =>
+          items.map((item) =>
+            selected.includes(item.transactionId)
+              ? {
+                  ...item,
+                  status: action === "approve" ? "Approved" : "Flagged",
+                }
+              : item,
+          ),
+        );
+        setSelected([]);
+      })
+      .catch((requestError) =>
+        setError(requestError.message || "Failed to update withdrawals"),
+      );
+  };
+
+  const pendingCount = withdrawalRequests.filter(
+    (request) => request.status === "Pending",
+  ).length;
+  const deniedCount = withdrawalRequests.filter(
+    (request) => request.status === "Flagged",
+  ).length;
+  const totalAmount = withdrawalRequests
+    .filter((request) => request.status === "Approved")
+    .reduce((total, request) => total + request.amountValue, 0);
 
   return (
     <div className="space-y-5 text-slate-900">
@@ -156,12 +150,16 @@ const WithdrawPage = () => {
       )}
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {[
-          ["Pending Requests", "38", "bg-sky-100 text-sky-700"],
-          ["Approved Today", "$1,450.00", "bg-teal-100 text-teal-700"],
-          ["Denied Requests", "5", "bg-rose-100 text-rose-700"],
+          ["Pending Requests", pendingCount, "bg-sky-100 text-sky-700"],
+          [
+            "Approved Withdrawals",
+            `${totalAmount.toFixed(2)} ETB`,
+            "bg-teal-100 text-teal-700",
+          ],
+          ["Denied Requests", deniedCount, "bg-rose-100 text-rose-700"],
           [
             "Total Withdrawn (MTD)",
-            "$25,780.00",
+            `${totalAmount.toFixed(2)} ETB`,
             "bg-slate-100 text-slate-600",
           ],
         ].map(([label, value, color]) => (
@@ -194,7 +192,11 @@ const WithdrawPage = () => {
         </label>
         <label className="text-xs text-slate-500">
           Date Range
-          <select className="mt-1 block h-9 rounded-md border border-slate-300 px-2 text-sm">
+          <select
+            value={dateRange}
+            onChange={(event) => setDateRange(event.target.value)}
+            className="mt-1 block h-9 rounded-md border border-slate-300 px-2 text-sm"
+          >
             <option>Date Range</option>
             <option>Today</option>
             <option>This month</option>
@@ -215,7 +217,11 @@ const WithdrawPage = () => {
         </label>
         <label className="text-xs text-slate-500">
           Method
-          <select className="mt-1 block h-9 rounded-md border border-slate-300 px-2 text-sm">
+          <select
+            value={method}
+            onChange={(event) => setMethod(event.target.value)}
+            className="mt-1 block h-9 rounded-md border border-slate-300 px-2 text-sm"
+          >
             <option>All methods</option>
             <option>PayPal</option>
             <option>Bank Transfer</option>
@@ -225,7 +231,9 @@ const WithdrawPage = () => {
         <label className="text-xs text-slate-500">
           Min/Max Amount
           <input
-            placeholder="Min/Max"
+            value={amountRange}
+            onChange={(event) => setAmountRange(event.target.value)}
+            placeholder="Min amount"
             className="mt-1 block h-9 w-28 rounded-md border border-slate-300 px-3 text-sm"
           />
         </label>
@@ -235,11 +243,13 @@ const WithdrawPage = () => {
         <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
           <h2 className="font-semibold">Player Withdrawal Requests</h2>
           <span className="text-xs text-slate-500">
-            Showing 1-{filteredRequests.length} of 38 results
+            {loading
+              ? "Loading..."
+              : `Showing ${filteredWithControls.length} of ${withdrawalRequests.length} results`}
           </span>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[1050px] text-left text-xs">
+          <table className="w-full min-w-262.5 text-left text-xs">
             <thead className="bg-slate-50 text-[10px] uppercase text-slate-500">
               <tr>
                 {[
@@ -260,12 +270,36 @@ const WithdrawPage = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {filteredRequests.map((request, index) => (
+              {!loading && filteredWithControls.length === 0 && (
+                <tr>
+                  <td
+                    colSpan="9"
+                    className="px-3 py-10 text-center text-slate-500"
+                  >
+                    No withdrawals match the selected filters.
+                  </td>
+                </tr>
+              )}
+              {filteredWithControls.map((request, index) => (
                 <tr
                   key={`${request.id}-${index}`}
                   className="hover:bg-slate-50"
                 >
-                  <td className="px-3 py-3 font-medium">{request.id}</td>
+                  <td className="px-3 py-3 font-medium">
+                    <input
+                      type="checkbox"
+                      checked={selected.includes(request.transactionId)}
+                      onChange={() =>
+                        setSelected((items) =>
+                          items.includes(request.transactionId)
+                            ? items.filter((id) => id !== request.transactionId)
+                            : [...items, request.transactionId],
+                        )
+                      }
+                      className="mr-2"
+                    />
+                    {request.id}
+                  </td>
                   <td className="px-3 py-3 text-teal-700">{request.user} ↗</td>
                   <td className="px-3 py-3 font-medium">{request.amount}</td>
                   <td className="px-3 py-3">{request.method}</td>
@@ -310,16 +344,22 @@ const WithdrawPage = () => {
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-200 px-4 py-3 text-xs">
           <div className="flex items-center gap-2">
             <span>Bulk Actions</span>
-            <button className="rounded border border-slate-300 px-2 py-1">
+            <button
+              onClick={() => updateSelected("approve")}
+              disabled={!selected.length}
+              className="rounded border border-slate-300 px-2 py-1 disabled:opacity-40"
+            >
               Approve Selected
             </button>
-            <button className="rounded border border-slate-300 px-2 py-1">
+            <button
+              onClick={() => updateSelected("reject")}
+              disabled={!selected.length}
+              className="rounded border border-slate-300 px-2 py-1 disabled:opacity-40"
+            >
               Deny Selected
             </button>
           </div>
-          <span className="text-slate-500">
-            Showing 1-{filteredRequests.length} of 38 results
-          </span>
+          <span className="text-slate-500">{selected.length} selected</span>
         </div>
       </section>
     </div>
