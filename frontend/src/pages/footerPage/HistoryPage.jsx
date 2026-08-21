@@ -86,11 +86,11 @@ const HistoryPage = () => {
               className={
                 won
                   ? "font-semibold text-emerald-300"
-                  : "font-semibold text-amber-300"
+                  : "font-semibold text-rose-400"
               }
             >
               {won
-                ? `Won prize pool ${amountLabel(record.prizePool)}`
+                ? `Won${amountLabel(record.prizePool)}`
                 : `Lost ${amountLabel(record.amount)}`}
             </span>
           </div>
