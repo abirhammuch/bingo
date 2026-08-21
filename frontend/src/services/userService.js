@@ -26,3 +26,9 @@ export const fetchUsers = (query = {}) => {
   const params = new URLSearchParams(query).toString();
   return api.get(`/api/users/admin/users${params ? `?${params}` : ""}`);
 };
+
+export const toggleUserBlock = (telegramId) =>
+  api.patch(`/api/users/admin/block/${encodeURIComponent(telegramId)}`);
+
+export const toggleUserActive = (telegramId) =>
+  api.patch(`/api/users/admin/active/${encodeURIComponent(telegramId)}`);

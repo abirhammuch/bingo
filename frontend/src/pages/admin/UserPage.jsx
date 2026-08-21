@@ -1,10 +1,15 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { fetchUsers } from "../../services/userService";
+import {
+  fetchUsers,
+  toggleUserActive,
+  toggleUserBlock,
+} from "../../services/userService";
 
 const statusClasses = {
   Active: "border-emerald-500/30 bg-emerald-500/15 text-emerald-300",
   Pending: "border-amber-500/30 bg-amber-500/15 text-amber-300",
   Blocked: "border-rose-500/30 bg-rose-500/15 text-rose-300",
+  Inactive: "border-slate-500/30 bg-slate-500/15 text-slate-300",
 };
 
 const UserPage = () => {
@@ -12,7 +17,8 @@ const UserPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("All");
+  const [statusFilter, setStatusFilter] = useState("Active");
+  const [actionError, setActionError] = useState("");
 
   useEffect(() => {
     let isMounted = true;
@@ -28,9 +34,11 @@ const UserPage = () => {
           wallet: Number(user.balance) || 0,
           status: user.isBlocked
             ? "Blocked"
-            : user.isRegistered
-              ? "Active"
-              : "Pending",
+            : !user.isActive
+              ? "Inactive"
+              : user.isRegistered
+                ? "Active"
+                : "Pending",
           role: "Player",
           joined: user.createdAt
             ? new Date(user.createdAt).toISOString().slice(0, 10)
@@ -70,6 +78,38 @@ const UserPage = () => {
 
   const totalWallet = users.reduce((total, user) => total + user.wallet, 0);
   const activeUsers = users.filter((user) => user.status === "Active").length;
+
+  const updateUserStatus = async (user, action) => {
+    setActionError("");
+    try {
+      const response =
+        action === "block"
+          ? await toggleUserBlock(user.telegramId)
+          : await toggleUserActive(user.telegramId);
+
+      setUsers((currentUsers) =>
+        currentUsers.map((currentUser) => {
+          if (currentUser.id !== user.id) return currentUser;
+          if (action === "block") {
+            return {
+              ...currentUser,
+              status: response.isBlocked
+                ? "Blocked"
+                : response.isActive
+                  ? "Active"
+                  : "Inactive",
+            };
+          }
+          return {
+            ...currentUser,
+            status: response.isActive ? "Active" : "Inactive",
+          };
+        }),
+      );
+    } catch (error) {
+      setActionError(error.message || "Failed to update user status");
+    }
+  };
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
@@ -122,19 +162,21 @@ const UserPage = () => {
             </div>
 
             <div className="flex flex-wrap gap-2">
-              {["All", "Active", "Pending", "Blocked"].map((option) => (
-                <button
-                  key={option}
-                  onClick={() => setStatusFilter(option)}
-                  className={`rounded-full px-3 py-2 text-sm transition ${
-                    statusFilter === option
-                      ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30"
-                      : "border border-slate-700 bg-slate-950/70 text-slate-300 hover:bg-slate-800"
-                  }`}
-                >
-                  {option}
-                </button>
-              ))}
+              {["All", "Active", "Inactive", "Pending", "Blocked"].map(
+                (option) => (
+                  <button
+                    key={option}
+                    onClick={() => setStatusFilter(option)}
+                    className={`rounded-full px-3 py-2 text-sm transition ${
+                      statusFilter === option
+                        ? "bg-emerald-500/15 text-emerald-300 border border-emerald-500/30"
+                        : "border border-slate-700 bg-slate-950/70 text-slate-300 hover:bg-slate-800"
+                    }`}
+                  >
+                    {option}
+                  </button>
+                ),
+              )}
             </div>
           </div>
 
@@ -147,6 +189,12 @@ const UserPage = () => {
           {loadError && (
             <div className="mt-6 rounded-3xl border border-rose-500/30 bg-rose-500/10 p-8 text-center text-rose-300">
               Unable to load users: {loadError}
+            </div>
+          )}
+
+          {actionError && (
+            <div className="mt-6 rounded-3xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-300">
+              {actionError}
             </div>
           )}
 
@@ -199,11 +247,19 @@ const UserPage = () => {
                     <td className="px-4 py-4 text-slate-300">{user.joined}</td>
                     <td className="px-4 py-4">
                       <div className="flex items-center gap-2">
-                        <button className="rounded-full border border-amber-500/30 bg-amber-500/15 px-3 py-1.5 text-xs text-amber-300 hover:bg-amber-500/20">
-                          Edit
+                        <button
+                          onClick={() => updateUserStatus(user, "active")}
+                          className="rounded-full border border-emerald-500/30 bg-emerald-500/15 px-3 py-1.5 text-xs text-emerald-300 hover:bg-emerald-500/20"
+                        >
+                          {user.status === "Inactive"
+                            ? "Activate"
+                            : "Deactivate"}
                         </button>
-                        <button className="rounded-full border border-rose-500/30 bg-rose-500/15 px-3 py-1.5 text-xs text-rose-300 hover:bg-rose-500/20">
-                          Block
+                        <button
+                          onClick={() => updateUserStatus(user, "block")}
+                          className="rounded-full border border-rose-500/30 bg-rose-500/15 px-3 py-1.5 text-xs text-rose-300 hover:bg-rose-500/20"
+                        >
+                          {user.status === "Blocked" ? "Unblock" : "Block"}
                         </button>
                       </div>
                     </td>

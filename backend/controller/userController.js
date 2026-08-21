@@ -704,7 +704,7 @@ export const getAllUsers = async (req, res) => {
       .skip((parseInt(page) - 1) * parseInt(limit))
       .sort({ createdAt: -1 })
       .select(
-        "telegramId firstName lastName username balance gamesPlayed gamesWon bingoGames bingoWins isActive isBlocked lastLogin createdAt",
+        "telegramId firstName lastName username phoneNumber balance gamesPlayed gamesWon bingoGames bingoWins isActive isBlocked lastLogin createdAt",
       );
 
     const total = await User.countDocuments(query);
@@ -762,6 +762,7 @@ export const toggleUserBlock = async (req, res) => {
         ? "User has been blocked"
         : "User has been unblocked",
       isBlocked: user.isBlocked,
+      isActive: user.isActive,
       telegramId: user.telegramId,
     });
   } catch (error) {
@@ -771,5 +772,38 @@ export const toggleUserBlock = async (req, res) => {
       message: "Failed to toggle block status",
       error: error.message,
     });
+  }
+};
+
+// ==========================================
+// 10. ADMIN: Toggle User Active Status
+// ==========================================
+export const toggleUserActive = async (req, res) => {
+  try {
+    const { telegramId } = req.params;
+    const user = await User.findOne({ telegramId: telegramId?.toString() });
+
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+    }
+
+    user.isActive = !user.isActive;
+    await user.save();
+
+    res.json({
+      success: true,
+      message: user.isActive
+        ? "User has been activated"
+        : "User has been deactivated",
+      isActive: user.isActive,
+      telegramId: user.telegramId,
+    });
+  } catch (error) {
+    console.error("Toggle User Active Error:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to update active status" });
   }
 };

@@ -11,6 +11,7 @@ import {
   adminDeductCoins,
   getAllUsers,
   toggleUserBlock,
+  toggleUserActive,
 } from "../controller/userController.js";
 
 const userRouter = express.Router();
@@ -29,5 +30,6 @@ userRouter.post("/admin/add-coins", adminAddCoins);
 userRouter.post("/admin/deduct-coins", adminDeductCoins);
 userRouter.get("/admin/users", getAllUsers);
 userRouter.patch("/admin/block/:telegramId", toggleUserBlock);
+userRouter.patch("/admin/active/:telegramId", toggleUserActive);
 
 export default userRouter;
