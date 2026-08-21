@@ -16,6 +16,7 @@ import {
 import { authenticateTelegram } from "../socket/socket";
 
 const AuthContext = createContext(null);
+const currency = "ETB";
 
 export const AuthProvider = ({ children }) => {
   const navigate = useNavigate();
@@ -174,6 +175,7 @@ export const AuthProvider = ({ children }) => {
       login,
       loginWithTelegramInitData,
       updateUserBalance,
+      currency,
       logout,
       loading,
     }),

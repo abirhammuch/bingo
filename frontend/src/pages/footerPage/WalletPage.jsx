@@ -6,7 +6,7 @@ import { useAuth } from "../../context/AuthContext";
 
 const WalletPage = () => {
   const navigate = useNavigate();
-  const { user, updateUserBalance } = useAuth();
+  const { user, updateUserBalance, currency } = useAuth();
   const [balance, setBalance] = useState(Number(user?.balance || 0));
   const [loading, setLoading] = useState(true);
 
@@ -45,26 +45,26 @@ const WalletPage = () => {
             {/* Game Balance */}
             <div className="bg-slate-800/40 border border-slate-700 rounded-2xl p-5">
               <p className="text-xs uppercase tracking-widest text-slate-500 font-semibold mb-3">
-                GAME BALANCE ({walletData.currency})
+                GAME BALANCE ({currency})
               </p>
               <div className="flex items-baseline gap-1">
                 <p className="text-4xl font-bold text-white">
                   {loading ? "..." : balance.toFixed(2)}
                 </p>
-                <p className="text-sm text-slate-400">{walletData.currency}</p>
+                <p className="text-sm text-slate-400">{currency}</p>
               </div>
             </div>
 
             {/* Main Balance */}
             <div className="bg-slate-800/40 border border-emerald-600/30 rounded-2xl p-5">
               <p className="text-xs uppercase tracking-widest text-slate-500 font-semibold mb-3">
-                MAIN BALANCE ({walletData.currency})
+                MAIN BALANCE ({currency})
               </p>
               <div className="flex items-baseline gap-1">
                 <p className="text-4xl font-bold text-emerald-400">
                   {loading ? "..." : balance.toFixed(2)}
                 </p>
-                <p className="text-sm text-slate-400">{walletData.currency}</p>
+                <p className="text-sm text-slate-400">{currency}</p>
               </div>
             </div>
           </div>
