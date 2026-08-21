@@ -143,6 +143,18 @@ const AdminLayout = () => {
           meta: `Earnings: ${Number(dashboard.stats.referralEarnings).toFixed(2)} ETB`,
           color: "from-cyan-950 to-cyan-800",
         },
+        {
+          label: "User Balance",
+          value: `${Number(dashboard.stats.totalUserBalance).toFixed(2)} ETB`,
+          meta: "Total wallet liability",
+          color: "from-cyan-950 to-cyan-800",
+        },
+        {
+          label: "System Balance",
+          value: `${Number(dashboard.stats.systemBalance).toFixed(2)} ETB`,
+          meta: "Net platform funds",
+          color: "from-amber-950 to-amber-800",
+        },
       ]
     : stats;
 
@@ -309,12 +321,8 @@ const AdminLayout = () => {
                   Dashboard
                 </div>
                 <h1 className="mt-2 text-4xl font-semibold">
-                  Welcome back, yegna$bingo!
+                  Welcome back, Super admin!
                 </h1>
-                <p className="mt-2 text-slate-400 max-w-2xl">
-                  Review platform performance, manage users, monitor
-                  transactions, and oversee active rooms from one place.
-                </p>
               </div>
               <Link
                 to="/admin/transactions"
@@ -327,7 +335,7 @@ const AdminLayout = () => {
 
           {location.pathname === "/admin" && (
             <>
-              <div className="grid gap-4 xl:grid-cols-5 lg:grid-cols-2">
+              <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3 xl:grid-cols-7">
                 {dashboardError && (
                   <div className="xl:col-span-5 lg:col-span-2 rounded-2xl border border-rose-400/30 bg-rose-950/40 p-4 text-sm text-rose-200">
                     {dashboardError}
@@ -336,13 +344,15 @@ const AdminLayout = () => {
                 {dashboardStats.map((item) => (
                   <div
                     key={item.label}
-                    className={`rounded-3xl border border-slate-800 p-5 bg-linear-to-br ${item.color} bg-slate-950/80 shadow-lg shadow-slate-950/20`}
+                    className={`rounded-xl border border-slate-800 p-3 sm:rounded-2xl sm:p-4 xl:rounded-3xl xl:p-5 bg-linear-to-br ${item.color} bg-slate-950/80 shadow-lg shadow-slate-950/20`}
                   >
-                    <div className="text-sm text-slate-400">{item.label}</div>
-                    <div className="mt-4 text-3xl font-semibold">
+                    <div className="text-[10px] uppercase tracking-wide text-slate-400 sm:text-xs sm:normal-case sm:tracking-normal">
+                      {item.label}
+                    </div>
+                    <div className="mt-2 wrap-break-word text-lg font-semibold sm:mt-3 sm:text-2xl xl:mt-4 xl:text-3xl">
                       {item.value}
                     </div>
-                    <div className="mt-3 text-sm text-slate-400">
+                    <div className="mt-1 text-[10px] leading-tight text-slate-400 sm:mt-2 sm:text-xs xl:mt-3 xl:text-sm">
                       {item.meta}
                     </div>
                   </div>

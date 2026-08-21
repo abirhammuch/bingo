@@ -125,6 +125,8 @@ router.get("/dashboard", requireAdmin, async (req, res) => {
       activeUsers,
       totalGames,
       activeGames,
+      userBalanceTotals,
+      walletFlowTotals,
       transactionTotals,
       currentRound,
     ] = await Promise.all([
@@ -132,6 +134,28 @@ router.get("/dashboard", requireAdmin, async (req, res) => {
       User.countDocuments({ isActive: true, isBlocked: false }),
       BingoGame.countDocuments(),
       BingoGame.countDocuments({ status: { $in: ["waiting", "active"] } }),
+      User.aggregate([
+        { $group: { _id: null, totalUserBalance: { $sum: "$balance" } } },
+      ]),
+      Transaction.aggregate([
+        {
+          $match: {
+            status: "completed",
+            type: { $in: ["deposit", "withdraw"] },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            deposits: {
+              $sum: { $cond: [{ $eq: ["$type", "deposit"] }, "$amount", 0] },
+            },
+            withdrawals: {
+              $sum: { $cond: [{ $eq: ["$type", "withdraw"] }, "$amount", 0] },
+            },
+          },
+        },
+      ]),
       Transaction.aggregate([
         {
           $match: {
@@ -160,6 +184,12 @@ router.get("/dashboard", requireAdmin, async (req, res) => {
     ]);
 
     const totals = transactionTotals[0] || {};
+    const totalUserBalance = userBalanceTotals[0]?.totalUserBalance || 0;
+    const walletFlows = walletFlowTotals[0] || {};
+    const systemBalance =
+      Number(walletFlows.deposits || 0) -
+      Number(walletFlows.withdrawals || 0) -
+      Number(totalUserBalance);
     const players = currentRound?.players || [];
 
     res.json({
@@ -173,6 +203,8 @@ router.get("/dashboard", requireAdmin, async (req, res) => {
         commission: totals.commission || 0,
         referralCount: 0,
         referralEarnings: 0,
+        totalUserBalance,
+        systemBalance,
       },
       currentRound: currentRound
         ? {
