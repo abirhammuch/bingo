@@ -9,6 +9,12 @@ export const getUserBalance = (telegramId) =>
 export const fetchWithdrawalSettings = () =>
   api.get("/api/users/withdraw-settings");
 
+export const fetchAdminWithdrawalSettings = () =>
+  api.get("/api/admin/withdraw-fee");
+
+export const updateAdminWithdrawalSettings = (payload) =>
+  api.patch("/api/admin/withdraw-fee", payload);
+
 export const getUserStats = (telegramId) =>
   api.get(`/api/users/stats/${encodeURIComponent(telegramId)}`);
 

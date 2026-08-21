@@ -3,8 +3,10 @@ import {
   createAdminCoupon,
   deleteCommissionSettings,
   fetchAdminCoupons,
+  fetchAdminWithdrawalSettings,
   fetchCommissionData,
   toggleAdminCoupon,
+  updateAdminWithdrawalSettings,
   updateCommissionSettings,
   updateAdminCoupon,
 } from "../../services/userService";
@@ -47,6 +49,14 @@ const BonusPage = ({ section = "all" }) => {
     above1000Percentage: 30,
   });
   const [commissionError, setCommissionError] = useState("");
+  const [withdrawFeeForm, setWithdrawFeeForm] = useState({
+    feeType: "fixed",
+    feeAmount: 0,
+    minAmount: 50,
+    maxAmount: 100000,
+  });
+  const [withdrawFeeError, setWithdrawFeeError] = useState("");
+  const [withdrawFeeMessage, setWithdrawFeeMessage] = useState("");
 
   useEffect(() => {
     if (section !== "coupons" && section !== "all") return;
@@ -56,6 +66,33 @@ const BonusPage = ({ section = "all" }) => {
         setCouponError(error.message || "Failed to load coupons"),
       );
   }, [section]);
+
+  useEffect(() => {
+    if (section !== "withdrawFee" && section !== "all") return;
+    fetchAdminWithdrawalSettings()
+      .then((response) => setWithdrawFeeForm(response.settings))
+      .catch((error) =>
+        setWithdrawFeeError(error.message || "Failed to load withdrawal fee"),
+      );
+  }, [section]);
+
+  const saveWithdrawFee = async (event) => {
+    event.preventDefault();
+    setWithdrawFeeError("");
+    setWithdrawFeeMessage("");
+    try {
+      const response = await updateAdminWithdrawalSettings({
+        ...withdrawFeeForm,
+        feeAmount: Number(withdrawFeeForm.feeAmount),
+        minAmount: Number(withdrawFeeForm.minAmount),
+        maxAmount: Number(withdrawFeeForm.maxAmount),
+      });
+      setWithdrawFeeForm(response.settings);
+      setWithdrawFeeMessage("Withdrawal fee settings saved");
+    } catch (error) {
+      setWithdrawFeeError(error.message || "Failed to save withdrawal fee");
+    }
+  };
 
   useEffect(() => {
     if (section !== "commission" && section !== "all") return;
@@ -486,44 +523,87 @@ const BonusPage = ({ section = "all" }) => {
         )}
 
         {show("withdrawFee") && (
-          <Panel title="Withdraw Fee Schedule" action="Create New Fee Rule">
-            <table className="w-full text-left text-xs">
-              <thead className="bg-slate-950/80 text-[10px] uppercase text-slate-500">
-                <tr>
-                  {[
-                    "Payment Method",
-                    "Fee Type",
-                    "Fee Amount",
-                    "Min/Max Amount",
-                    "Actions",
-                  ].map((heading) => (
-                    <th key={heading} className="px-3 py-2.5">
-                      {heading}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800">
-                {[
-                  ["PayPal", "Fixed", "$1.00", "$1.00 - $100"],
-                  ["Bank Transfer", "Fixed", "2%", "$1.00 - $500"],
-                  ["Crypto", "Percentage", "$1.00", "$1.00"],
-                ].map((row) => (
-                  <tr key={row[0]}>
-                    {row.map((value) => (
-                      <td key={value} className="px-3 py-3">
-                        {value}
-                      </td>
-                    ))}
-                    <td className="px-3 py-3">
-                      <button className="rounded border border-slate-700 px-2 py-1 text-[10px] text-slate-300">
-                        Edit Fee
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <Panel title="Withdraw Fee Settings">
+            <form
+              onSubmit={saveWithdrawFee}
+              className="grid gap-4 p-4 sm:grid-cols-2"
+            >
+              {withdrawFeeError && (
+                <div className="sm:col-span-2 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-300">
+                  {withdrawFeeError}
+                </div>
+              )}
+              {withdrawFeeMessage && (
+                <div className="sm:col-span-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-300">
+                  {withdrawFeeMessage}
+                </div>
+              )}
+              <label className="text-xs text-slate-400">
+                Fee type
+                <select
+                  value={withdrawFeeForm.feeType}
+                  onChange={(event) =>
+                    setWithdrawFeeForm({
+                      ...withdrawFeeForm,
+                      feeType: event.target.value,
+                    })
+                  }
+                  className="mt-1 block w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100"
+                >
+                  <option value="fixed">Fixed ETB</option>
+                  <option value="percentage">Percentage</option>
+                </select>
+              </label>
+              <label className="text-xs text-slate-400">
+                Fee amount
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={withdrawFeeForm.feeAmount}
+                  onChange={(event) =>
+                    setWithdrawFeeForm({
+                      ...withdrawFeeForm,
+                      feeAmount: event.target.value,
+                    })
+                  }
+                  className="mt-1 block w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100"
+                />
+              </label>
+              <label className="text-xs text-slate-400">
+                Minimum withdrawal
+                <input
+                  type="number"
+                  min="0"
+                  value={withdrawFeeForm.minAmount}
+                  onChange={(event) =>
+                    setWithdrawFeeForm({
+                      ...withdrawFeeForm,
+                      minAmount: event.target.value,
+                    })
+                  }
+                  className="mt-1 block w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100"
+                />
+              </label>
+              <label className="text-xs text-slate-400">
+                Maximum withdrawal
+                <input
+                  type="number"
+                  min="0"
+                  value={withdrawFeeForm.maxAmount}
+                  onChange={(event) =>
+                    setWithdrawFeeForm({
+                      ...withdrawFeeForm,
+                      maxAmount: event.target.value,
+                    })
+                  }
+                  className="mt-1 block w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100"
+                />
+              </label>
+              <button className="sm:col-span-2 rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-500">
+                Save withdrawal settings
+              </button>
+            </form>
           </Panel>
         )}
 
