@@ -236,4 +236,24 @@ router.patch("/commission", requireAdmin, async (req, res) => {
   }
 });
 
+router.delete("/commission", requireAdmin, async (req, res) => {
+  try {
+    await CommissionSettings.deleteOne({ key: "bingo" });
+    res.json({
+      success: true,
+      settings: {
+        below100Percentage: 20,
+        between100And1000Percentage: 25,
+        above1000Percentage: 30,
+      },
+      message: "Commission rules deleted and defaults restored",
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to delete commission rules",
+    });
+  }
+});
+
 export default router;

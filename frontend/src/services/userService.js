@@ -51,3 +51,5 @@ export const fetchCommissionData = () => api.get("/api/admin/commission");
 
 export const updateCommissionSettings = (payload) =>
   api.patch("/api/admin/commission", payload);
+
+export const deleteCommissionSettings = () => api.del("/api/admin/commission");

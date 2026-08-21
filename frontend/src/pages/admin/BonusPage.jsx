@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import {
   createAdminCoupon,
+  deleteCommissionSettings,
   fetchAdminCoupons,
   fetchCommissionData,
   toggleAdminCoupon,
@@ -75,8 +76,37 @@ const BonusPage = ({ section = "all" }) => {
     try {
       const response = await updateCommissionSettings(commissionForm);
       setCommissionForm(response.settings);
+      setCommissionData((current) => ({
+        ...current,
+        settings: response.settings,
+      }));
     } catch (error) {
       setCommissionError(error.message || "Failed to save commission settings");
+    }
+  };
+
+  const removeCommission = async () => {
+    if (
+      !window.confirm("Delete saved commission rules and restore defaults?")
+    ) {
+      return;
+    }
+    setCommissionError("");
+    try {
+      const response = await deleteCommissionSettings();
+      setCommissionForm(response.settings);
+      setCommissionData((current) => ({
+        ...current,
+        settings: response.settings,
+      }));
+    } catch (error) {
+      setCommissionError(error.message || "Failed to delete commission rules");
+    }
+  };
+
+  const editCommission = () => {
+    if (commissionData?.settings) {
+      setCommissionForm({ ...commissionData.settings });
     }
   };
 
@@ -539,6 +569,63 @@ const BonusPage = ({ section = "all" }) => {
                 Save Commission Rules
               </button>
             </form>
+            <div className="border-t border-slate-800 px-4 py-3">
+              <div className="mb-3 flex items-center justify-between gap-3">
+                <div className="text-xs font-semibold text-slate-300">
+                  Saved Commission Rules
+                </div>
+                <span className="rounded-full bg-emerald-500/15 px-2 py-1 text-[10px] text-emerald-300">
+                  Stored in database
+                </span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[620px] text-left text-xs">
+                  <thead className="bg-slate-950/80 text-[10px] uppercase text-slate-500">
+                    <tr>
+                      <th className="px-3 py-2">Total Range</th>
+                      <th className="px-3 py-2">Commission</th>
+                      <th className="px-3 py-2">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800">
+                    {[
+                      ["Below 100 ETB", commissionForm.below100Percentage],
+                      [
+                        "100 - 1000 ETB",
+                        commissionForm.between100And1000Percentage,
+                      ],
+                      [
+                        "Greater than 1000 ETB",
+                        commissionForm.above1000Percentage,
+                      ],
+                    ].map(([range, percentage]) => (
+                      <tr key={range}>
+                        <td className="px-3 py-2.5">{range}</td>
+                        <td className="px-3 py-2.5 font-semibold text-teal-300">
+                          {Number(percentage || 0).toFixed(2)}%
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <button
+                            type="button"
+                            onClick={editCommission}
+                            className="mr-2 rounded border border-slate-700 px-2 py-1 text-[10px] text-slate-300 hover:bg-slate-800"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={removeCommission}
+                            className="rounded border border-rose-500/30 px-2 py-1 text-[10px] text-rose-300 hover:bg-rose-500/10"
+                          >
+                            Delete
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
             <div className="grid gap-3 border-t border-slate-800 p-4 sm:grid-cols-2">
               <div className="rounded-lg bg-slate-950 p-3">
                 <div className="text-xs text-slate-500">
