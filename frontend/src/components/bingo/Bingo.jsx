@@ -52,7 +52,7 @@ const Bingo = ({ theme }) => {
   // AUTH
   // ============================================================
 
-  const { user: authUser } = useAuth();
+  const { user: authUser, updateUserBalance } = useAuth();
 
   // ============================================================
   // ROUND STATE
@@ -954,11 +954,15 @@ const Bingo = ({ theme }) => {
             setSelectedNumbersGlobal(response.selectedNumbersGlobal);
           }
 
+          if (typeof response.balance === "number") {
+            updateUserBalance(response.balance);
+          }
+
           console.log("✅ Lucky number selected:", number);
         },
       );
     },
-    [authUser?.telegramId, selectedNumbersGlobal],
+    [authUser?.telegramId, selectedNumbersGlobal, updateUserBalance],
   );
 
   // ============================================================

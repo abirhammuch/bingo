@@ -157,12 +157,22 @@ export const AuthProvider = ({ children }) => {
     });
   };
 
+  const updateUserBalance = (balance) => {
+    setUser((currentUser) => {
+      if (!currentUser) return currentUser;
+      const updatedUser = { ...currentUser, balance };
+      localStorage.setItem("authUser", JSON.stringify(updatedUser));
+      return updatedUser;
+    });
+  };
+
   const value = useMemo(
     () => ({
       user,
       token,
       login,
       loginWithTelegramInitData,
+      updateUserBalance,
       logout,
       loading,
     }),

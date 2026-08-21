@@ -1,4 +1,6 @@
 ﻿import BingoGame from "../models/BingoGame.js";
+import User from "../models/User.js";
+import { chargeBingoCard } from "../services/wallet/bingoWalletService.js";
 import {
   SELECTION_TIME_SECONDS,
   joinBingoGame,
@@ -401,6 +403,7 @@ export const initBingoSocket = (io) => {
           throw new Error("Selection time has ended");
         }
 
+        let purchaseBalance = null;
         let player = game.players.find(
           (entry) =>
             String(entry.telegramId) === String(telegramId) &&
@@ -415,7 +418,7 @@ export const initBingoSocket = (io) => {
           const fallbackBetAmount =
             Number(game.minBet ?? data.betAmount ?? 10) || 10;
 
-          await joinBingoGame(
+          const purchaseResult = await joinBingoGame(
             gameId,
             telegramId,
             fallbackBetAmount,
@@ -438,6 +441,7 @@ export const initBingoSocket = (io) => {
           if (!player) {
             throw new Error("You are not a player in this round");
           }
+          purchaseBalance = purchaseResult.user.balance;
         }
 
         const currentSelected = Array.isArray(player.selectedLuckyNumbers)
@@ -460,6 +464,26 @@ export const initBingoSocket = (io) => {
 
         if (finalSelected.length > 3) {
           throw new Error("You can select maximum 3 numbers");
+        }
+
+        const newCardNumbers = isDeselect
+          ? []
+          : finalSelected.filter((value) => !currentSelected.includes(value));
+        const stakePerCard = Number(game.minBet ?? 0);
+        for (const cardNumber of newCardNumbers) {
+          const charge = await chargeBingoCard({
+            telegramId,
+            gameId,
+            cardReference: cardNumber,
+            stakePerCard,
+          });
+          purchaseBalance = charge.balance;
+        }
+
+        if (newCardNumbers.length > 0) {
+          player.betAmount =
+            Number(player.betAmount || 0) +
+            newCardNumbers.length * stakePerCard;
         }
 
         player.selectedLuckyNumbers = finalSelected;
@@ -485,6 +509,9 @@ export const initBingoSocket = (io) => {
 
         game.selectedNumbers = allSelected;
         game.playerCount = game.players.filter((p) => !p.isSpectator).length;
+        game.roundSummary.totalBetAmount = game.players
+          .filter((p) => !p.isSpectator)
+          .reduce((sum, p) => sum + Number(p.betAmount || 0), 0);
 
         await saveWithRetry(game);
 
@@ -494,6 +521,12 @@ export const initBingoSocket = (io) => {
           selectedNumbersGlobal: game.selectedNumbers,
           playerCount: game.playerCount,
           gameId,
+          balance:
+            purchaseBalance ??
+            (await User.findOne({ telegramId }).select("balance").lean())
+              ?.balance,
+          stakePerCard: game.minBet,
+          cardStake: game.minBet,
         };
 
         io.to(`bingo:${gameId}`).emit("bingo:cardSelected", {
@@ -533,6 +566,8 @@ export const initBingoSocket = (io) => {
         const response = {
           success: false,
           message: error.message || "Failed to select card",
+          balance: error.balance,
+          required: error.required,
         };
 
         socket.emit("bingo:cardSelectionError", response);

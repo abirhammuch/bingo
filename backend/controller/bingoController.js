@@ -71,14 +71,17 @@ export const joinGame = async (req, res) => {
       game: result.game,
 
       balance: result.user.balance,
+      stakePerCard: result.stakePerCard,
+      cardStake: result.stakePerCard,
     });
   } catch (error) {
     console.error("Join Bingo Game Error:", error);
 
-    return res.status(500).json({
+    return res.status(error.code === "INSUFFICIENT_BALANCE" ? 400 : 500).json({
       success: false,
       message: error.message || "Failed to join bingo game",
-
+      balance: error.balance,
+      required: error.required,
       error: error.message,
     });
   }

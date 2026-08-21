@@ -13,7 +13,17 @@ const transactionSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ["deposit", "withdraw", "bet", "reward", "refund"],
+      enum: [
+        "deposit",
+        "withdraw",
+        "bet",
+        "reward",
+        "refund",
+        "BET",
+        "WIN",
+        "REFUND",
+        "COMMISSION",
+      ],
       required: true,
     },
     amount: {
@@ -30,6 +40,14 @@ const transactionSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    balanceBefore: { type: Number, default: null },
+    balanceAfter: { type: Number, default: null },
+    description: { type: String, default: "" },
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
     metadata: {
       type: mongoose.Schema.Types.Mixed,
       default: {},
@@ -40,5 +58,7 @@ const transactionSchema = new mongoose.Schema(
   },
 );
 
-const Transaction = mongoose.model.Transaction || mongoose.model("Transaction", transactionSchema);
+const Transaction =
+  mongoose.model.Transaction ||
+  mongoose.model("Transaction", transactionSchema);
 export default Transaction;

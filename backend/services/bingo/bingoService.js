@@ -2,6 +2,12 @@ import BingoGame from "../../models/BingoGame.js";
 import BingoTicket from "../../models/BingoTicket.js";
 import User from "../../models/User.js";
 import CommissionSettings from "../../models/CommissionSettings.js";
+import {
+  chargeBingoCard,
+  creditBingoWinner,
+  recordBingoCommission,
+  refundBingoPlayer,
+} from "../wallet/bingoWalletService.js";
 import { v4 as uuidv4 } from "uuid";
 
 export const SELECTION_TIME_SECONDS = 30;
@@ -489,6 +495,11 @@ export const joinBingoGame = async (
     throw new Error("User not found");
   }
 
+  const stakePerCard = Number(game.minBet || betAmount || 0);
+  if (!Number.isFinite(stakePerCard) || stakePerCard <= 0) {
+    throw new Error("Invalid stake amount");
+  }
+
   const existingPlayerIndex = game.players.findIndex(
     (player) => normalizeTelegramId(player.telegramId) === normalizedTelegramId,
   );
@@ -499,6 +510,10 @@ export const joinBingoGame = async (
 
   if (existingPlayerIndex !== -1) {
     const existingPlayer = game.players[existingPlayerIndex];
+    const currentSelectedBefore = existingPlayer.selectedLuckyNumbers || [];
+    const newCardNumbers = normalizedLuckyNumbers.filter(
+      (number) => !currentSelectedBefore.includes(number),
+    );
 
     // If spectator wants to become player during selection
     if (existingPlayer.isSpectator === true) {
@@ -541,6 +556,20 @@ export const joinBingoGame = async (
       game.players[existingPlayerIndex] = existingPlayer;
     }
 
+    let latestBalance = user.balance;
+    for (const cardNumber of newCardNumbers) {
+      const charge = await chargeBingoCard({
+        telegramId: normalizedTelegramId,
+        gameId,
+        cardReference: cardNumber,
+        stakePerCard,
+      });
+      latestBalance = charge.balance;
+    }
+    existingPlayer.betAmount =
+      Number(existingPlayer.betAmount || 0) +
+      newCardNumbers.length * stakePerCard;
+
     game.playerCount = getRealPlayers(game).length;
 
     game.roundSummary.playerCount = game.playerCount;
@@ -553,27 +582,16 @@ export const joinBingoGame = async (
       game,
       ticket: null,
       user: {
-        balance: user.balance,
+        balance: latestBalance,
         firstName: user.firstName,
       },
+      stakePerCard,
     };
   }
 
   // ========================================================
   // NEW PLAYER
   // ========================================================
-
-  if (!betAmount || Number(betAmount) < game.minBet) {
-    throw new Error(`Minimum bet is ${game.minBet}`);
-  }
-
-  if (Number(betAmount) > game.maxBet) {
-    throw new Error(`Maximum bet is ${game.maxBet}`);
-  }
-
-  if (user.balance < Number(betAmount)) {
-    throw new Error("Insufficient balance");
-  }
 
   // ========================================================
   // LUCKY NUMBER
@@ -593,9 +611,18 @@ export const joinBingoGame = async (
   // DEDUCT BALANCE
   // ========================================================
 
-  user.balance -= Number(betAmount);
-
-  await user.save();
+  const cardsToCharge = normalizedLuckyNumbers.length || 1;
+  let latestBalance = user.balance;
+  for (let index = 0; index < cardsToCharge; index += 1) {
+    const charge = await chargeBingoCard({
+      telegramId: normalizedTelegramId,
+      gameId,
+      cardReference: normalizedLuckyNumbers[index] ?? `card-${index + 1}`,
+      stakePerCard,
+    });
+    latestBalance = charge.balance;
+  }
+  const totalUserStake = cardsToCharge * stakePerCard;
 
   // ========================================================
   // CREATE CARD
@@ -626,7 +653,7 @@ export const joinBingoGame = async (
 
     markedNumbers: [],
 
-    betAmount: Number(betAmount),
+    betAmount: totalUserStake,
 
     isWinner: false,
 
@@ -662,7 +689,7 @@ export const joinBingoGame = async (
 
     hasBingo: false,
 
-    betAmount: Number(betAmount),
+    betAmount: totalUserStake,
 
     winAmount: 0,
   });
@@ -696,9 +723,10 @@ export const joinBingoGame = async (
     ticket,
 
     user: {
-      balance: user.balance,
+      balance: latestBalance,
       firstName: user.firstName,
     },
+    stakePerCard,
   };
 };
 
@@ -742,7 +770,7 @@ export const joinAsSpectator = async (gameId, telegramId) => {
     return {
       game,
       user: {
-        balance: user.balance,
+        balance: latestBalance,
         firstName: user.firstName,
       },
       isSpectator: game.players[existingIndex].isSpectator === true,
@@ -1064,6 +1092,21 @@ export const callNumber = async (gameId) => {
     0,
   );
 
+  const winnerPrize = Math.max(0, totalBalance - commissionAmount);
+  const prizePerWinner = Number((winnerPrize / winners.length).toFixed(2));
+  winners.forEach((winner) => {
+    winner.winAmount = prizePerWinner;
+    const gamePlayer = game.players.find(
+      (entry) =>
+        normalizeTelegramId(entry.telegramId) ===
+        normalizeTelegramId(winner.telegramId),
+    );
+    if (gamePlayer) gamePlayer.winAmount = prizePerWinner;
+  });
+  game.roundSummary.playerPayoutTotal = Number(
+    (prizePerWinner * winners.length).toFixed(2),
+  );
+
   const firstWinner = winners[0];
 
   // ========================================================
@@ -1100,17 +1143,24 @@ export const callNumber = async (gameId) => {
     });
 
     if (user) {
-      user.balance += winner.winAmount;
-
-      user.bingoGames = Number(user.bingoGames || 0) + 1;
-
-      user.bingoWins = Number(user.bingoWins || 0) + 1;
-
-      user.gamesPlayed = Number(user.gamesPlayed || 0) + 1;
-
-      user.gamesWon = Number(user.gamesWon || 0) + 1;
-
-      await user.save();
+      const payout = await creditBingoWinner({
+        telegramId: normalizeTelegramId(winner.telegramId),
+        gameId,
+        amount: winner.winAmount,
+      });
+      if (!payout.alreadyPaid) {
+        await User.updateOne(
+          { _id: user._id },
+          {
+            $inc: {
+              bingoGames: 1,
+              bingoWins: 1,
+              gamesPlayed: 1,
+              gamesWon: 1,
+            },
+          },
+        );
+      }
     }
 
     const ticket = await BingoTicket.findOne({
@@ -1129,6 +1179,8 @@ export const callNumber = async (gameId) => {
       await ticket.save();
     }
   }
+
+  await recordBingoCommission({ gameId, amount: commissionAmount });
 
   await saveWithRetry(game);
 
@@ -1217,6 +1269,29 @@ export const markNumber = async (gameId, telegramId, number) => {
       }
     : null;
 
+  if (winner) {
+    const totalPool = Number(game.roundSummary?.totalBetAmount || 0);
+    const commissionSettings =
+      (await CommissionSettings.findOne({ key: "bingo" }).lean()) || {};
+    const commissionPercentage =
+      totalPool < 100
+        ? Number(commissionSettings.below100Percentage ?? 20)
+        : totalPool <= 1000
+          ? Number(commissionSettings.between100And1000Percentage ?? 25)
+          : Number(commissionSettings.above1000Percentage ?? 30);
+    const commissionAmount = Number(
+      ((totalPool * commissionPercentage) / 100).toFixed(2),
+    );
+    winner.winAmount = Math.max(0, totalPool - commissionAmount);
+    player.winAmount = winner.winAmount;
+    await creditBingoWinner({
+      telegramId: normalizedTelegramId,
+      gameId,
+      amount: winner.winAmount,
+    });
+    await recordBingoCommission({ gameId, amount: commissionAmount });
+  }
+
   return {
     marked: true,
 
@@ -1295,6 +1370,22 @@ export const resetEmptyRound = async (gameId) => {
 
   if (!game) {
     throw new Error("Game not found");
+  }
+
+  if (game.status !== "completed" && !game.winner) {
+    const stakePerCard = Number(game.minBet || 0);
+    for (const player of getRealPlayers(game)) {
+      const cardCount = Number(
+        player.cardsSelected || player.selectedLuckyNumbers?.length || 0,
+      );
+      if (cardCount > 0 && stakePerCard > 0) {
+        await refundBingoPlayer({
+          telegramId: normalizeTelegramId(player.telegramId),
+          gameId,
+          amount: cardCount * stakePerCard,
+        });
+      }
+    }
   }
 
   game.status = "waiting";
