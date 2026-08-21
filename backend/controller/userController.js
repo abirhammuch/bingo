@@ -680,7 +680,50 @@ export const adminDeductCoins = async (req, res) => {
 };
 
 // ==========================================
-// 8. ADMIN: Get All Users (with search & pagination)
+// 8. ADMIN: Set a User Wallet Balance
+// ==========================================
+export const adminSetBalance = async (req, res) => {
+  try {
+    const { telegramId, balance, reason } = req.body;
+    const nextBalance = Number(balance);
+
+    if (!telegramId || !Number.isFinite(nextBalance) || nextBalance < 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Telegram ID and a valid non-negative balance are required",
+      });
+    }
+
+    const user = await User.findOne({ telegramId: telegramId.toString() });
+
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+    }
+
+    user.balance = nextBalance;
+    await user.save();
+
+    res.json({
+      success: true,
+      message: "User wallet balance updated",
+      reason: reason || "Admin adjustment",
+      newBalance: user.balance,
+      telegramId: user.telegramId,
+    });
+  } catch (error) {
+    console.error("Admin Set Balance Error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update wallet balance",
+      error: error.message,
+    });
+  }
+};
+
+// ==========================================
+// 9. ADMIN: Get All Users (with search & pagination)
 // ==========================================
 export const getAllUsers = async (req, res) => {
   try {

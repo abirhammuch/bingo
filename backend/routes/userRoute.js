@@ -9,6 +9,7 @@ import {
   getUserStats,
   adminAddCoins,
   adminDeductCoins,
+  adminSetBalance,
   getAllUsers,
   toggleUserBlock,
   toggleUserActive,
@@ -28,6 +29,7 @@ userRouter.get("/stats/:telegramId", getUserStats);
 // Admin user routes
 userRouter.post("/admin/add-coins", adminAddCoins);
 userRouter.post("/admin/deduct-coins", adminDeductCoins);
+userRouter.patch("/admin/balance", adminSetBalance);
 userRouter.get("/admin/users", getAllUsers);
 userRouter.patch("/admin/block/:telegramId", toggleUserBlock);
 userRouter.patch("/admin/active/:telegramId", toggleUserActive);

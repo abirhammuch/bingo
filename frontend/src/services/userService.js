@@ -22,6 +22,9 @@ export const adminAddCoins = (payload) =>
 export const adminDeductCoins = (payload) =>
   api.post(`/api/users/admin/deduct-coins`, payload);
 
+export const adminSetBalance = (payload) =>
+  api.patch(`/api/users/admin/balance`, payload);
+
 export const fetchUsers = (query = {}) => {
   const params = new URLSearchParams(query).toString();
   return api.get(`/api/users/admin/users${params ? `?${params}` : ""}`);

@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   fetchUsers,
+  adminSetBalance,
   toggleUserActive,
   toggleUserBlock,
 } from "../../services/userService";
@@ -18,6 +19,8 @@ const UserPage = () => {
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("Active");
   const [actionError, setActionError] = useState("");
+  const [editingBalanceId, setEditingBalanceId] = useState(null);
+  const [balanceInput, setBalanceInput] = useState("");
 
   useEffect(() => {
     let isMounted = true;
@@ -105,6 +108,33 @@ const UserPage = () => {
       );
     } catch (error) {
       setActionError(error.message || "Failed to update user status");
+    }
+  };
+
+  const saveUserBalance = async (user) => {
+    setActionError("");
+    const nextBalance = Number(balanceInput);
+    if (!Number.isFinite(nextBalance) || nextBalance < 0) {
+      setActionError("Enter a valid non-negative wallet balance.");
+      return;
+    }
+
+    try {
+      const response = await adminSetBalance({
+        telegramId: user.telegramId,
+        balance: nextBalance,
+        reason: "Admin wallet edit",
+      });
+      setUsers((currentUsers) =>
+        currentUsers.map((currentUser) =>
+          currentUser.id === user.id
+            ? { ...currentUser, wallet: Number(response.newBalance) }
+            : currentUser,
+        ),
+      );
+      setEditingBalanceId(null);
+    } catch (error) {
+      setActionError(error.message || "Failed to update wallet balance");
     }
   };
 
@@ -230,7 +260,45 @@ const UserPage = () => {
                     <td className="px-4 py-4 text-slate-300">{user.role}</td>
                     <td className="px-4 py-4 text-slate-300">{user.phone}</td>
                     <td className="px-4 py-4 text-slate-100 font-medium">
-                      {user.wallet.toLocaleString()} ETB
+                      {editingBalanceId === user.id ? (
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={balanceInput}
+                            onChange={(event) =>
+                              setBalanceInput(event.target.value)
+                            }
+                            className="w-28 rounded-lg border border-slate-700 bg-slate-900 px-2 py-1 text-sm text-slate-100"
+                          />
+                          <button
+                            onClick={() => saveUserBalance(user)}
+                            className="rounded-lg bg-emerald-600 px-2 py-1 text-xs text-white"
+                          >
+                            Save
+                          </button>
+                          <button
+                            onClick={() => setEditingBalanceId(null)}
+                            className="rounded-lg border border-slate-700 px-2 py-1 text-xs text-slate-300"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <span>{user.wallet.toLocaleString()} ETB</span>
+                          <button
+                            onClick={() => {
+                              setEditingBalanceId(user.id);
+                              setBalanceInput(String(user.wallet));
+                            }}
+                            className="rounded-lg border border-sky-500/30 bg-sky-500/10 px-2 py-1 text-xs text-sky-300"
+                          >
+                            Edit
+                          </button>
+                        </div>
+                      )}
                     </td>
                     <td className="px-4 py-4">
                       <span
