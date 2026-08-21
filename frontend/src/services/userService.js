@@ -35,3 +35,14 @@ export const toggleUserBlock = (telegramId) =>
 
 export const toggleUserActive = (telegramId) =>
   api.patch(`/api/users/admin/active/${encodeURIComponent(telegramId)}`);
+
+export const fetchAdminCoupons = () => api.get("/api/admin/coupons");
+
+export const createAdminCoupon = (payload) =>
+  api.post("/api/admin/coupons", payload);
+
+export const updateAdminCoupon = (id, payload) =>
+  api.patch(`/api/admin/coupons/${id}`, payload);
+
+export const toggleAdminCoupon = (id) =>
+  api.patch(`/api/admin/coupons/${id}/toggle`);
