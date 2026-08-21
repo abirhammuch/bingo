@@ -3,11 +3,13 @@ import {
   fetchAdminWalletRequests,
   updateAdminWalletRequest,
 } from "../../services/userService";
+import { FaCopy } from "react-icons/fa";
 
 const statusStyles = {
   Pending: "bg-amber-100 text-amber-700",
   Approved: "bg-emerald-100 text-emerald-700",
   Flagged: "bg-rose-100 text-rose-700",
+  Denied: "bg-rose-100 text-rose-700",
 };
 
 const WithdrawPage = () => {
@@ -20,6 +22,7 @@ const WithdrawPage = () => {
   const [selected, setSelected] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [copiedAccount, setCopiedAccount] = useState("");
 
   useEffect(() => {
     fetchAdminWalletRequests()
@@ -57,11 +60,19 @@ const WithdrawPage = () => {
 
   const handleAction = async (request, action) => {
     try {
-      await updateAdminWalletRequest(request.transactionId, action);
+      const response = await updateAdminWalletRequest(
+        request.transactionId,
+        action,
+      );
       setWithdrawalRequests((items) =>
         items.map((item) =>
           item.transactionId === request.transactionId
-            ? { ...item, status: action === "approve" ? "Approved" : "Flagged" }
+            ? {
+                ...item,
+                status: action === "approve" ? "Approved" : "Denied",
+                refundedBalance:
+                  action === "reject" ? response.balance : undefined,
+              }
             : item,
         ),
       );
@@ -70,6 +81,17 @@ const WithdrawPage = () => {
       );
     } catch (requestError) {
       setError(requestError.message || "Failed to update withdrawal");
+    }
+  };
+
+  const copyAccount = async (request) => {
+    if (!request.account || request.account === "-") return;
+    try {
+      await navigator.clipboard.writeText(request.account);
+      setCopiedAccount(request.transactionId);
+      window.setTimeout(() => setCopiedAccount(""), 1500);
+    } catch {
+      setError("Unable to copy the withdrawal phone number");
     }
   };
 
@@ -119,7 +141,7 @@ const WithdrawPage = () => {
             selected.includes(item.transactionId)
               ? {
                   ...item,
-                  status: action === "approve" ? "Approved" : "Flagged",
+                  status: action === "approve" ? "Approved" : "Denied",
                 }
               : item,
           ),
@@ -135,7 +157,7 @@ const WithdrawPage = () => {
     (request) => request.status === "Pending",
   ).length;
   const deniedCount = withdrawalRequests.filter(
-    (request) => request.status === "Flagged",
+    (request) => request.status === "Flagged" || request.status === "Denied",
   ).length;
   const totalAmount = withdrawalRequests
     .filter((request) => request.status === "Approved")
@@ -213,6 +235,7 @@ const WithdrawPage = () => {
             <option>Pending</option>
             <option>Approved</option>
             <option>Flagged</option>
+            <option>Denied</option>
           </select>
         </label>
         <label className="text-xs text-slate-500">
@@ -306,13 +329,34 @@ const WithdrawPage = () => {
                   <td className="px-3 py-3 whitespace-nowrap">
                     {request.date}
                   </td>
-                  <td className="px-3 py-3">{request.account}</td>
+                  <td className="px-3 py-3">
+                    <div className="flex items-center gap-2">
+                      <span>{request.account}</span>
+                      <button
+                        type="button"
+                        onClick={() => copyAccount(request)}
+                        disabled={!request.account || request.account === "-"}
+                        title="Copy withdrawal phone"
+                        aria-label={`Copy withdrawal phone for ${request.user}`}
+                        className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-teal-700 disabled:opacity-30"
+                      >
+                        <FaCopy aria-hidden="true" />
+                      </button>
+                      {copiedAccount === request.transactionId && (
+                        <span className="text-[10px] text-teal-700">
+                          Copied
+                        </span>
+                      )}
+                    </div>
+                  </td>
                   <td className="px-3 py-3">{request.activity}</td>
                   <td className="px-3 py-3">
                     <span
                       className={`rounded-full px-2 py-1 text-[10px] font-medium ${statusStyles[request.status]}`}
                     >
-                      {request.status}
+                      {request.status === "Denied"
+                        ? "Denied / refunded"
+                        : request.status}
                     </span>
                   </td>
                   <td className="px-3 py-3">
