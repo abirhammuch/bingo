@@ -1,23 +1,38 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Footer from "../../components/footer/Footer";
+import { redeemCoupon } from "../../services/userService";
+import { useAuth } from "../../context/AuthContext";
 
 const Coupon = () => {
   const navigate = useNavigate();
   const [code, setCode] = useState("");
   const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(false);
+  const { updateUserBalance } = useAuth();
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
-    setMessage(
-      code.trim()
-        ? "Coupon redemption is not available yet."
-        : "Enter a coupon code.",
-    );
+    if (!code.trim()) {
+      setMessage("Enter a coupon code.");
+      return;
+    }
+    setLoading(true);
+    setMessage("");
+    try {
+      const response = await redeemCoupon(code);
+      updateUserBalance(response.balance);
+      setMessage(`Coupon applied: +${Number(response.amount).toFixed(2)} ETB`);
+      setCode("");
+    } catch (error) {
+      setMessage(error.message || "Unable to redeem coupon.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 to-slate-900 pb-16 text-slate-100">
+    <div className="min-h-screen bg-linear-to-b from-slate-950 to-slate-900 pb-16 text-slate-100">
       <main className="mx-auto max-w-md px-4 py-8">
         <div className="rounded-2xl border border-slate-700 bg-slate-900/80 p-6">
           <div className="mb-6 flex items-center justify-between">
@@ -44,7 +59,7 @@ const Coupon = () => {
               type="submit"
               className="w-full rounded-lg bg-amber-500 px-4 py-3 font-bold text-slate-950 hover:bg-amber-400"
             >
-              APPLY COUPON
+              {loading ? "APPLYING..." : "APPLY COUPON"}
             </button>
           </form>
 

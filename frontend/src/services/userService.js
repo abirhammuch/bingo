@@ -36,6 +36,9 @@ export const submitDeposit = (payload) =>
 export const submitWithdrawal = (payload) =>
   api.post("/api/users/withdrawals", payload);
 
+export const redeemCoupon = (code) =>
+  api.post("/api/users/coupons/redeem", { code });
+
 export const telegramLogin = (payload) =>
   api.post(`/api/users/telegram-login`, payload);
 export const telegramLoginWithCode = (payload) =>

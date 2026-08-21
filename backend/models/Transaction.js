@@ -19,6 +19,7 @@ const transactionSchema = new mongoose.Schema(
         "bet",
         "reward",
         "refund",
+        "COUPON",
         "BET",
         "WIN",
         "REFUND",
