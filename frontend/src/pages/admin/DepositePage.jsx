@@ -1,4 +1,8 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  fetchAdminWalletRequests,
+  updateAdminWalletRequest,
+} from "../../services/userService";
 
 const deposits = [
   {
@@ -92,6 +96,55 @@ const statusStyles = {
 const DepositPage = () => {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("All");
+  const [deposits, setDeposits] = useState([]);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    fetchAdminWalletRequests()
+      .then((response) =>
+        setDeposits(
+          (response.transactions || [])
+            .filter((transaction) => transaction.type === "deposit")
+            .map((transaction) => ({
+              ...transaction,
+              id: transaction.transactionId,
+              user:
+                transaction.userId?.username ||
+                transaction.userId?.firstName ||
+                transaction.telegramId,
+              amount: `${Number(transaction.amount).toFixed(2)} ETB`,
+              method: transaction.metadata?.method || "Unknown",
+              date: new Date(transaction.createdAt).toLocaleString(),
+              account: transaction.metadata?.account || "-",
+              bonus: "None",
+              status:
+                transaction.status === "completed"
+                  ? "Approved"
+                  : transaction.status === "failed"
+                    ? "Flagged"
+                    : "Pending",
+            })),
+        ),
+      )
+      .catch((requestError) =>
+        setError(requestError.message || "Failed to load deposits"),
+      );
+  }, []);
+
+  const handleAction = async (deposit, action) => {
+    try {
+      await updateAdminWalletRequest(deposit.transactionId, action);
+      setDeposits((items) =>
+        items.map((item) =>
+          item.transactionId === deposit.transactionId
+            ? { ...item, status: action === "approve" ? "Approved" : "Flagged" }
+            : item,
+        ),
+      );
+    } catch (requestError) {
+      setError(requestError.message || "Failed to update deposit");
+    }
+  };
 
   const filteredDeposits = useMemo(
     () =>
@@ -106,6 +159,11 @@ const DepositPage = () => {
 
   return (
     <div className="space-y-5 text-slate-100">
+      {error && (
+        <div className="rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-300">
+          {error}
+        </div>
+      )}
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {[
           ["Pending Deposits", "38", "text-sky-300", "bg-sky-500/15"],
@@ -236,10 +294,18 @@ const DepositPage = () => {
                   </td>
                   <td className="px-3 py-3">
                     <div className="flex gap-1">
-                      <button className="rounded-lg bg-teal-600 px-2 py-1 text-[10px] text-white hover:bg-teal-500">
+                      <button
+                        onClick={() => handleAction(deposit, "approve")}
+                        disabled={deposit.status !== "Pending"}
+                        className="rounded-lg bg-teal-600 px-2 py-1 text-[10px] text-white hover:bg-teal-500 disabled:opacity-40"
+                      >
                         Approve
                       </button>
-                      <button className="rounded-lg border border-slate-700 px-2 py-1 text-[10px] text-slate-300 hover:bg-slate-800">
+                      <button
+                        onClick={() => handleAction(deposit, "reject")}
+                        disabled={deposit.status !== "Pending"}
+                        className="rounded-lg border border-slate-700 px-2 py-1 text-[10px] text-slate-300 hover:bg-slate-800 disabled:opacity-40"
+                      >
                         Reject
                       </button>
                       <button className="whitespace-nowrap rounded-lg border border-slate-700 px-2 py-1 text-[10px] text-slate-300 hover:bg-slate-800">

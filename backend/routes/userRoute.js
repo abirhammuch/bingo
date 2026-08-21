@@ -16,6 +16,7 @@ import {
 } from "../controller/userController.js";
 import userHistory from "../controller/userHistoryController.js";
 import submitDeposit from "../controller/userDepositController.js";
+import submitWithdrawal from "../controller/userWithdrawalController.js";
 import { userAuth } from "../middleware/userAuth.js";
 import WithdrawalSettings from "../models/WithdrawalSettings.js";
 
@@ -31,6 +32,7 @@ userRouter.get("/balance/:telegramId", getUserBalance);
 userRouter.get("/stats/:telegramId", getUserStats);
 userRouter.get("/history", userAuth, userHistory);
 userRouter.post("/deposits", userAuth, submitDeposit);
+userRouter.post("/withdrawals", userAuth, submitWithdrawal);
 userRouter.get("/withdraw-settings", userAuth, async (req, res) => {
   try {
     const settings = (await WithdrawalSettings.findOne({

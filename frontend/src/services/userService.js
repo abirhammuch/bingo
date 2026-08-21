@@ -15,6 +15,14 @@ export const fetchAdminWithdrawalSettings = () =>
 export const updateAdminWithdrawalSettings = (payload) =>
   api.patch("/api/admin/withdraw-fee", payload);
 
+export const fetchAdminWalletRequests = () =>
+  api.get("/api/admin/transactions/requests");
+
+export const updateAdminWalletRequest = (transactionId, action) =>
+  api.patch(
+    `/api/admin/transactions/${encodeURIComponent(transactionId)}/${action}`,
+  );
+
 export const getUserStats = (telegramId) =>
   api.get(`/api/users/stats/${encodeURIComponent(telegramId)}`);
 
@@ -22,6 +30,9 @@ export const fetchUserHistory = () => api.get("/api/users/history");
 
 export const submitDeposit = (payload) =>
   api.post("/api/users/deposits", payload);
+
+export const submitWithdrawal = (payload) =>
+  api.post("/api/users/withdrawals", payload);
 
 export const telegramLogin = (payload) =>
   api.post(`/api/users/telegram-login`, payload);

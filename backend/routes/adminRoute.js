@@ -67,12 +67,10 @@ router.patch("/withdraw-fee", requireAdmin, async (req, res) => {
     );
     res.json({ success: true, settings });
   } catch {
-    res
-      .status(500)
-      .json({
-        success: false,
-        message: "Failed to save withdrawal fee settings",
-      });
+    res.status(500).json({
+      success: false,
+      message: "Failed to save withdrawal fee settings",
+    });
   }
 });
 
@@ -378,6 +376,89 @@ router.delete("/commission", requireAdmin, async (req, res) => {
     });
   }
 });
+
+router.get("/transactions/requests", requireAdmin, async (req, res) => {
+  try {
+    const transactions = await Transaction.find({
+      type: { $in: ["deposit", "withdraw"] },
+    })
+      .populate("userId", "firstName username telegramId")
+      .sort({ createdAt: -1 })
+      .limit(200)
+      .lean();
+    res.json({ success: true, transactions });
+  } catch {
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to load wallet requests" });
+  }
+});
+
+router.patch(
+  "/transactions/:transactionId/:action",
+  requireAdmin,
+  async (req, res) => {
+    const { transactionId, action } = req.params;
+    if (!["approve", "reject"].includes(action)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Invalid transaction action" });
+    }
+
+    try {
+      const transaction = await Transaction.findOne({
+        transactionId,
+        type: { $in: ["deposit", "withdraw"] },
+        status: "pending",
+      });
+      if (!transaction) {
+        return res
+          .status(404)
+          .json({
+            success: false,
+            message: "Pending wallet request not found",
+          });
+      }
+
+      if (action === "reject") {
+        transaction.status = "failed";
+        await transaction.save();
+        return res.json({ success: true, transaction });
+      }
+
+      const user = await User.findOne({ telegramId: transaction.telegramId });
+      if (!user)
+        return res
+          .status(404)
+          .json({ success: false, message: "User not found" });
+
+      const walletChange =
+        transaction.type === "deposit"
+          ? Number(transaction.amount)
+          : -Number(transaction.metadata?.total ?? transaction.amount);
+      const nextBalance = Number(user.balance) + walletChange;
+      if (nextBalance < 0) {
+        return res
+          .status(400)
+          .json({ success: false, message: "User balance is insufficient" });
+      }
+
+      transaction.status = "completed";
+      transaction.balanceBefore = Number(user.balance);
+      transaction.balanceAfter = nextBalance;
+      user.balance = nextBalance;
+      await user.save();
+      await transaction.save();
+
+      res.json({ success: true, transaction, balance: nextBalance });
+    } catch (error) {
+      console.error("Wallet request approval error:", error);
+      res
+        .status(500)
+        .json({ success: false, message: "Failed to update wallet request" });
+    }
+  },
+);
 
 router.get("/stake", requireAdmin, async (req, res) => {
   try {

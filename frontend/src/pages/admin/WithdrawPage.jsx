@@ -1,4 +1,8 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
+import {
+  fetchAdminWalletRequests,
+  updateAdminWalletRequest,
+} from "../../services/userService";
 
 const requests = [
   {
@@ -82,9 +86,59 @@ const statusStyles = {
 const WithdrawPage = () => {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("All");
+  const [withdrawalRequests, setWithdrawalRequests] = useState([]);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    fetchAdminWalletRequests()
+      .then((response) =>
+        setWithdrawalRequests(
+          (response.transactions || [])
+            .filter((transaction) => transaction.type === "withdraw")
+            .map((transaction) => ({
+              ...transaction,
+              id: transaction.transactionId,
+              user:
+                transaction.userId?.username ||
+                transaction.userId?.firstName ||
+                transaction.telegramId,
+              amount: `${Number(transaction.amount).toFixed(2)} ETB`,
+              method: transaction.metadata?.method || "Unknown",
+              date: new Date(transaction.createdAt).toLocaleString(),
+              account: transaction.metadata?.account || "-",
+              activity: "Wallet withdrawal",
+              status:
+                transaction.status === "completed"
+                  ? "Approved"
+                  : transaction.status === "failed"
+                    ? "Flagged"
+                    : "Pending",
+            })),
+        ),
+      )
+      .catch((requestError) =>
+        setError(requestError.message || "Failed to load withdrawals"),
+      );
+  }, []);
+
+  const handleAction = async (request, action) => {
+    try {
+      await updateAdminWalletRequest(request.transactionId, action);
+      setWithdrawalRequests((items) =>
+        items.map((item) =>
+          item.transactionId === request.transactionId
+            ? { ...item, status: action === "approve" ? "Approved" : "Flagged" }
+            : item,
+        ),
+      );
+    } catch (requestError) {
+      setError(requestError.message || "Failed to update withdrawal");
+    }
+  };
+
   const filteredRequests = useMemo(
     () =>
-      requests.filter((request) => {
+      withdrawalRequests.filter((request) => {
         const matchesSearch = `${request.id} ${request.user} ${request.method}`
           .toLowerCase()
           .includes(search.toLowerCase());
@@ -95,6 +149,11 @@ const WithdrawPage = () => {
 
   return (
     <div className="space-y-5 text-slate-900">
+      {error && (
+        <div className="rounded-lg border border-rose-300 bg-rose-50 p-3 text-sm text-rose-700">
+          {error}
+        </div>
+      )}
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {[
           ["Pending Requests", "38", "bg-sky-100 text-sky-700"],
@@ -224,10 +283,18 @@ const WithdrawPage = () => {
                   </td>
                   <td className="px-3 py-3">
                     <div className="flex gap-1">
-                      <button className="rounded bg-teal-600 px-2 py-1 text-[10px] text-white">
+                      <button
+                        onClick={() => handleAction(request, "approve")}
+                        disabled={request.status !== "Pending"}
+                        className="rounded bg-teal-600 px-2 py-1 text-[10px] text-white disabled:opacity-40"
+                      >
                         Approve
                       </button>
-                      <button className="rounded border border-slate-300 px-2 py-1 text-[10px]">
+                      <button
+                        onClick={() => handleAction(request, "reject")}
+                        disabled={request.status !== "Pending"}
+                        className="rounded border border-slate-300 px-2 py-1 text-[10px] disabled:opacity-40"
+                      >
                         Deny
                       </button>
                       <button className="rounded border border-slate-300 px-2 py-1 text-[10px] whitespace-nowrap">

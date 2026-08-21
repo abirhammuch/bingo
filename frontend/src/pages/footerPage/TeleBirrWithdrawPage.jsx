@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   fetchWithdrawalSettings,
   getUserBalance,
+  submitWithdrawal,
 } from "../../services/userService";
 import { useAuth } from "../../context/AuthContext";
 
@@ -78,6 +79,25 @@ const TeleBirrWithdrawPage = () => {
   const handlePreviousStep = () => {
     if (step > 1) {
       setStep(step - 1);
+    }
+  };
+
+  const handleSubmitWithdrawal = async () => {
+    if (!phone.trim()) {
+      setError("Enter your Telebirr phone number");
+      setStep(2);
+      return;
+    }
+    setError("");
+    try {
+      await submitWithdrawal({
+        amount,
+        method: withdrawData.method,
+        account: phone,
+      });
+      setStep(4);
+    } catch (submitError) {
+      setError(submitError.message || "Failed to submit withdrawal");
     }
   };
 
@@ -238,7 +258,7 @@ const TeleBirrWithdrawPage = () => {
 
             {/* Confirmation Button */}
             <button
-              onClick={handleNextStep}
+              onClick={handleSubmitWithdrawal}
               className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-white font-bold py-3 rounded-lg uppercase tracking-wide transition shadow-lg"
             >
               CONFIRM WITHDRAWAL &gt;
