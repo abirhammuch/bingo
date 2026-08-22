@@ -7,6 +7,7 @@ import WinnerModal from "./WinnerModal";
 
 import socket, { authenticateTelegram } from "../../socket/socket";
 import { useAuth } from "../../context/AuthContext";
+import { speakCalledNumber } from "../../utils/amharicNumberVoice";
 
 const MAX_LUCKY_NUMBERS = 3;
 const DEFAULT_SELECTION_TIME = 30;
@@ -449,6 +450,7 @@ const Bingo = ({ theme, onBlocked }) => {
 
       if (typeof payload.number === "number") {
         setCurrentNumber(payload.number);
+        speakCalledNumber(payload.number);
       }
 
       if (Array.isArray(payload.calledNumbers)) {
