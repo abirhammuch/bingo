@@ -5,7 +5,7 @@ import SelectionPage from "./SelectionPage";
 import LivePage from "./LivePage";
 import WinnerModal from "./WinnerModal";
 
-import socket from "../../socket/socket";
+import socket, { authenticateTelegram } from "../../socket/socket";
 import { useAuth } from "../../context/AuthContext";
 
 const MAX_LUCKY_NUMBERS = 3;
@@ -110,6 +110,7 @@ const Bingo = ({ theme }) => {
   const [selectionError, setSelectionError] = useState("");
 
   const [toastMessage, setToastMessage] = useState("");
+  const [isBlocked, setIsBlocked] = useState(false);
 
   // ============================================================
   // REFS
@@ -325,6 +326,9 @@ const Bingo = ({ theme }) => {
   // ============================================================
 
   useEffect(() => {
+    const initData = window?.Telegram?.WebApp?.initData;
+    if (initData) authenticateTelegram(initData);
+
     const handleConnect = () => {
       console.log("✅ Bingo socket connected");
       socket.emit("bingo:getCurrentRound", {
@@ -334,6 +338,10 @@ const Bingo = ({ theme }) => {
 
     const handleConnectError = (error) => {
       console.error("❌ Bingo socket error:", error);
+      if (error?.message === "CHEATING_IS_BAD") {
+        setIsBlocked(true);
+        socket.disconnect();
+      }
     };
 
     // ==========================================================
@@ -1039,8 +1047,22 @@ const Bingo = ({ theme }) => {
   // UI
   // ============================================================
 
+  if (isBlocked) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-950 px-6 text-center text-white">
+        <div>
+          <div className="mb-4 text-5xl">🚫</div>
+          <h1 className="text-2xl font-bold">Cheating is bad!</h1>
+          <p className="mt-2 text-slate-400">
+            Your account has been blocked and the game has been closed.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 to-slate-900 flex flex-col">
+    <div className="min-h-screen bg-linear-to-b from-slate-950 to-slate-900 flex flex-col">
       {toastMessage && (
         <div className="fixed right-4 top-4 z-50 rounded-lg border border-rose-400/40 bg-rose-950 px-4 py-3 text-sm font-semibold text-rose-100 shadow-lg">
           {toastMessage}
@@ -1117,7 +1139,7 @@ const Bingo = ({ theme }) => {
         ==================================================== */}
 
         {phase === "finished" && (
-          <div className="min-h-[300px] flex items-center justify-center text-white">
+          <div className="min-h-75 flex items-center justify-center text-white">
             <div className="text-center">
               <div className="text-5xl mb-4">🏆</div>
 

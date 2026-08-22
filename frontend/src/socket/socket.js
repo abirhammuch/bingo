@@ -17,6 +17,8 @@ const URL = rawUrl
 const socket = io(URL, {
   autoConnect: false,
 
+  auth: {},
+
   transports: ["websocket", "polling"],
 
   reconnection: true,
@@ -45,9 +47,8 @@ socket.on("disconnect", (reason) => {
 export const authenticateTelegram = (initData) => {
   if (!initData) return;
 
-  socket.emit("auth", {
-    initData: decodeURIComponent(initData),
-  });
+  socket.auth = { initData: decodeURIComponent(initData) };
+  if (socket.connected) socket.disconnect().connect();
 };
 
 export default socket;

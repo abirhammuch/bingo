@@ -1,5 +1,7 @@
 import { Server } from "socket.io";
 import { initBingoSocket } from "./bingoSocket.js";
+import User from "../models/User.js";
+import { verifyTelegramInitData } from "../utils/telegramAuth.js";
 //import { initLudoSocket } from "./ludoSocket.js";
 
 // ✅ 1. Create a global variable to store the Socket.IO instance
@@ -34,9 +36,31 @@ export const initSocketServer = (server) => {
   ioInstance = io;
 
   // 3. Middleware: Authenticate socket connections (Optional but recommended)
-  io.use((socket, next) => {
+  io.use(async (socket, next) => {
     console.log(`🔌 New connection attempt from ${socket.id}`);
-    next();
+    try {
+      const initData = socket.handshake.auth?.initData;
+      if (!initData) return next();
+
+      const params = verifyTelegramInitData(initData);
+      const telegramUser =
+        typeof params.user === "string" ? JSON.parse(params.user) : params.user;
+      const telegramId = String(telegramUser?.id || params.id || "");
+      const user = await User.findOne({ telegramId }).select(
+        "isBlocked isActive",
+      );
+
+      if (user?.isBlocked || user?.isActive === false) {
+        const error = new Error("CHEATING_IS_BAD");
+        error.data = { code: "ACCOUNT_BLOCKED" };
+        return next(error);
+      }
+
+      socket.telegramId = telegramId;
+      next();
+    } catch (error) {
+      next(error);
+    }
   });
 
   // 4. Log connection events globally
