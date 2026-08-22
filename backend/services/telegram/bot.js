@@ -50,6 +50,8 @@ const telegramWebAppBaseUrl = rawWebAppUrl
   .replace(/\/login\/?$/, "")
   .replace(/\/$/, "");
 const telegramWebAppUrl = telegramWebAppBaseUrl;
+const telegramDepositUrl = `${telegramWebAppBaseUrl}/deposit`;
+const telegramWithdrawUrl = `${telegramWebAppBaseUrl}/withdraw`;
 const telegramBotUsername =
   process.env.TELEGRAM_BOT_USERNAME || "MarshalBingoBot";
 const telegramSupportUrl =
@@ -59,6 +61,7 @@ const accountKeyboard = () =>
   Markup.keyboard([
     ["🎮 Play Game", "🔗 Referral Link"],
     ["👤 My Profile", "💰 Wallet"],
+    ["💳 Deposit", "🏦 Withdraw"],
     ["🆘 Support"],
   ])
     .resize()
@@ -240,6 +243,30 @@ bot.hears("💰 Wallet", async (ctx) => {
 bot.hears("🎮 Play Game", async (ctx) => {
   await ctx.reply("🎮 Open the game and start playing.", openGameKeyboard());
 });
+
+const openWalletPage = async (ctx, label, url) => {
+  const user = await User.findOne({ telegramId: String(ctx.from.id) });
+  if (!user) return ctx.reply("Please start the bot first with /start.");
+  if (needsPhoneRegistration(user)) {
+    return ctx.reply(
+      "Please share your phone number to use wallet services.",
+      registrationKeyboard(),
+    );
+  }
+  return ctx.reply(`Open ${label} in Marshal Bingo.`, {
+    reply_markup: {
+      inline_keyboard: [[Markup.button.webApp(label, url)]],
+    },
+  });
+};
+
+bot.hears("💳 Deposit", (ctx) =>
+  openWalletPage(ctx, "💳 Deposit", telegramDepositUrl),
+);
+
+bot.hears("🏦 Withdraw", (ctx) =>
+  openWalletPage(ctx, "🏦 Withdraw", telegramWithdrawUrl),
+);
 
 bot.hears("🆘 Support", async (ctx) => {
   await ctx.reply(`🆘 Support: ${telegramSupportUrl}`);

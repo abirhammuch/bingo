@@ -15,8 +15,8 @@ const TelebirrDepositePage = () => {
     method: "Telebirr",
     minAmount: 50,
     currency: "ETB",
-    phoneNumber: "0980808525",
-    name: "Marshal M",
+    phoneNumber: "0970707525",
+    name: "Mergesa Mersha",
     instructions:
       "After sending, copy the full SMS and paste it on the next step.",
   };
