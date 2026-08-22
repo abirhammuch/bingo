@@ -11,6 +11,7 @@ import { useNavigate } from "react-router-dom";
 import {
   telegramLogin as apiTelegramLogin,
   telegramWebAppLogin as apiTelegramWebAppLogin,
+  getUserProfile,
 } from "../services/userService";
 
 import { authenticateTelegram } from "../socket/socket";
@@ -67,6 +68,23 @@ export const AuthProvider = ({ children }) => {
       setUser(null);
     }
   }, [token]);
+
+  useEffect(() => {
+    if (!token || !user?.telegramId) return;
+
+    getUserProfile(user.telegramId)
+      .then((response) => {
+        if (!response?.user) return;
+        setUser(response.user);
+        localStorage.setItem(
+          getAuthStorageKey("authUser"),
+          JSON.stringify(response.user),
+        );
+      })
+      .catch((error) => {
+        console.error("Failed to refresh user status:", error);
+      });
+  }, [token, user?.telegramId]);
 
   /*
    * Normal Telegram login.

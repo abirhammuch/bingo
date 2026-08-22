@@ -33,6 +33,7 @@ import Coupon from "./pages/footerPage/Coupon.jsx";
 import CBEDepositePage from "./pages/footerPage/CBEDepositePage.jsx";
 import TelegramBroadcastPage from "./pages/admin/TelegramBroadcastPage.jsx";
 import { getAuthStorageKey } from "./utils/telegramStorage";
+import { useAuth } from "./context/AuthContext.jsx";
 
 const hasValidAdminSession = () => {
   const token = localStorage.getItem("adminToken");
@@ -86,12 +87,25 @@ const ReferralRedirect = () => {
   return null;
 };
 
+const BlockedAccountPage = () => (
+  <div className="flex min-h-screen items-center justify-center bg-slate-950 px-6 text-center text-white">
+    <div>
+      <div className="mb-4 text-5xl">🚫</div>
+      <h1 className="text-2xl font-bold">Cheating is bad!</h1>
+      <p className="mt-2 text-slate-400">
+        Your account has been blocked and these pages are unavailable.
+      </p>
+    </div>
+  </div>
+);
+
 const App = () => {
   const location = useLocation();
   const isAdminPath = location.pathname.startsWith("/admin");
   const isAuthPage = ["/login", "/logout"].includes(location.pathname);
   const isLivePage = location.pathname === "/bingopage";
   const { theme } = useAppContext();
+  const { user: authUser } = useAuth();
 
   const themeBackgrounds = {
     green: "bg-gradient-to-br from-slate-950 via-slate-900 to-emerald-950",
@@ -103,6 +117,10 @@ const App = () => {
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
+
+  if (authUser?.isBlocked && !isAdminPath && !isAuthPage) {
+    return <BlockedAccountPage />;
+  }
 
   return (
     <div
