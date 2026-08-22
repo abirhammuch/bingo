@@ -1,16 +1,32 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
+import { promptTelegramShareContact } from "../../utils/telegramWebApp";
 import Bingo from "../../components/bingo/Bingo";
 
 const BingoPage = () => {
-  const { user, loading } = useAuth();
+  const { user, loading, loginWithTelegramInitData } = useAuth();
+  const [authenticating, setAuthenticating] = useState(false);
+  const [authError, setAuthError] = useState(null);
 
-  /*
-   * Authentication is handled by LoginPage/AuthContext.
-   * BingoPage should NOT authenticate Telegram again.
-   */
+  useEffect(() => {
+    if (user || loading) return;
 
-  if (loading) {
+    const telegram = window?.Telegram?.WebApp;
+    const initData = telegram?.initData || telegram?.initDataUnsafe?.initData;
+
+    if (!initData) return;
+
+    setAuthenticating(true);
+    loginWithTelegramInitData({ initData })
+      .catch((error) => {
+        console.error("Telegram WebApp login failed:", error);
+        setAuthError(error?.message || "Telegram authentication failed.");
+        promptTelegramShareContact();
+      })
+      .finally(() => setAuthenticating(false));
+  }, [user, loading, loginWithTelegramInitData]);
+
+  if (loading || authenticating) {
     return (
       <div
         style={{
@@ -39,10 +55,6 @@ const BingoPage = () => {
     );
   }
 
-  /*
-   * If there is no authenticated user,
-   * don't render the game.
-   */
   if (!user) {
     return (
       <div
@@ -81,7 +93,8 @@ const BingoPage = () => {
             color: "#94a3b8",
           }}
         >
-          Your Telegram session could not be found.
+          {authError ||
+            "Open this game from the Telegram bot so your account can be identified."}
         </p>
       </div>
     );
