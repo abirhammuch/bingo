@@ -11,8 +11,28 @@ import { creditReferralReward } from "../services/wallet/referralService.js";
 import BonusSettings from "../models/BonusSettings.js";
 import { creditDepositBonuses } from "../services/wallet/bonusService.js";
 import bot from "../services/telegram/bot.js";
+import AdminSettings from "../models/AdminSettings.js";
+import crypto from "node:crypto";
 
 const router = express.Router();
+
+const hashPassword = (
+  password,
+  salt = crypto.randomBytes(16).toString("hex"),
+) => ({
+  salt,
+  hash: crypto.scryptSync(password, salt, 64).toString("hex"),
+});
+
+const passwordMatches = (password, hash, salt) => {
+  if (!hash || !salt) return false;
+  const expected = Buffer.from(hash, "hex");
+  const actual = crypto.scryptSync(password, salt, 64);
+  return (
+    expected.length === actual.length &&
+    crypto.timingSafeEqual(expected, actual)
+  );
+};
 
 const requireAdmin = (req, res, next) => {
   const authHeader = req.headers.authorization;
@@ -147,8 +167,16 @@ router.patch("/withdraw-fee", requireAdmin, async (req, res) => {
 router.post("/login", async (req, res) => {
   const { password } = req.body;
   const ADMIN_SECRET = process.env.ADMIN_PASSWORD || process.env.ADMIN_SECRET;
+  const storedSettings = await AdminSettings.findOne({ key: "default" }).lean();
+  const validPassword = storedSettings?.passwordHash
+    ? passwordMatches(
+        password,
+        storedSettings.passwordHash,
+        storedSettings.passwordSalt,
+      )
+    : Boolean(ADMIN_SECRET && password === ADMIN_SECRET);
 
-  if (!ADMIN_SECRET || password !== ADMIN_SECRET) {
+  if (!validPassword) {
     return res
       .status(401)
       .json({ success: false, message: "Invalid admin password" });
@@ -162,6 +190,44 @@ router.post("/login", async (req, res) => {
   );
 
   res.json({ success: true, token });
+});
+
+router.patch("/password", requireAdmin, async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  if (
+    typeof currentPassword !== "string" ||
+    typeof newPassword !== "string" ||
+    newPassword.length < 8
+  ) {
+    return res.status(400).json({
+      success: false,
+      message: "New password must be at least 8 characters",
+    });
+  }
+
+  const settings = await AdminSettings.findOne({ key: "default" });
+  const ADMIN_SECRET = process.env.ADMIN_PASSWORD || process.env.ADMIN_SECRET;
+  const currentIsValid = settings?.passwordHash
+    ? passwordMatches(
+        currentPassword,
+        settings.passwordHash,
+        settings.passwordSalt,
+      )
+    : Boolean(ADMIN_SECRET && currentPassword === ADMIN_SECRET);
+  if (!currentIsValid) {
+    return res.status(401).json({
+      success: false,
+      message: "Current password is incorrect",
+    });
+  }
+
+  const { hash, salt } = hashPassword(newPassword);
+  await AdminSettings.findOneAndUpdate(
+    { key: "default" },
+    { key: "default", passwordHash: hash, passwordSalt: salt },
+    { upsert: true, new: true },
+  );
+  res.json({ success: true, message: "Admin password changed successfully" });
 });
 
 // Protected admin route: Get all users (no initData required)

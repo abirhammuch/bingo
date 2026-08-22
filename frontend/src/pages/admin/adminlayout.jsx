@@ -13,6 +13,7 @@ import {
   FaTimes,
   FaSignOutAlt,
   FaBullhorn,
+  FaKey,
 } from "react-icons/fa";
 import { fetchAdminDashboard } from "../../services/userService";
 
@@ -24,6 +25,7 @@ const adminMenu = [
     label: "Telegram Broadcast",
     icon: <FaBullhorn />,
   },
+  { to: "/admin/password", label: "Change Password", icon: <FaKey /> },
   { to: "/admin/referral-bonus", label: "Referral Bonus", icon: <FaTrophy /> },
   { to: "/admin/coupons", label: "Coupons", icon: <FaCoins /> },
   { to: "/admin/stake", label: "Stake", icon: <FaCoins /> },
