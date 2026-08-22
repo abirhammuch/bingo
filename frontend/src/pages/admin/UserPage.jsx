@@ -172,7 +172,7 @@ const UserPage = () => {
           <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5">
             <div className="text-sm text-slate-400">Wallet Balance</div>
             <div className="mt-4 text-3xl font-semibold text-violet-300">
-              {totalWallet.toLocaleString()} ETB
+              {totalWallet.toFixed(2)} ETB
             </div>
           </div>
         </div>
@@ -287,7 +287,7 @@ const UserPage = () => {
                         </div>
                       ) : (
                         <div className="flex items-center gap-2">
-                          <span>{user.wallet.toLocaleString()} ETB</span>
+                          <span>{user.wallet.toFixed(2)} ETB</span>
                           <button
                             onClick={() => {
                               setEditingBalanceId(user.id);

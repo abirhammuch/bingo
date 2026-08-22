@@ -198,7 +198,7 @@ bot.hears("👤 My Profile", async (ctx) => {
         `Name: ${user.firstName} ${user.lastName}\n` +
         `Username: ${user.username ? `@${user.username}` : "(none)"}\n` +
         `Phone: ${user.phoneNumber || "Not shared"}\n` +
-        `Balance: ${user.balance ?? 0}\n` +
+        `Balance: ${Number(user.balance ?? 0).toFixed(2)} ETB\n` +
         `Referrals: ${user.referralCount ?? 0}\n` +
         `Referral link: ${getReferralLink(user)}\n` +
         `Registered: ${user.isRegistered ? "Yes" : "No"}`,
@@ -227,7 +227,7 @@ bot.hears("💰 Wallet", async (ctx) => {
 
     await ctx.reply(
       `💰 Wallet\n` +
-        `Current balance: ${user.balance ?? 0} ETB\n` +
+        `Current balance: ${Number(user.balance ?? 0).toFixed(2)} ETB\n` +
         `Phone: ${user.phoneNumber || "Not shared"}\n` +
         `Account registered: ${user.isRegistered ? "Yes" : "No"}`,
     );

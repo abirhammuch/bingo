@@ -69,7 +69,7 @@ const Header = ({
             </div>
 
             <div className="text-sm font-bold text-emerald-400">
-              {stake} ETB
+              {Number(stake || 0).toFixed(2)} ETB
             </div>
           </div>
 
