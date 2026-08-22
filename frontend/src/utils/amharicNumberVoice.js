@@ -6,8 +6,10 @@ const getBingoColumn = (number) => {
   return "O";
 };
 
-export const speakCalledNumber = (number) => {
-  if (!Number.isInteger(number) || typeof window === "undefined") return;
+const getAudioPath = (number) =>
+  `/audio/amharic/${getBingoColumn(number)}-${number}.mp3`;
+
+const speakWithBrowserVoice = (number) => {
   if (
     !("speechSynthesis" in window) ||
     typeof SpeechSynthesisUtterance === "undefined"
@@ -23,4 +25,12 @@ export const speakCalledNumber = (number) => {
   utterance.rate = 0.8;
   utterance.pitch = 1;
   window.speechSynthesis.speak(utterance);
+};
+
+export const speakCalledNumber = (number) => {
+  if (!Number.isInteger(number) || typeof window === "undefined") return;
+
+  const audio = new Audio(getAudioPath(number));
+  audio.volume = 1;
+  audio.play().catch(() => speakWithBrowserVoice(number));
 };
