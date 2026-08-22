@@ -97,6 +97,8 @@ export const sendAdminTelegramBroadcast = (payload) =>
   api.post("/api/admin/telegram/broadcast", payload);
 export const changeAdminPassword = (currentPassword, newPassword) =>
   api.patch("/api/admin/password", { currentPassword, newPassword });
+export const createAdminUser = (payload) =>
+  api.post("/api/admin/admins", payload);
 
 export const deleteCommissionSettings = () => api.del("/api/admin/commission");
 

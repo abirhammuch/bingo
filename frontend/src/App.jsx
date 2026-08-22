@@ -33,6 +33,7 @@ import Coupon from "./pages/footerPage/Coupon.jsx";
 import CBEDepositePage from "./pages/footerPage/CBEDepositePage.jsx";
 import TelegramBroadcastPage from "./pages/admin/TelegramBroadcastPage.jsx";
 import AdminPasswordPage from "./pages/admin/AdminPasswordPage.jsx";
+import AdminUsersPage from "./pages/admin/AdminUsersPage.jsx";
 import { getAuthStorageKey } from "./utils/telegramStorage";
 import { useAuth } from "./context/AuthContext.jsx";
 
@@ -150,6 +151,7 @@ const App = () => {
               element={<TelegramBroadcastPage />}
             />
             <Route path="password" element={<AdminPasswordPage />} />
+            <Route path="admins" element={<AdminUsersPage />} />
             <Route path="transactions" element={<TransactionPage />} />
             <Route path="bonus" element={<BonusPage section="all" />} />
             <Route

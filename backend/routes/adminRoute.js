@@ -13,6 +13,7 @@ import { creditDepositBonuses } from "../services/wallet/bonusService.js";
 import bot from "../services/telegram/bot.js";
 import AdminSettings from "../models/AdminSettings.js";
 import crypto from "node:crypto";
+import AdminUser from "../models/AdminUser.js";
 
 const router = express.Router();
 
@@ -48,124 +49,179 @@ const requireAdmin = (req, res, next) => {
     if (!decoded.isAdmin) {
       return res.status(403).json({ success: false, message: "Access denied" });
     }
+    req.admin = decoded;
     next();
   } catch {
     return res.status(401).json({ success: false, message: "Invalid token" });
   }
 };
 
-router.post("/telegram/broadcast", requireAdmin, async (req, res) => {
-  const message = String(req.body.message || "").trim();
-  const image = String(req.body.image || "").trim();
-  if ((!message && !image) || message.length > 4096) {
-    return res.status(400).json({
-      success: false,
-      message:
-        "Text or image is required and text must be 4096 characters or fewer",
-    });
+const requireSuperAdmin = (req, res, next) => {
+  if (req.admin?.role !== "super-admin") {
+    return res
+      .status(403)
+      .json({ success: false, message: "Super admin access required" });
   }
+  next();
+};
 
-  let photo;
-  if (image) {
-    const match = image.match(/^data:(image\/(?:jpeg|png|webp));base64,(.+)$/);
-    if (!match) {
+router.post(
+  "/telegram/broadcast",
+  requireAdmin,
+  requireSuperAdmin,
+  async (req, res) => {
+    const message = String(req.body.message || "").trim();
+    const image = String(req.body.image || "").trim();
+    if ((!message && !image) || message.length > 4096) {
       return res.status(400).json({
         success: false,
-        message: "Only JPEG, PNG, or WebP images are supported",
+        message:
+          "Text or image is required and text must be 4096 characters or fewer",
       });
     }
-    photo = { source: Buffer.from(match[2], "base64"), filename: "broadcast" };
-    if (photo.source.length > 10 * 1024 * 1024) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Image must be 10 MB or smaller" });
-    }
-  }
 
-  try {
-    const users = await User.find({
-      isRegistered: true,
-      isBlocked: { $ne: true },
-    })
-      .select("telegramId")
-      .lean();
-    let sent = 0;
-    let failed = 0;
-    for (const user of users) {
-      try {
-        if (photo) {
-          await bot.telegram.sendPhoto(user.telegramId, photo, {
-            caption: message || undefined,
-          });
-        } else {
-          await bot.telegram.sendMessage(user.telegramId, message);
-        }
-        sent += 1;
-      } catch (error) {
-        failed += 1;
-        console.warn(
-          `Telegram broadcast failed for ${user.telegramId}:`,
-          error.message,
-        );
+    let photo;
+    if (image) {
+      const match = image.match(
+        /^data:(image\/(?:jpeg|png|webp));base64,(.+)$/,
+      );
+      if (!match) {
+        return res.status(400).json({
+          success: false,
+          message: "Only JPEG, PNG, or WebP images are supported",
+        });
+      }
+      photo = {
+        source: Buffer.from(match[2], "base64"),
+        filename: "broadcast",
+      };
+      if (photo.source.length > 10 * 1024 * 1024) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Image must be 10 MB or smaller" });
       }
     }
-    res.json({ success: true, sent, failed, total: users.length });
-  } catch (error) {
-    console.error("Telegram broadcast error:", error);
-    res
-      .status(500)
-      .json({ success: false, message: "Failed to send broadcast" });
-  }
-});
 
-router.get("/withdraw-fee", requireAdmin, async (req, res) => {
-  const settings = (await WithdrawalSettings.findOne({
-    key: "default",
-  }).lean()) || {
-    feeType: "fixed",
-    feeAmount: 0,
-    minAmount: 50,
-    maxAmount: 100000,
-  };
-  res.json({ success: true, settings });
-});
-
-router.patch("/withdraw-fee", requireAdmin, async (req, res) => {
-  try {
-    const { feeType } = req.body;
-    const feeAmount = Number(req.body.feeAmount);
-    const minAmount = Number(req.body.minAmount);
-    const maxAmount = Number(req.body.maxAmount);
-    if (
-      !["fixed", "percentage"].includes(feeType) ||
-      !Number.isFinite(feeAmount) ||
-      feeAmount < 0 ||
-      !Number.isFinite(minAmount) ||
-      !Number.isFinite(maxAmount) ||
-      minAmount < 0 ||
-      maxAmount < minAmount
-    ) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid withdrawal fee settings" });
+    try {
+      const users = await User.find({
+        isRegistered: true,
+        isBlocked: { $ne: true },
+      })
+        .select("telegramId")
+        .lean();
+      let sent = 0;
+      let failed = 0;
+      for (const user of users) {
+        try {
+          if (photo) {
+            await bot.telegram.sendPhoto(user.telegramId, photo, {
+              caption: message || undefined,
+            });
+          } else {
+            await bot.telegram.sendMessage(user.telegramId, message);
+          }
+          sent += 1;
+        } catch (error) {
+          failed += 1;
+          console.warn(
+            `Telegram broadcast failed for ${user.telegramId}:`,
+            error.message,
+          );
+        }
+      }
+      res.json({ success: true, sent, failed, total: users.length });
+    } catch (error) {
+      console.error("Telegram broadcast error:", error);
+      res
+        .status(500)
+        .json({ success: false, message: "Failed to send broadcast" });
     }
-    const settings = await WithdrawalSettings.findOneAndUpdate(
-      { key: "default" },
-      { key: "default", feeType, feeAmount, minAmount, maxAmount },
-      { new: true, upsert: true, runValidators: true },
-    );
+  },
+);
+
+router.get(
+  "/withdraw-fee",
+  requireAdmin,
+  requireSuperAdmin,
+  async (req, res) => {
+    const settings = (await WithdrawalSettings.findOne({
+      key: "default",
+    }).lean()) || {
+      feeType: "fixed",
+      feeAmount: 0,
+      minAmount: 50,
+      maxAmount: 100000,
+    };
     res.json({ success: true, settings });
-  } catch {
-    res.status(500).json({
-      success: false,
-      message: "Failed to save withdrawal fee settings",
-    });
-  }
-});
+  },
+);
+
+router.patch(
+  "/withdraw-fee",
+  requireAdmin,
+  requireSuperAdmin,
+  async (req, res) => {
+    try {
+      const { feeType } = req.body;
+      const feeAmount = Number(req.body.feeAmount);
+      const minAmount = Number(req.body.minAmount);
+      const maxAmount = Number(req.body.maxAmount);
+      if (
+        !["fixed", "percentage"].includes(feeType) ||
+        !Number.isFinite(feeAmount) ||
+        feeAmount < 0 ||
+        !Number.isFinite(minAmount) ||
+        !Number.isFinite(maxAmount) ||
+        minAmount < 0 ||
+        maxAmount < minAmount
+      ) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Invalid withdrawal fee settings" });
+      }
+      const settings = await WithdrawalSettings.findOneAndUpdate(
+        { key: "default" },
+        { key: "default", feeType, feeAmount, minAmount, maxAmount },
+        { new: true, upsert: true, runValidators: true },
+      );
+      res.json({ success: true, settings });
+    } catch {
+      res.status(500).json({
+        success: false,
+        message: "Failed to save withdrawal fee settings",
+      });
+    }
+  },
+);
 
 // Simple admin password login (no Telegram initData required)
 router.post("/login", async (req, res) => {
-  const { password } = req.body;
+  const { username, password } = req.body;
+  if (username) {
+    const admin = await AdminUser.findOne({
+      username: String(username).trim().toLowerCase(),
+      isActive: true,
+    });
+    if (
+      !admin ||
+      !passwordMatches(password, admin.passwordHash, admin.passwordSalt)
+    ) {
+      return res
+        .status(401)
+        .json({ success: false, message: "Invalid admin credentials" });
+    }
+    const token = jwt.sign(
+      { role: admin.role, isAdmin: true, username: admin.username },
+      process.env.JWT_SECRET,
+      { expiresIn: "24h" },
+    );
+    return res.json({
+      success: true,
+      token,
+      role: admin.role,
+      username: admin.username,
+    });
+  }
   const ADMIN_SECRET = process.env.ADMIN_PASSWORD || process.env.ADMIN_SECRET;
   const storedSettings = await AdminSettings.findOne({ key: "default" }).lean();
   const validPassword = storedSettings?.passwordHash
@@ -184,7 +240,7 @@ router.post("/login", async (req, res) => {
 
   // Generate a JWT that marks the user as an admin
   const token = jwt.sign(
-    { role: "admin", isAdmin: true },
+    { role: "super-admin", isAdmin: true },
     process.env.JWT_SECRET,
     { expiresIn: "24h" },
   );
@@ -192,7 +248,7 @@ router.post("/login", async (req, res) => {
   res.json({ success: true, token });
 });
 
-router.patch("/password", requireAdmin, async (req, res) => {
+router.patch("/password", requireAdmin, requireSuperAdmin, async (req, res) => {
   const { currentPassword, newPassword } = req.body;
   if (
     typeof currentPassword !== "string" ||
@@ -228,6 +284,58 @@ router.patch("/password", requireAdmin, async (req, res) => {
     { upsert: true, new: true },
   );
   res.json({ success: true, message: "Admin password changed successfully" });
+});
+
+router.get("/admins", requireAdmin, requireSuperAdmin, async (req, res) => {
+  const admins = await AdminUser.find()
+    .select("username role isActive createdAt")
+    .sort({ createdAt: -1 })
+    .lean();
+  res.json({ success: true, admins });
+});
+
+router.post("/admins", requireAdmin, requireSuperAdmin, async (req, res) => {
+  const username = String(req.body.username || "")
+    .trim()
+    .toLowerCase();
+  const password = String(req.body.password || "");
+  if (!/^[a-z0-9._-]{3,30}$/.test(username) || password.length < 8) {
+    return res
+      .status(400)
+      .json({
+        success: false,
+        message:
+          "Username must be 3-30 characters and password at least 8 characters",
+      });
+  }
+  const { hash, salt } = hashPassword(password);
+  try {
+    const admin = await AdminUser.create({
+      username,
+      passwordHash: hash,
+      passwordSalt: salt,
+    });
+    res
+      .status(201)
+      .json({
+        success: true,
+        admin: {
+          username: admin.username,
+          role: admin.role,
+          isActive: admin.isActive,
+        },
+      });
+  } catch (error) {
+    res
+      .status(error.code === 11000 ? 409 : 500)
+      .json({
+        success: false,
+        message:
+          error.code === 11000
+            ? "Admin username already exists"
+            : "Failed to create admin",
+      });
+  }
 });
 
 // Protected admin route: Get all users (no initData required)
@@ -357,7 +465,7 @@ router.get("/dashboard", requireAdmin, async (req, res) => {
   }
 });
 
-router.get("/coupons", requireAdmin, async (req, res) => {
+router.get("/coupons", requireAdmin, requireSuperAdmin, async (req, res) => {
   try {
     const coupons = await Coupon.find().sort({ createdAt: -1 });
     res.json({ success: true, coupons });
@@ -368,7 +476,7 @@ router.get("/coupons", requireAdmin, async (req, res) => {
   }
 });
 
-router.post("/coupons", requireAdmin, async (req, res) => {
+router.post("/coupons", requireAdmin, requireSuperAdmin, async (req, res) => {
   try {
     const { code, type, value, expiry, perUserLimit } = req.body;
     const normalizedCode = String(code || "")
@@ -399,51 +507,62 @@ router.post("/coupons", requireAdmin, async (req, res) => {
   }
 });
 
-router.patch("/coupons/:id", requireAdmin, async (req, res) => {
-  try {
-    const updates = {};
-    if (req.body.code !== undefined)
-      updates.code = String(req.body.code).trim().toUpperCase();
-    if (req.body.type !== undefined) updates.type = req.body.type;
-    if (req.body.value !== undefined) updates.value = Number(req.body.value);
-    if (req.body.expiry !== undefined) updates.expiry = req.body.expiry || null;
-    if (req.body.perUserLimit !== undefined) {
-      updates.perUserLimit = Math.max(1, Number(req.body.perUserLimit) || 1);
+router.patch(
+  "/coupons/:id",
+  requireAdmin,
+  requireSuperAdmin,
+  async (req, res) => {
+    try {
+      const updates = {};
+      if (req.body.code !== undefined)
+        updates.code = String(req.body.code).trim().toUpperCase();
+      if (req.body.type !== undefined) updates.type = req.body.type;
+      if (req.body.value !== undefined) updates.value = Number(req.body.value);
+      if (req.body.expiry !== undefined)
+        updates.expiry = req.body.expiry || null;
+      if (req.body.perUserLimit !== undefined) {
+        updates.perUserLimit = Math.max(1, Number(req.body.perUserLimit) || 1);
+      }
+      const coupon = await Coupon.findByIdAndUpdate(req.params.id, updates, {
+        new: true,
+        runValidators: true,
+      });
+      if (!coupon)
+        return res
+          .status(404)
+          .json({ success: false, message: "Coupon not found" });
+      res.json({ success: true, coupon });
+    } catch (error) {
+      res
+        .status(400)
+        .json({ success: false, message: "Failed to update coupon" });
     }
-    const coupon = await Coupon.findByIdAndUpdate(req.params.id, updates, {
-      new: true,
-      runValidators: true,
-    });
-    if (!coupon)
-      return res
-        .status(404)
-        .json({ success: false, message: "Coupon not found" });
-    res.json({ success: true, coupon });
-  } catch (error) {
-    res
-      .status(400)
-      .json({ success: false, message: "Failed to update coupon" });
-  }
-});
+  },
+);
 
-router.patch("/coupons/:id/toggle", requireAdmin, async (req, res) => {
-  try {
-    const coupon = await Coupon.findById(req.params.id);
-    if (!coupon)
-      return res
-        .status(404)
-        .json({ success: false, message: "Coupon not found" });
-    coupon.isActive = !coupon.isActive;
-    await coupon.save();
-    res.json({ success: true, coupon });
-  } catch {
-    res
-      .status(500)
-      .json({ success: false, message: "Failed to update coupon status" });
-  }
-});
+router.patch(
+  "/coupons/:id/toggle",
+  requireAdmin,
+  requireSuperAdmin,
+  async (req, res) => {
+    try {
+      const coupon = await Coupon.findById(req.params.id);
+      if (!coupon)
+        return res
+          .status(404)
+          .json({ success: false, message: "Coupon not found" });
+      coupon.isActive = !coupon.isActive;
+      await coupon.save();
+      res.json({ success: true, coupon });
+    } catch {
+      res
+        .status(500)
+        .json({ success: false, message: "Failed to update coupon status" });
+    }
+  },
+);
 
-router.get("/commission", requireAdmin, async (req, res) => {
+router.get("/commission", requireAdmin, requireSuperAdmin, async (req, res) => {
   try {
     const defaults = {
       below100Percentage: 20,
@@ -483,137 +602,167 @@ router.get("/commission", requireAdmin, async (req, res) => {
   }
 });
 
-router.patch("/commission", requireAdmin, async (req, res) => {
-  try {
-    const values = [
-      req.body.below100Percentage,
-      req.body.between100And1000Percentage,
-      req.body.above1000Percentage,
-    ];
+router.patch(
+  "/commission",
+  requireAdmin,
+  requireSuperAdmin,
+  async (req, res) => {
+    try {
+      const values = [
+        req.body.below100Percentage,
+        req.body.between100And1000Percentage,
+        req.body.above1000Percentage,
+      ];
+      if (
+        values.some(
+          (value) =>
+            !Number.isFinite(Number(value)) ||
+            Number(value) < 0 ||
+            Number(value) > 100,
+        )
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Commission percentages must be between 0 and 100",
+        });
+      }
+      const settings = await CommissionSettings.findOneAndUpdate(
+        { key: "bingo" },
+        {
+          key: "bingo",
+          below100Percentage: Number(req.body.below100Percentage),
+          between100And1000Percentage: Number(
+            req.body.between100And1000Percentage,
+          ),
+          above1000Percentage: Number(req.body.above1000Percentage),
+        },
+        { new: true, upsert: true, runValidators: true },
+      );
+      res.json({ success: true, settings });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: "Failed to update commission settings",
+      });
+    }
+  },
+);
+
+router.delete(
+  "/commission",
+  requireAdmin,
+  requireSuperAdmin,
+  async (req, res) => {
+    try {
+      await CommissionSettings.deleteOne({ key: "bingo" });
+      res.json({
+        success: true,
+        settings: {
+          below100Percentage: 20,
+          between100And1000Percentage: 25,
+          above1000Percentage: 30,
+        },
+        message: "Commission rules deleted and defaults restored",
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: "Failed to delete commission rules",
+      });
+    }
+  },
+);
+
+router.get(
+  "/referral-settings",
+  requireAdmin,
+  requireSuperAdmin,
+  async (req, res) => {
+    const settings = (await ReferralSettings.findOne({
+      key: "default",
+    }).lean()) || {
+      key: "default",
+      depositPercentage: 5,
+      wagerPercentage: 1,
+    };
+    res.json({ success: true, settings });
+  },
+);
+
+router.get(
+  "/bonus-settings",
+  requireAdmin,
+  requireSuperAdmin,
+  async (req, res) => {
+    const settings = await BonusSettings.findOneAndUpdate(
+      { key: "default" },
+      { $setOnInsert: { key: "default" } },
+      { new: true, upsert: true, setDefaultsOnInsert: true },
+    );
+    res.json({ success: true, settings });
+  },
+);
+
+router.patch(
+  "/bonus-settings",
+  requireAdmin,
+  requireSuperAdmin,
+  async (req, res) => {
+    const registrationBonus = Number(req.body.registrationBonus);
+    const firstDepositBonus = Number(req.body.firstDepositBonus);
+    const depositBonusPercentage = Number(req.body.depositBonusPercentage);
     if (
-      values.some(
-        (value) =>
-          !Number.isFinite(Number(value)) ||
-          Number(value) < 0 ||
-          Number(value) > 100,
-      )
+      !Number.isFinite(registrationBonus) ||
+      !Number.isFinite(firstDepositBonus) ||
+      !Number.isFinite(depositBonusPercentage) ||
+      registrationBonus < 0 ||
+      firstDepositBonus < 0 ||
+      depositBonusPercentage < 0 ||
+      depositBonusPercentage > 100
     ) {
       return res.status(400).json({
         success: false,
-        message: "Commission percentages must be between 0 and 100",
+        message:
+          "Bonus amounts must be non-negative and deposit percentage must be 0-100",
       });
     }
-    const settings = await CommissionSettings.findOneAndUpdate(
-      { key: "bingo" },
-      {
-        key: "bingo",
-        below100Percentage: Number(req.body.below100Percentage),
-        between100And1000Percentage: Number(
-          req.body.between100And1000Percentage,
-        ),
-        above1000Percentage: Number(req.body.above1000Percentage),
-      },
+    const settings = await BonusSettings.findOneAndUpdate(
+      { key: "default" },
+      { registrationBonus, firstDepositBonus, depositBonusPercentage },
       { new: true, upsert: true, runValidators: true },
     );
     res.json({ success: true, settings });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Failed to update commission settings",
-    });
-  }
-});
+  },
+);
 
-router.delete("/commission", requireAdmin, async (req, res) => {
-  try {
-    await CommissionSettings.deleteOne({ key: "bingo" });
-    res.json({
-      success: true,
-      settings: {
-        below100Percentage: 20,
-        between100And1000Percentage: 25,
-        above1000Percentage: 30,
-      },
-      message: "Commission rules deleted and defaults restored",
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Failed to delete commission rules",
-    });
-  }
-});
-
-router.get("/referral-settings", requireAdmin, async (req, res) => {
-  const settings = (await ReferralSettings.findOne({
-    key: "default",
-  }).lean()) || {
-    key: "default",
-    depositPercentage: 5,
-    wagerPercentage: 1,
-  };
-  res.json({ success: true, settings });
-});
-
-router.get("/bonus-settings", requireAdmin, async (req, res) => {
-  const settings = await BonusSettings.findOneAndUpdate(
-    { key: "default" },
-    { $setOnInsert: { key: "default" } },
-    { new: true, upsert: true, setDefaultsOnInsert: true },
-  );
-  res.json({ success: true, settings });
-});
-
-router.patch("/bonus-settings", requireAdmin, async (req, res) => {
-  const registrationBonus = Number(req.body.registrationBonus);
-  const firstDepositBonus = Number(req.body.firstDepositBonus);
-  const depositBonusPercentage = Number(req.body.depositBonusPercentage);
-  if (
-    !Number.isFinite(registrationBonus) ||
-    !Number.isFinite(firstDepositBonus) ||
-    !Number.isFinite(depositBonusPercentage) ||
-    registrationBonus < 0 ||
-    firstDepositBonus < 0 ||
-    depositBonusPercentage < 0 ||
-    depositBonusPercentage > 100
-  ) {
-    return res.status(400).json({
-      success: false,
-      message:
-        "Bonus amounts must be non-negative and deposit percentage must be 0-100",
-    });
-  }
-  const settings = await BonusSettings.findOneAndUpdate(
-    { key: "default" },
-    { registrationBonus, firstDepositBonus, depositBonusPercentage },
-    { new: true, upsert: true, runValidators: true },
-  );
-  res.json({ success: true, settings });
-});
-
-router.patch("/referral-settings", requireAdmin, async (req, res) => {
-  const depositPercentage = Number(req.body.depositPercentage);
-  const wagerPercentage = Number(req.body.wagerPercentage);
-  if (
-    !Number.isFinite(depositPercentage) ||
-    !Number.isFinite(wagerPercentage) ||
-    depositPercentage < 0 ||
-    depositPercentage > 100 ||
-    wagerPercentage < 0 ||
-    wagerPercentage > 100
-  ) {
-    return res.status(400).json({
-      success: false,
-      message: "Referral percentages must be between 0 and 100",
-    });
-  }
-  const settings = await ReferralSettings.findOneAndUpdate(
-    { key: "default" },
-    { key: "default", depositPercentage, wagerPercentage },
-    { new: true, upsert: true, runValidators: true },
-  );
-  res.json({ success: true, settings });
-});
+router.patch(
+  "/referral-settings",
+  requireAdmin,
+  requireSuperAdmin,
+  async (req, res) => {
+    const depositPercentage = Number(req.body.depositPercentage);
+    const wagerPercentage = Number(req.body.wagerPercentage);
+    if (
+      !Number.isFinite(depositPercentage) ||
+      !Number.isFinite(wagerPercentage) ||
+      depositPercentage < 0 ||
+      depositPercentage > 100 ||
+      wagerPercentage < 0 ||
+      wagerPercentage > 100
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Referral percentages must be between 0 and 100",
+      });
+    }
+    const settings = await ReferralSettings.findOneAndUpdate(
+      { key: "default" },
+      { key: "default", depositPercentage, wagerPercentage },
+      { new: true, upsert: true, runValidators: true },
+    );
+    res.json({ success: true, settings });
+  },
+);
 
 router.get("/transactions/requests", requireAdmin, async (req, res) => {
   try {

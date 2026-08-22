@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import api from "../../utils/apiClient";
 
 const AdminLoginPage = () => {
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const navigate = useNavigate();
@@ -12,7 +13,7 @@ const AdminLoginPage = () => {
     setError("");
 
     try {
-      const data = await api.post("/api/admin/login", { password });
+      const data = await api.post("/api/admin/login", { username, password });
 
       localStorage.setItem("adminToken", data.token);
       navigate("/admin");
@@ -26,6 +27,13 @@ const AdminLoginPage = () => {
       <div className="bg-slate-900 p-8 rounded-2xl border border-slate-700 w-full max-w-md">
         <h1 className="text-2xl font-bold text-white mb-6">Admin Login</h1>
         <form onSubmit={handleLogin} className="space-y-4">
+          <input
+            type="text"
+            placeholder="Username (empty for super admin)"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            className="w-full bg-slate-800 border border-slate-700 p-3 rounded-xl text-white"
+          />
           <input
             type="password"
             placeholder="Admin Password"

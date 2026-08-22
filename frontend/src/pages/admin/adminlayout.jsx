@@ -14,6 +14,7 @@ import {
   FaSignOutAlt,
   FaBullhorn,
   FaKey,
+  FaUserShield,
 } from "react-icons/fa";
 import { fetchAdminDashboard } from "../../services/userService";
 
@@ -26,6 +27,7 @@ const adminMenu = [
     icon: <FaBullhorn />,
   },
   { to: "/admin/password", label: "Change Password", icon: <FaKey /> },
+  { to: "/admin/admins", label: "Admin Accounts", icon: <FaUserShield /> },
   { to: "/admin/referral-bonus", label: "Referral Bonus", icon: <FaTrophy /> },
   { to: "/admin/coupons", label: "Coupons", icon: <FaCoins /> },
   { to: "/admin/stake", label: "Stake", icon: <FaCoins /> },
@@ -92,6 +94,31 @@ const AdminLayout = () => {
   const [dashboard, setDashboard] = useState(null);
   const [dashboardError, setDashboardError] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const isSuperAdmin = (() => {
+    try {
+      const token = localStorage.getItem("adminToken");
+      return (
+        token && JSON.parse(atob(token.split(".")[1])).role === "super-admin"
+      );
+    } catch {
+      return false;
+    }
+  })();
+  const visibleAdminMenu = isSuperAdmin
+    ? adminMenu
+    : adminMenu.filter(
+        (item) =>
+          ![
+            "/admin/password",
+            "/admin/admins",
+            "/admin/telegram-broadcast",
+            "/admin/referral-bonus",
+            "/admin/registration-bonus",
+            "/admin/game-commission",
+            "/admin/withdraw-fee",
+            "/admin/coupons",
+          ].includes(item.to),
+      );
   const query = location.search.replace("?", "");
   const isActive = (to) => {
     const [path, mode] = to.split("?");
@@ -229,7 +256,7 @@ const AdminLayout = () => {
                 </button>
               </div>
               <nav className="space-y-2">
-                {adminMenu.map((item) => (
+                {visibleAdminMenu.map((item) => (
                   <Link
                     key={item.to}
                     to={item.to}
@@ -284,7 +311,7 @@ const AdminLayout = () => {
           </div>
 
           <nav className="space-y-2">
-            {adminMenu.map((item) => (
+            {visibleAdminMenu.map((item) => (
               <Link
                 key={item.to}
                 to={item.to}
