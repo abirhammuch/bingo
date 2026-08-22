@@ -14,6 +14,7 @@ import {
 } from "../services/userService";
 
 import { authenticateTelegram } from "../socket/socket";
+import { getAuthStorageKey } from "../utils/telegramStorage";
 
 const AuthContext = createContext(null);
 const currency = "ETB";
@@ -22,7 +23,7 @@ export const AuthProvider = ({ children }) => {
   const navigate = useNavigate();
 
   const [user, setUser] = useState(() => {
-    const storedUser = localStorage.getItem("authUser");
+    const storedUser = localStorage.getItem(getAuthStorageKey("authUser"));
 
     if (!storedUser) {
       return null;
@@ -31,12 +32,14 @@ export const AuthProvider = ({ children }) => {
     try {
       return JSON.parse(storedUser);
     } catch {
-      localStorage.removeItem("authUser");
+      localStorage.removeItem(getAuthStorageKey("authUser"));
       return null;
     }
   });
 
-  const [token, setToken] = useState(() => localStorage.getItem("authToken"));
+  const [token, setToken] = useState(() =>
+    localStorage.getItem(getAuthStorageKey("authToken")),
+  );
 
   const [loading, setLoading] = useState(false);
 
@@ -48,7 +51,7 @@ export const AuthProvider = ({ children }) => {
       return;
     }
 
-    const storedUser = localStorage.getItem("authUser");
+    const storedUser = localStorage.getItem(getAuthStorageKey("authUser"));
 
     if (!storedUser) {
       return;
@@ -59,7 +62,7 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error("Failed to restore user:", error);
 
-      localStorage.removeItem("authUser");
+      localStorage.removeItem(getAuthStorageKey("authUser"));
 
       setUser(null);
     }
@@ -82,9 +85,12 @@ export const AuthProvider = ({ children }) => {
         throw new Error("Login response does not contain a user");
       }
 
-      localStorage.setItem("authToken", data.token);
+      localStorage.setItem(getAuthStorageKey("authToken"), data.token);
 
-      localStorage.setItem("authUser", JSON.stringify(data.user));
+      localStorage.setItem(
+        getAuthStorageKey("authUser"),
+        JSON.stringify(data.user),
+      );
 
       setToken(data.token);
 
@@ -122,9 +128,12 @@ export const AuthProvider = ({ children }) => {
 
       console.log("✅ AuthContext: user authenticated", data.user);
 
-      localStorage.setItem("authToken", data.token);
+      localStorage.setItem(getAuthStorageKey("authToken"), data.token);
 
-      localStorage.setItem("authUser", JSON.stringify(data.user));
+      localStorage.setItem(
+        getAuthStorageKey("authUser"),
+        JSON.stringify(data.user),
+      );
 
       setToken(data.token);
 
@@ -146,9 +155,9 @@ export const AuthProvider = ({ children }) => {
    * Logout.
    */
   const logout = () => {
-    localStorage.removeItem("authToken");
+    localStorage.removeItem(getAuthStorageKey("authToken"));
 
-    localStorage.removeItem("authUser");
+    localStorage.removeItem(getAuthStorageKey("authUser"));
 
     setToken(null);
 
@@ -163,7 +172,10 @@ export const AuthProvider = ({ children }) => {
     setUser((currentUser) => {
       if (!currentUser) return currentUser;
       const updatedUser = { ...currentUser, balance };
-      localStorage.setItem("authUser", JSON.stringify(updatedUser));
+      localStorage.setItem(
+        getAuthStorageKey("authUser"),
+        JSON.stringify(updatedUser),
+      );
       return updatedUser;
     });
   };

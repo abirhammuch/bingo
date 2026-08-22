@@ -45,14 +45,10 @@ export const verifyTelegramInitData = (initData) => {
     match: computedHash === hash,
   });
 
-  // ✅ TEMPORARY BYPASS: ALWAYS RETURN TRUE
-  console.log(
-    "⚠️ [TELEGRAM AUTH] Bypassing hash verification for deployment test!",
-  );
-  // if (computedHash !== hash) {
-  //   console.error("❌ [TELEGRAM AUTH] Hash mismatch - verification failed");
-  //   throw new Error("Telegram initData verification failed");
-  // }
+  if (computedHash !== hash) {
+    console.error("❌ [TELEGRAM AUTH] Hash mismatch - verification failed");
+    throw new Error("Telegram initData verification failed");
+  }
 
   console.log(
     "✅ [TELEGRAM AUTH] Verification successful for user:",

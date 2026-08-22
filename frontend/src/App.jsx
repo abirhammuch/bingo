@@ -31,6 +31,7 @@ import Footer from "./components/footer/Footer";
 import AdminLoginPage from "./pages/admin/AdminLoginPage.jsx";
 import Coupon from "./pages/footerPage/Coupon.jsx";
 import CBEDepositePage from "./pages/footerPage/CBEDepositePage.jsx";
+import { getAuthStorageKey } from "./utils/telegramStorage";
 
 const hasValidAdminSession = () => {
   const token = localStorage.getItem("adminToken");
@@ -71,9 +72,14 @@ const ReferralRedirect = () => {
         referralCode.replace(/^ref_/i, ""),
       );
     }
-    navigate(localStorage.getItem("authToken") ? "/bingopage" : "/login", {
-      replace: true,
-    });
+    navigate(
+      localStorage.getItem(getAuthStorageKey("authToken"))
+        ? "/bingopage"
+        : "/login",
+      {
+        replace: true,
+      },
+    );
   }, [navigate, referralCode]);
 
   return null;

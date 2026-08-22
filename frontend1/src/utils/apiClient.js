@@ -1,3 +1,5 @@
+import { getAuthStorageKey } from "./telegramStorage";
+
 const rawApiUrl = import.meta.env.VITE_API_URL;
 const API_BASE_URL = rawApiUrl
   ? rawApiUrl.replace(/\/+$|\s+/g, "")
@@ -7,7 +9,7 @@ const defaultHeaders = {
   "Content-Type": "application/json",
 };
 
-const getAuthToken = () => localStorage.getItem("authToken");
+const getAuthToken = () => localStorage.getItem(getAuthStorageKey("authToken"));
 
 const buildUrl = (path) => `${API_BASE_URL}${path}`;
 

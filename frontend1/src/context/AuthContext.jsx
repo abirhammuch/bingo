@@ -10,18 +10,21 @@ import {
   telegramLogin as apiTelegramLogin,
   telegramWebAppLogin as apiTelegramWebAppLogin,
 } from "../services/userService";
+import { getAuthStorageKey } from "../utils/telegramStorage";
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(localStorage.getItem("authToken"));
+  const [token, setToken] = useState(
+    localStorage.getItem(getAuthStorageKey("authToken")),
+  );
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (token) {
-      const storedUser = localStorage.getItem("authUser");
+      const storedUser = localStorage.getItem(getAuthStorageKey("authUser"));
       if (storedUser) {
         try {
           setUser(JSON.parse(storedUser));
@@ -31,7 +34,7 @@ export const AuthProvider = ({ children }) => {
       }
     } else {
       setUser(null);
-      localStorage.removeItem("authUser");
+      localStorage.removeItem(getAuthStorageKey("authUser"));
     }
   }, [token]);
 
@@ -42,8 +45,11 @@ export const AuthProvider = ({ children }) => {
       if (!data?.token || !data?.user) {
         throw new Error("Invalid login response");
       }
-      localStorage.setItem("authToken", data.token);
-      localStorage.setItem("authUser", JSON.stringify(data.user));
+      localStorage.setItem(getAuthStorageKey("authToken"), data.token);
+      localStorage.setItem(
+        getAuthStorageKey("authUser"),
+        JSON.stringify(data.user),
+      );
       setToken(data.token);
       setUser(data.user);
       return data;
@@ -59,8 +65,11 @@ export const AuthProvider = ({ children }) => {
       if (!data?.token || !data?.user) {
         throw new Error("Invalid login response");
       }
-      localStorage.setItem("authToken", data.token);
-      localStorage.setItem("authUser", JSON.stringify(data.user));
+      localStorage.setItem(getAuthStorageKey("authToken"), data.token);
+      localStorage.setItem(
+        getAuthStorageKey("authUser"),
+        JSON.stringify(data.user),
+      );
       setToken(data.token);
       setUser(data.user);
       return data;
@@ -70,8 +79,8 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
-    localStorage.removeItem("authToken");
-    localStorage.removeItem("authUser");
+    localStorage.removeItem(getAuthStorageKey("authToken"));
+    localStorage.removeItem(getAuthStorageKey("authUser"));
     setToken(null);
     setUser(null);
     navigate("/");
