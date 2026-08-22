@@ -3,7 +3,7 @@ import { useAuth } from "../../context/AuthContext";
 import { promptTelegramShareContact } from "../../utils/telegramWebApp";
 import Bingo from "../../components/bingo/Bingo";
 
-const BingoPage = () => {
+const BingoPage = ({ onBlocked }) => {
   const { user, loading, loginWithTelegramInitData } = useAuth();
   const [authenticating, setAuthenticating] = useState(false);
   const [authError, setAuthError] = useState(null);
@@ -110,7 +110,7 @@ const BingoPage = () => {
         minHeight: "100vh",
       }}
     >
-      <Bingo theme="green" />
+      <Bingo theme="green" onBlocked={onBlocked} />
     </div>
   );
 };

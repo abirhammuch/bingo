@@ -11,7 +11,7 @@ import { useAuth } from "../../context/AuthContext";
 const MAX_LUCKY_NUMBERS = 3;
 const DEFAULT_SELECTION_TIME = 30;
 
-const Bingo = ({ theme }) => {
+const Bingo = ({ theme, onBlocked }) => {
   // ============================================================
   // THEME
   // ============================================================
@@ -340,6 +340,7 @@ const Bingo = ({ theme }) => {
       console.error("❌ Bingo socket error:", error);
       if (error?.message === "CHEATING_IS_BAD") {
         setIsBlocked(true);
+        onBlocked?.();
         socket.disconnect();
       }
     };
