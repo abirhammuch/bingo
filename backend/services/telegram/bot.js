@@ -1,6 +1,7 @@
 import dotenv from "dotenv";
 import { Telegraf, Markup } from "telegraf";
 import User from "../../models/User.js";
+import { creditRegistrationBonus } from "../wallet/bonusService.js";
 
 dotenv.config();
 
@@ -275,7 +276,7 @@ bot.start(async (ctx) => {
         lastName: telegramUser.last_name || "",
         referralCode: getReferralCode(telegramId),
         referredBy: referrer?.telegramId || null,
-        balance: 100,
+        balance: 0,
         lastLogin: new Date(),
         isRegistered: false,
       });
@@ -352,15 +353,18 @@ bot.on("contact", async (ctx) => {
         firstName: telegramUser.first_name || "Player",
         lastName: telegramUser.last_name || "",
         phoneNumber: contact.phone_number,
-        balance: 100,
+        balance: 0,
         lastLogin: new Date(),
         isRegistered: true,
       });
+      await creditRegistrationBonus(telegramId);
     } else {
+      const wasRegistered = user.isRegistered;
       user.phoneNumber = contact.phone_number;
       user.isRegistered = true;
       user.lastLogin = new Date();
       await user.save();
+      if (!wasRegistered) await creditRegistrationBonus(telegramId);
     }
 
     const keyboard = Markup.keyboard([["👤 My Profile", "💰 Wallet"]])

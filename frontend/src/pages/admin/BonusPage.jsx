@@ -6,10 +6,12 @@ import {
   fetchAdminWithdrawalSettings,
   fetchCommissionData,
   fetchAdminReferralSettings,
+  fetchAdminBonusSettings,
   toggleAdminCoupon,
   updateAdminWithdrawalSettings,
   updateCommissionSettings,
   updateAdminReferralSettings,
+  updateAdminBonusSettings,
   updateAdminCoupon,
 } from "../../services/userService";
 
@@ -57,6 +59,13 @@ const BonusPage = ({ section = "all" }) => {
   });
   const [referralError, setReferralError] = useState("");
   const [referralMessage, setReferralMessage] = useState("");
+  const [bonusForm, setBonusForm] = useState({
+    registrationBonus: 100,
+    firstDepositBonus: 50,
+    depositBonusPercentage: 5,
+  });
+  const [bonusError, setBonusError] = useState("");
+  const [bonusMessage, setBonusMessage] = useState("");
   const [withdrawFeeForm, setWithdrawFeeForm] = useState({
     feeType: "fixed",
     feeAmount: 0,
@@ -97,6 +106,32 @@ const BonusPage = ({ section = "all" }) => {
       setReferralMessage("Referral rules saved");
     } catch (error) {
       setReferralError(error.message || "Failed to save referral settings");
+    }
+  };
+
+  useEffect(() => {
+    if (section !== "registration" && section !== "all") return;
+    fetchAdminBonusSettings()
+      .then((response) => setBonusForm(response.settings))
+      .catch((error) =>
+        setBonusError(error.message || "Failed to load bonus settings"),
+      );
+  }, [section]);
+
+  const saveBonusSettings = async (event) => {
+    event.preventDefault();
+    setBonusError("");
+    setBonusMessage("");
+    try {
+      const response = await updateAdminBonusSettings({
+        registrationBonus: Number(bonusForm.registrationBonus),
+        firstDepositBonus: Number(bonusForm.firstDepositBonus),
+        depositBonusPercentage: Number(bonusForm.depositBonusPercentage),
+      });
+      setBonusForm(response.settings);
+      setBonusMessage("Bonus rules saved");
+    } catch (error) {
+      setBonusError(error.message || "Failed to save bonus settings");
     }
   };
 
@@ -545,34 +580,51 @@ const BonusPage = ({ section = "all" }) => {
         )}
 
         {show("registration") && (
-          <Panel title="Registration Bonus Rules" action="Edit Rules">
-            <div className="grid gap-4 p-4 text-xs sm:grid-cols-2">
+          <Panel title="Registration & Deposit Bonuses">
+            <form
+              onSubmit={saveBonusSettings}
+              className="grid gap-4 p-4 sm:grid-cols-3"
+            >
+              {bonusError && (
+                <div className="sm:col-span-3 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-300">
+                  {bonusError}
+                </div>
+              )}
+              {bonusMessage && (
+                <div className="sm:col-span-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-300">
+                  {bonusMessage}
+                </div>
+              )}
               {[
-                ["Welcome Bonus Amount", "$25.00"],
-                ["Minimum Deposit", "$10.00"],
-                ["Wagering Requirement (x)", "3"],
-                ["Validity Period (Days)", "30"],
-              ].map(([label, value]) => (
-                <label
-                  key={label}
-                  className="flex items-center justify-between gap-3 text-slate-400"
-                >
+                ["Registration bonus (ETB)", "registrationBonus"],
+                ["First deposit bonus (ETB)", "firstDepositBonus"],
+                ["Deposit bonus (%)", "depositBonusPercentage"],
+              ].map(([label, field]) => (
+                <label key={field} className="text-xs text-slate-400">
                   {label}
                   <input
-                    defaultValue={value}
-                    className="h-8 w-24 rounded-lg border border-slate-700 bg-slate-950 px-2 text-right text-slate-100"
+                    type="number"
+                    min="0"
+                    max={field === "depositBonusPercentage" ? "100" : undefined}
+                    step="0.01"
+                    value={bonusForm[field]}
+                    onChange={(event) =>
+                      setBonusForm({
+                        ...bonusForm,
+                        [field]: event.target.value,
+                      })
+                    }
+                    className="mt-1 block w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100"
                   />
                 </label>
               ))}
-            </div>
-            <div className="flex items-center justify-between border-t border-slate-800 px-4 py-3 text-xs">
-              <span className="text-slate-400">
-                Registration bonus is currently active
-              </span>
-              <button className="rounded-full bg-emerald-500/15 px-3 py-1 text-emerald-300">
-                Active
+              <button
+                type="submit"
+                className="rounded-lg bg-teal-600 px-3 py-2 text-sm font-medium text-white hover:bg-teal-500 sm:col-span-3"
+              >
+                Save Bonus Rules
               </button>
-            </div>
+            </form>
           </Panel>
         )}
 

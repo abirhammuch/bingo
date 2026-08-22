@@ -8,6 +8,8 @@ import Transaction from "../models/Transaction.js";
 import WithdrawalSettings from "../models/WithdrawalSettings.js";
 import ReferralSettings from "../models/ReferralSettings.js";
 import { creditReferralReward } from "../services/wallet/referralService.js";
+import BonusSettings from "../models/BonusSettings.js";
+import { creditDepositBonuses } from "../services/wallet/bonusService.js";
 
 const router = express.Router();
 
@@ -422,6 +424,42 @@ router.get("/referral-settings", requireAdmin, async (req, res) => {
   res.json({ success: true, settings });
 });
 
+router.get("/bonus-settings", requireAdmin, async (req, res) => {
+  const settings = await BonusSettings.findOneAndUpdate(
+    { key: "default" },
+    { $setOnInsert: { key: "default" } },
+    { new: true, upsert: true, setDefaultsOnInsert: true },
+  );
+  res.json({ success: true, settings });
+});
+
+router.patch("/bonus-settings", requireAdmin, async (req, res) => {
+  const registrationBonus = Number(req.body.registrationBonus);
+  const firstDepositBonus = Number(req.body.firstDepositBonus);
+  const depositBonusPercentage = Number(req.body.depositBonusPercentage);
+  if (
+    !Number.isFinite(registrationBonus) ||
+    !Number.isFinite(firstDepositBonus) ||
+    !Number.isFinite(depositBonusPercentage) ||
+    registrationBonus < 0 ||
+    firstDepositBonus < 0 ||
+    depositBonusPercentage < 0 ||
+    depositBonusPercentage > 100
+  ) {
+    return res.status(400).json({
+      success: false,
+      message:
+        "Bonus amounts must be non-negative and deposit percentage must be 0-100",
+    });
+  }
+  const settings = await BonusSettings.findOneAndUpdate(
+    { key: "default" },
+    { registrationBonus, firstDepositBonus, depositBonusPercentage },
+    { new: true, upsert: true, runValidators: true },
+  );
+  res.json({ success: true, settings });
+});
+
 router.patch("/referral-settings", requireAdmin, async (req, res) => {
   const depositPercentage = Number(req.body.depositPercentage);
   const wagerPercentage = Number(req.body.wagerPercentage);
@@ -562,6 +600,7 @@ router.patch(
       await user.save();
       await transaction.save();
       if (transaction.type === "deposit") {
+        await creditDepositBonuses(transaction);
         await creditReferralReward({
           referredTelegramId: transaction.telegramId,
           baseAmount: transaction.amount,

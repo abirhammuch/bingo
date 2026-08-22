@@ -52,7 +52,7 @@ export const telegramLogin = async (req, res) => {
 
     if (!user) {
       const referrer = await findReferrer(referralCode, telegramId);
-      // Create new user with a Welcome Bonus
+      // New users receive the configured bonus after registration.
       user = new User({
         telegramId: telegramId.toString(),
         firstName,
@@ -61,7 +61,7 @@ export const telegramLogin = async (req, res) => {
         profilePhoto: profilePhoto || "",
         referralCode: getReferralCode(telegramId),
         referredBy: referrer?.telegramId || null,
-        balance: 100, // 🎁 Welcome Bonus
+        balance: 0,
         lastLogin: new Date(),
       });
       await user.save();
@@ -224,7 +224,7 @@ export const telegramWebAppLogin = async (req, res) => {
         profilePhoto,
         referralCode: getReferralCode(telegramId),
         referredBy: referrer?.telegramId || null,
-        balance: 100,
+        balance: 0,
         isRegistered: false,
         lastLogin: new Date(),
       });
