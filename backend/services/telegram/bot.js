@@ -45,9 +45,10 @@ const rawWebAppUrl =
   process.env.TELEGRAM_WEBAPP_URL ||
   process.env.FRONTEND_URL ||
   "https://bingo-zeta-livid.vercel.app";
-const telegramWebAppUrl = rawWebAppUrl
+const telegramWebAppBaseUrl = rawWebAppUrl
   .replace(/\/login\/?$/, "")
   .replace(/\/$/, "");
+const telegramWebAppUrl = `${telegramWebAppBaseUrl}/login`;
 const telegramBotUsername =
   process.env.TELEGRAM_BOT_USERNAME || "MarshalBingoBot";
 const telegramSupportUrl =
