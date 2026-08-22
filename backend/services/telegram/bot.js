@@ -53,9 +53,9 @@ const telegramWebAppUrl = telegramWebAppBaseUrl;
 const telegramDepositUrl = `${telegramWebAppBaseUrl}/deposit`;
 const telegramWithdrawUrl = `${telegramWebAppBaseUrl}/withdraw`;
 const telegramBotUsername =
-  process.env.TELEGRAM_BOT_USERNAME || "MarshalBingoBot";
+  process.env.TELEGRAM_BOT_USERNAME || "casinabingo_bot";
 const telegramSupportUrl =
-  process.env.TELEGRAM_SUPPORT_URL || "https://t.me/MarshalSupport";
+  process.env.TELEGRAM_SUPPORT_URL || "https://t.me/casina_bingo_support";
 
 const accountKeyboard = () =>
   Markup.keyboard([
@@ -72,7 +72,7 @@ const getReferralLink = (user) =>
 
 const openGameKeyboard = () =>
   Markup.inlineKeyboard([
-    [Markup.button.webApp("🎮 Open Marshal Bingo", telegramWebAppUrl)],
+    [Markup.button.webApp("🎮 Open Casina Bingo", telegramWebAppUrl)],
   ]);
 
 const launchBot = async () => {
@@ -131,7 +131,7 @@ const sendLoginPrompt = async (ctx, user) => {
   const message =
     user && needsPhoneRegistration(user)
       ? "Your account is created but not fully registered yet. Please share your phone number or use Login once complete."
-      : "Welcome back! Use the button below to login to Marshal Game.";
+      : "Welcome back! Use the button below to login to Casina Bingo.";
 
   await ctx.reply(message, {
     reply_markup: {
@@ -253,7 +253,7 @@ const openWalletPage = async (ctx, label, url) => {
       registrationKeyboard(),
     );
   }
-  return ctx.reply(`Open ${label} in Marshal Bingo.`, {
+  return ctx.reply(`Open ${label} in Casina Bingo.`, {
     reply_markup: {
       inline_keyboard: [[Markup.button.webApp(label, url)]],
     },
@@ -309,7 +309,7 @@ bot.start(async (ctx) => {
       });
 
       await ctx.reply(
-        `Welcome to Marshal Game 🎮\n\n` +
+        `Welcome to Casina Bingo 🎮\n\n` +
           `Hi ${telegramUser.first_name || "Player"}! Your account has been initialized.`,
       );
       if (referrer) {

@@ -95,7 +95,7 @@ const Header = ({
                 className="w-10 h-10 rounded-full bg-slate-900/80 p-1"
               />
               <span className="font-semibold text-lg tracking-wide">
-                Marshal Games
+                Casina Bingo
               </span>
             </div>
 
