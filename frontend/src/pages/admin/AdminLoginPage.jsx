@@ -29,7 +29,7 @@ const AdminLoginPage = () => {
         <form onSubmit={handleLogin} className="space-y-4">
           <input
             type="text"
-            placeholder="Username (empty for super admin)"
+            placeholder="Username (user name)"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             className="w-full bg-slate-800 border border-slate-700 p-3 rounded-xl text-white"
