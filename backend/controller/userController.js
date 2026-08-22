@@ -240,6 +240,12 @@ export const telegramWebAppLogin = async (req, res) => {
         isRegistered: user.isRegistered,
       });
     } else {
+      if (user.isBlocked) {
+        return res.status(403).json({
+          success: false,
+          message: "Your Telegram account is blocked. Please contact support.",
+        });
+      }
       console.log("✅ [USER FOUND]", {
         telegramId,
         isRegistered: user.isRegistered,
