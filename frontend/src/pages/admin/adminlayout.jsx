@@ -12,12 +12,18 @@ import {
   FaBars,
   FaTimes,
   FaSignOutAlt,
+  FaBullhorn,
 } from "react-icons/fa";
 import { fetchAdminDashboard } from "../../services/userService";
 
 const adminMenu = [
   { to: "/admin", label: "Dashboard", icon: <FaChartLine /> },
   { to: "/admin/users", label: "Users", icon: <FaUsers /> },
+  {
+    to: "/admin/telegram-broadcast",
+    label: "Telegram Broadcast",
+    icon: <FaBullhorn />,
+  },
   { to: "/admin/referral-bonus", label: "Referral Bonus", icon: <FaTrophy /> },
   { to: "/admin/coupons", label: "Coupons", icon: <FaCoins /> },
   { to: "/admin/stake", label: "Stake", icon: <FaCoins /> },

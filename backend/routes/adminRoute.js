@@ -10,6 +10,7 @@ import ReferralSettings from "../models/ReferralSettings.js";
 import { creditReferralReward } from "../services/wallet/referralService.js";
 import BonusSettings from "../models/BonusSettings.js";
 import { creditDepositBonuses } from "../services/wallet/bonusService.js";
+import bot from "../services/telegram/bot.js";
 
 const router = express.Router();
 
@@ -32,6 +33,45 @@ const requireAdmin = (req, res, next) => {
     return res.status(401).json({ success: false, message: "Invalid token" });
   }
 };
+
+router.post("/telegram/broadcast", requireAdmin, async (req, res) => {
+  const message = String(req.body.message || "").trim();
+  if (!message || message.length > 4096) {
+    return res.status(400).json({
+      success: false,
+      message: "Message is required and must be 4096 characters or fewer",
+    });
+  }
+
+  try {
+    const users = await User.find({
+      isRegistered: true,
+      isBlocked: { $ne: true },
+    })
+      .select("telegramId")
+      .lean();
+    let sent = 0;
+    let failed = 0;
+    for (const user of users) {
+      try {
+        await bot.telegram.sendMessage(user.telegramId, message);
+        sent += 1;
+      } catch (error) {
+        failed += 1;
+        console.warn(
+          `Telegram broadcast failed for ${user.telegramId}:`,
+          error.message,
+        );
+      }
+    }
+    res.json({ success: true, sent, failed, total: users.length });
+  } catch (error) {
+    console.error("Telegram broadcast error:", error);
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to send broadcast" });
+  }
+});
 
 router.get("/withdraw-fee", requireAdmin, async (req, res) => {
   const settings = (await WithdrawalSettings.findOne({

@@ -31,6 +31,7 @@ import Footer from "./components/footer/Footer";
 import AdminLoginPage from "./pages/admin/AdminLoginPage.jsx";
 import Coupon from "./pages/footerPage/Coupon.jsx";
 import CBEDepositePage from "./pages/footerPage/CBEDepositePage.jsx";
+import TelegramBroadcastPage from "./pages/admin/TelegramBroadcastPage.jsx";
 import { getAuthStorageKey } from "./utils/telegramStorage";
 
 const hasValidAdminSession = () => {
@@ -125,6 +126,10 @@ const App = () => {
           >
             <Route index element={<UserPage />} />
             <Route path="users" element={<UserPage />} />
+            <Route
+              path="telegram-broadcast"
+              element={<TelegramBroadcastPage />}
+            />
             <Route path="transactions" element={<TransactionPage />} />
             <Route path="bonus" element={<BonusPage section="all" />} />
             <Route
