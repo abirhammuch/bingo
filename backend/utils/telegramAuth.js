@@ -27,7 +27,10 @@ export const verifyTelegramInitData = (initData) => {
     throw new Error("Telegram initData is missing hash");
   }
 
-  const secretKey = crypto.createHash("sha256").update(botToken).digest();
+  const secretKey = crypto
+    .createHmac("sha256", "WebAppData")
+    .update(botToken)
+    .digest();
   const dataCheckString = Object.keys(params)
     .filter((key) => key !== "hash")
     .sort()
