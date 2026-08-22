@@ -36,11 +36,30 @@ const requireAdmin = (req, res, next) => {
 
 router.post("/telegram/broadcast", requireAdmin, async (req, res) => {
   const message = String(req.body.message || "").trim();
-  if (!message || message.length > 4096) {
+  const image = String(req.body.image || "").trim();
+  if ((!message && !image) || message.length > 4096) {
     return res.status(400).json({
       success: false,
-      message: "Message is required and must be 4096 characters or fewer",
+      message:
+        "Text or image is required and text must be 4096 characters or fewer",
     });
+  }
+
+  let photo;
+  if (image) {
+    const match = image.match(/^data:(image\/(?:jpeg|png|webp));base64,(.+)$/);
+    if (!match) {
+      return res.status(400).json({
+        success: false,
+        message: "Only JPEG, PNG, or WebP images are supported",
+      });
+    }
+    photo = { source: Buffer.from(match[2], "base64"), filename: "broadcast" };
+    if (photo.source.length > 10 * 1024 * 1024) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Image must be 10 MB or smaller" });
+    }
   }
 
   try {
@@ -54,7 +73,13 @@ router.post("/telegram/broadcast", requireAdmin, async (req, res) => {
     let failed = 0;
     for (const user of users) {
       try {
-        await bot.telegram.sendMessage(user.telegramId, message);
+        if (photo) {
+          await bot.telegram.sendPhoto(user.telegramId, photo, {
+            caption: message || undefined,
+          });
+        } else {
+          await bot.telegram.sendMessage(user.telegramId, message);
+        }
         sent += 1;
       } catch (error) {
         failed += 1;
