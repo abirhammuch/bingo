@@ -48,7 +48,7 @@ const rawWebAppUrl =
 const telegramWebAppBaseUrl = rawWebAppUrl
   .replace(/\/login\/?$/, "")
   .replace(/\/$/, "");
-const telegramWebAppUrl = `${telegramWebAppBaseUrl}/login`;
+const telegramWebAppUrl = telegramWebAppBaseUrl;
 const telegramBotUsername =
   process.env.TELEGRAM_BOT_USERNAME || "MarshalBingoBot";
 const telegramSupportUrl =
