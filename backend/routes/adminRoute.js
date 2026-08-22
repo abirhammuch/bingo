@@ -599,9 +599,10 @@ router.patch(
       user.balance = nextBalance;
       await user.save();
       await transaction.save();
+      let referralReward = null;
       if (transaction.type === "deposit") {
         await creditDepositBonuses(transaction);
-        await creditReferralReward({
+        referralReward = await creditReferralReward({
           referredTelegramId: transaction.telegramId,
           baseAmount: transaction.amount,
           kind: "deposit",
@@ -609,7 +610,12 @@ router.patch(
         });
       }
 
-      res.json({ success: true, transaction, balance: nextBalance });
+      res.json({
+        success: true,
+        transaction,
+        balance: nextBalance,
+        referralReward,
+      });
     } catch (error) {
       console.error("Wallet request approval error:", error);
       res
