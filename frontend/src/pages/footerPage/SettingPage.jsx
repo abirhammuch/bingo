@@ -224,7 +224,7 @@ const SettingPage = () => {
       {/* App Version */}
       <div className="text-center py-6 border-t border-slate-700/50">
         <p className="text-xs uppercase tracking-widest text-slate-500 font-semibold">
-          AGAFARI BINGO · V2.0.4
+         MARSHAL BINGO · V2.0.4
         </p>
       </div>
 

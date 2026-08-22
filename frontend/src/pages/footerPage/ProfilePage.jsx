@@ -1,23 +1,48 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Footer from "../../components/footer/Footer";
 import { useAuth } from "../../context/AuthContext";
+import { getUserProfile } from "../../services/userService";
 
 const ProfilePage = () => {
   const navigate = useNavigate();
   const { user: authUser } = useAuth();
+  const [profile, setProfile] = useState(authUser);
+
+  useEffect(() => {
+    let active = true;
+
+    if (!authUser?.telegramId) {
+      setProfile(authUser);
+      return () => {
+        active = false;
+      };
+    }
+
+    getUserProfile(authUser.telegramId)
+      .then((response) => {
+        if (active && response.user) setProfile(response.user);
+      })
+      .catch((error) => {
+        console.error("Failed to load profile:", error);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [authUser]);
 
   const user = {
-    name: authUser?.firstName || authUser?.username || "Player",
-    handle: authUser?.username ? `@${authUser.username}` : "",
+    name: profile?.firstName || profile?.username || "Player",
+    handle: profile?.username ? `@${profile.username}` : "",
     avatar: "👤",
-    referrals: 0,
-    earned: "0 ETB",
+    referrals: Number(profile?.referralCount || 0),
+    earned: `${Number(profile?.referralEarnings || 0).toFixed(2)} ETB`,
     isOnline: true,
   };
 
   return (
-    <div className="pb-16 min-h-screen bg-gradient-to-b from-slate-950 to-slate-900">
+    <div className="pb-16 min-h-screen bg-linear-to-b from-slate-950 to-slate-900">
       {/* Profile Header */}
       <div className="bg-slate-900/60 border-b border-slate-700 p-4">
         <div className="max-w-4xl mx-auto">
