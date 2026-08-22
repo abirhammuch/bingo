@@ -300,13 +300,11 @@ router.post("/admins", requireAdmin, requireSuperAdmin, async (req, res) => {
     .toLowerCase();
   const password = String(req.body.password || "");
   if (!/^[a-z0-9._-]{3,30}$/.test(username) || password.length < 8) {
-    return res
-      .status(400)
-      .json({
-        success: false,
-        message:
-          "Username must be 3-30 characters and password at least 8 characters",
-      });
+    return res.status(400).json({
+      success: false,
+      message:
+        "Username must be 3-30 characters and password at least 8 characters",
+    });
   }
   const { hash, salt } = hashPassword(password);
   try {
@@ -315,28 +313,39 @@ router.post("/admins", requireAdmin, requireSuperAdmin, async (req, res) => {
       passwordHash: hash,
       passwordSalt: salt,
     });
-    res
-      .status(201)
-      .json({
-        success: true,
-        admin: {
-          username: admin.username,
-          role: admin.role,
-          isActive: admin.isActive,
-        },
-      });
+    res.status(201).json({
+      success: true,
+      admin: {
+        username: admin.username,
+        role: admin.role,
+        isActive: admin.isActive,
+      },
+    });
   } catch (error) {
-    res
-      .status(error.code === 11000 ? 409 : 500)
-      .json({
-        success: false,
-        message:
-          error.code === 11000
-            ? "Admin username already exists"
-            : "Failed to create admin",
-      });
+    res.status(error.code === 11000 ? 409 : 500).json({
+      success: false,
+      message:
+        error.code === 11000
+          ? "Admin username already exists"
+          : "Failed to create admin",
+    });
   }
 });
+
+router.delete(
+  "/admins/:id",
+  requireAdmin,
+  requireSuperAdmin,
+  async (req, res) => {
+    const admin = await AdminUser.findByIdAndDelete(req.params.id);
+    if (!admin) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Admin account not found" });
+    }
+    res.json({ success: true, message: "Admin account deleted" });
+  },
+);
 
 // Protected admin route: Get all users (no initData required)
 router.get("/users", async (req, res) => {

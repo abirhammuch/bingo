@@ -99,6 +99,9 @@ export const changeAdminPassword = (currentPassword, newPassword) =>
   api.patch("/api/admin/password", { currentPassword, newPassword });
 export const createAdminUser = (payload) =>
   api.post("/api/admin/admins", payload);
+export const fetchAdminUsers = () => api.get("/api/admin/admins");
+export const deleteAdminUser = (id) =>
+  api.del(`/api/admin/admins/${encodeURIComponent(id)}`);
 
 export const deleteCommissionSettings = () => api.del("/api/admin/commission");
 

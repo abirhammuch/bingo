@@ -1,11 +1,40 @@
 import React, { useState } from "react";
-import { createAdminUser } from "../../services/userService";
+import {
+  createAdminUser,
+  deleteAdminUser,
+  fetchAdminUsers,
+} from "../../services/userService";
 
 const AdminUsersPage = () => {
   const [form, setForm] = useState({ username: "", password: "" });
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [admins, setAdmins] = useState([]);
+
+  const loadAdmins = async () => {
+    try {
+      const response = await fetchAdminUsers();
+      setAdmins(response.admins || []);
+    } catch (requestError) {
+      setError(requestError.message || "Failed to load admins");
+    }
+  };
+
+  React.useEffect(() => {
+    loadAdmins();
+  }, []);
+
+  const removeAdmin = async (admin) => {
+    if (!window.confirm(`Delete admin ${admin.username}?`)) return;
+    try {
+      await deleteAdminUser(admin._id);
+      setAdmins((items) => items.filter((item) => item._id !== admin._id));
+      setMessage("Admin account deleted");
+    } catch (requestError) {
+      setError(requestError.message || "Failed to delete admin");
+    }
+  };
 
   const submit = async (event) => {
     event.preventDefault();
@@ -69,6 +98,26 @@ const AdminUsersPage = () => {
           {saving ? "Creating..." : "Create admin"}
         </button>
       </form>
+      <div className="mt-8 border-t border-slate-800 pt-5">
+        <h2 className="font-semibold">Lower Admins</h2>
+        <div className="mt-3 space-y-2">
+          {admins.map((admin) => (
+            <div
+              key={admin._id}
+              className="flex items-center justify-between rounded-lg border border-slate-700 px-3 py-2 text-sm"
+            >
+              <span>{admin.username}</span>
+              <button
+                type="button"
+                onClick={() => removeAdmin(admin)}
+                className="rounded border border-rose-500/50 px-2 py-1 text-xs text-rose-300"
+              >
+                Delete
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
     </section>
   );
 };
