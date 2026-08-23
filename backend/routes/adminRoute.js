@@ -592,24 +592,28 @@ router.get("/dashboard", requireAdmin, async (req, res) => {
                 $cond: [
                   {
                     $or: [
-                      { $in: ["$type", ["COUPON"]] },
+                      { $eq: ["$type", "COUPON"] },
                       {
                         $and: [
                           { $eq: ["$type", "reward"] },
-                          { $ne: ["$metadata.rewardKind", "deposit"] },
                           {
-                            $not: [
-                              {
-                                $in: [
-                                  "$metadata.bonusType",
-                                  ["first-deposit", "deposit-percentage"],
-                                ],
-                              },
+                            $in: [
+                              "$metadata.bonusType",
+                              [
+                                "registration",
+                                "first-deposit",
+                                "deposit-percentage",
+                              ],
                             ],
                           },
                         ],
                       },
-                      { $eq: ["$metadata.systemWithdrawal", true] },
+                      {
+                        $and: [
+                          { $eq: ["$type", "reward"] },
+                          { $eq: ["$metadata.referralReward", true] },
+                        ],
+                      },
                     ],
                   },
                   "$amount",
@@ -657,24 +661,28 @@ router.get("/dashboard", requireAdmin, async (req, res) => {
                 $cond: [
                   {
                     $or: [
-                      { $in: ["$type", ["COUPON"]] },
+                      { $eq: ["$type", "COUPON"] },
                       {
                         $and: [
                           { $eq: ["$type", "reward"] },
-                          { $ne: ["$metadata.rewardKind", "deposit"] },
                           {
-                            $not: [
-                              {
-                                $in: [
-                                  "$metadata.bonusType",
-                                  ["first-deposit", "deposit-percentage"],
-                                ],
-                              },
+                            $in: [
+                              "$metadata.bonusType",
+                              [
+                                "registration",
+                                "first-deposit",
+                                "deposit-percentage",
+                              ],
                             ],
                           },
                         ],
                       },
-                      { $eq: ["$metadata.systemWithdrawal", true] },
+                      {
+                        $and: [
+                          { $eq: ["$type", "reward"] },
+                          { $eq: ["$metadata.referralReward", true] },
+                        ],
+                      },
                     ],
                   },
                   "$amount",
