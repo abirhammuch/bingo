@@ -193,6 +193,7 @@ const AdminLayout = () => {
     ["2d", "2 Days"],
     ["weekly", "Weekly"],
     ["monthly", "Monthly"],
+    ["alltime", "All Time"],
   ];
 
   useEffect(() => {

@@ -370,13 +370,16 @@ router.get("/users", async (req, res) => {
 
 router.get("/dashboard", requireAdmin, async (req, res) => {
   try {
-    const period = ["1d", "2d", "weekly", "monthly"].includes(req.query.period)
+    const period = ["1d", "2d", "weekly", "monthly", "alltime"].includes(
+      req.query.period,
+    )
       ? req.query.period
       : "1d";
     const periodDays = { "1d": 1, "2d": 2, weekly: 7, monthly: 30 };
-    const periodStart = new Date(
-      Date.now() - periodDays[period] * 24 * 60 * 60 * 1000,
-    );
+    const periodStart =
+      period === "alltime"
+        ? null
+        : new Date(Date.now() - periodDays[period] * 24 * 60 * 60 * 1000);
     const [
       totalUsers,
       activeUsers,
@@ -461,7 +464,7 @@ router.get("/dashboard", requireAdmin, async (req, res) => {
         {
           $match: {
             status: "completed",
-            createdAt: { $gte: periodStart },
+            ...(periodStart ? { createdAt: { $gte: periodStart } } : {}),
             $or: [
               { type: "COMMISSION" },
               { type: "withdraw", "metadata.fee": { $exists: true } },
