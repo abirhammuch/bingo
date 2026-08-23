@@ -501,6 +501,7 @@ router.get("/dashboard", requireAdmin, async (req, res) => {
         {
           $match: {
             status: "completed",
+            ...(periodStart ? { createdAt: { $gte: periodStart } } : {}),
             $or: [
               { type: "COMMISSION" },
               { type: "withdraw", "metadata.fee": { $exists: true } },
@@ -562,7 +563,6 @@ router.get("/dashboard", requireAdmin, async (req, res) => {
         {
           $match: {
             status: "completed",
-            ...(periodStart ? { createdAt: { $gte: periodStart } } : {}),
             $or: [
               { type: "COMMISSION" },
               { type: "withdraw", "metadata.fee": { $exists: true } },
