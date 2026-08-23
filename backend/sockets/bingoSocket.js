@@ -80,6 +80,10 @@ const buildRoundState = async (game) => {
     currentNumber: game.currentNumber ?? null,
 
     winner: game.winner || null,
+    winners: game.winners || [],
+    totalPot: game.totalPot || 0,
+    commissionAmount: game.commissionAmount || 0,
+    prizePool: game.prizePool || 0,
 
     selectionEndsAt: game.selectionEndsAt || null,
 
@@ -785,46 +789,6 @@ export const initBingoSocket = (io) => {
           number,
           ...result,
         });
-
-        // ========================================================
-        // WINNER
-        // ========================================================
-
-        if (result.bingo) {
-          stopBingoTimers(gameId);
-
-          const winner = result.winner || game.winner || null;
-
-          if (!winner) {
-            console.warn("Bingo completed without winner data", { gameId });
-            return;
-          }
-
-          io.to(`bingo:${gameId}`).emit("bingo:winner", {
-            gameId,
-
-            winner,
-
-            winnerName: winner?.firstName || winner?.username || "Winner",
-
-            winnerCard: winner?.card || [],
-
-            winAmount: winner?.winAmount || 0,
-
-            bingoResult: winner?.bingoResult || null,
-
-            calledNumbers: game.calledNumbers,
-
-            status: "FINISHED",
-          });
-
-          io.to(`bingo:${gameId}`).emit("bingo:roundFinished", {
-            gameId,
-            status: "FINISHED",
-            winner,
-            winnerCard: winner?.card || [],
-          });
-        }
       } catch (error) {
         console.error("❌ markNumber error:", error);
 

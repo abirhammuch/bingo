@@ -1,11 +1,11 @@
 import BingoGame from "../../models/BingoGame.js";
 import BingoTicket from "../../models/BingoTicket.js";
 import User from "../../models/User.js";
+import Transaction from "../../models/Transaction.js";
+import mongoose from "mongoose";
 import CommissionSettings from "../../models/CommissionSettings.js";
 import {
   chargeBingoCard,
-  creditBingoWinner,
-  recordBingoCommission,
   refundBingoPlayer,
 } from "../wallet/bingoWalletService.js";
 import { v4 as uuidv4 } from "uuid";
@@ -373,6 +373,173 @@ export const calculateBingoPrizePool = async (totalPool) => {
     0,
     Number((totalPool - (totalPool * commissionPercentage) / 100).toFixed(2)),
   );
+};
+
+const toCents = (amount) => Math.round(Number(amount || 0) * 100);
+const fromCents = (amount) => Number((amount / 100).toFixed(2));
+
+const settleBingoWinners = async ({ game, gameId, winners }) => {
+  const totalPotCents = getRealPlayers(game).reduce(
+    (sum, player) => sum + toCents(player.betAmount),
+    0,
+  );
+  const commissionSettings =
+    (await CommissionSettings.findOne({ key: "bingo" }).lean()) || {};
+  const commissionPercentage =
+    totalPotCents < 10000
+      ? Number(commissionSettings.below100Percentage ?? 20)
+      : totalPotCents <= 100000
+        ? Number(commissionSettings.between100And1000Percentage ?? 25)
+        : Number(commissionSettings.above1000Percentage ?? 30);
+  const commissionCents = Math.round(
+    (totalPotCents * commissionPercentage) / 100,
+  );
+  const prizePoolCents = Math.max(0, totalPotCents - commissionCents);
+  const basePrizeCents = Math.floor(prizePoolCents / winners.length);
+  const remainderCents = prizePoolCents % winners.length;
+
+  const session = await mongoose.startSession();
+  try {
+    let settlement;
+    await session.withTransaction(async () => {
+      const settledGame = await BingoGame.findOne({
+        _id: game._id,
+        status: "active",
+      }).session(session);
+      if (!settledGame) throw new Error("Bingo round was already settled");
+
+      const settledWinners = [];
+      for (const [index, winner] of winners.entries()) {
+        const user = await User.findOne({
+          telegramId: winner.telegramId,
+        }).session(session);
+        if (!user)
+          throw new Error(`Winner user not found: ${winner.telegramId}`);
+
+        const winAmount = fromCents(
+          basePrizeCents + (index < remainderCents ? 1 : 0),
+        );
+        const balanceBefore = Number(user.balance || 0);
+        const balanceAfter = fromCents(
+          toCents(balanceBefore) + toCents(winAmount),
+        );
+        const reference = `bingo-win:${gameId}:${winner.telegramId}`;
+        await User.updateOne(
+          { _id: user._id },
+          {
+            $set: { balance: balanceAfter },
+            $inc: { bingoGames: 1, bingoWins: 1, gamesPlayed: 1, gamesWon: 1 },
+          },
+          { session },
+        );
+        await Transaction.create(
+          [
+            {
+              transactionId: reference,
+              telegramId: winner.telegramId,
+              userId: user._id,
+              type: "WIN",
+              amount: winAmount,
+              status: "completed",
+              reference,
+              balanceBefore,
+              balanceAfter,
+              description: "Bingo winning prize",
+              metadata: { gameId },
+            },
+          ],
+          { session },
+        );
+
+        const gamePlayer = settledGame.players.find(
+          (entry) =>
+            normalizeTelegramId(entry.telegramId) ===
+            normalizeTelegramId(winner.telegramId),
+        );
+        if (gamePlayer) gamePlayer.winAmount = winAmount;
+        settledWinners.push({
+          userId: user._id,
+          telegramId: winner.telegramId,
+          username: winner.username,
+          firstName: winner.firstName,
+          winAmount,
+          card: winner.card,
+          bingoResult: winner.bingoResult,
+        });
+      }
+
+      const commissionAmount = fromCents(commissionCents);
+      await Transaction.create(
+        [
+          {
+            transactionId: `bingo-commission:${gameId}`,
+            telegramId: "SYSTEM",
+            type: "COMMISSION",
+            amount: commissionAmount,
+            status: "completed",
+            reference: `bingo-commission:${gameId}`,
+            description: "Bingo round commission",
+            metadata: { gameId, commission: true },
+          },
+        ],
+        { session },
+      );
+
+      const firstWinner = settledWinners[0];
+      settledGame.players.forEach((player) => {
+        const winner = settledWinners.find(
+          (entry) => entry.telegramId === player.telegramId,
+        );
+        if (winner) player.hasBingo = true;
+      });
+      settledGame.status = "completed";
+      settledGame.calledNumbers = game.calledNumbers;
+      settledGame.currentNumber = game.currentNumber;
+      settledGame.lastCalledAt = game.lastCalledAt;
+      settledGame.players.forEach((player) => {
+        const sourcePlayer = game.players.find(
+          (entry) => entry.telegramId === player.telegramId,
+        );
+        if (sourcePlayer) player.markedNumbers = sourcePlayer.markedNumbers;
+      });
+      settledGame.roundEndedAt = new Date();
+      settledGame.endTime = new Date();
+      settledGame.winner = firstWinner;
+      settledGame.winners = settledWinners;
+      settledGame.totalPot = fromCents(totalPotCents);
+      settledGame.commissionAmount = commissionAmount;
+      settledGame.prizePool = fromCents(prizePoolCents);
+      settledGame.roundSummary.totalBetAmount = fromCents(totalPotCents);
+      settledGame.roundSummary.commissionPercentage = commissionPercentage;
+      settledGame.roundSummary.commissionAmount = commissionAmount;
+      settledGame.roundSummary.playerPayoutTotal = fromCents(prizePoolCents);
+      settledGame.roundSummary.winnerTelegramId = firstWinner.telegramId;
+      settledGame.roundSummary.winnerUsername = firstWinner.username;
+      settledGame.roundSummary.winnerAmount = firstWinner.winAmount;
+      settledGame.roundSummary.endedReason = "bingo";
+      await settledGame.save({ session });
+      for (const winner of settledWinners) {
+        await BingoTicket.updateOne(
+          { gameId, telegramId: winner.telegramId },
+          {
+            $set: {
+              isWinner: true,
+              winAmount: winner.winAmount,
+              markedNumbers:
+                game.players.find(
+                  (player) => player.telegramId === winner.telegramId,
+                )?.markedNumbers || [],
+            },
+          },
+          { session },
+        );
+      }
+      settlement = { game: settledGame, winners: settledWinners };
+    });
+    return settlement;
+  } finally {
+    await session.endSession();
+  }
 };
 
 // ============================================================
@@ -1064,140 +1231,7 @@ export const callNumber = async (gameId) => {
   // WINNER FOUND
   // ========================================================
 
-  game.status = "completed";
-
-  game.roundEndedAt = new Date();
-
-  game.endTime = new Date();
-
-  game.roundSummary.endedReason = "bingo";
-
-  game.roundSummary.playerCount = getRealPlayers(game).length;
-
-  game.roundSummary.calledNumbersCount = game.calledNumbers.length;
-
-  game.roundSummary.selectedNumbersCount = game.selectedNumbers.length;
-
-  game.roundSummary.totalBetAmount = getRealPlayers(game).reduce(
-    (sum, player) => sum + Number(player.betAmount || 0),
-    0,
-  );
-
-  const commissionSettings = (await CommissionSettings.findOne({
-    key: "bingo",
-  }).lean()) || {
-    below100Percentage: 20,
-    between100And1000Percentage: 25,
-    above1000Percentage: 30,
-  };
-  const totalBalance = Number(game.roundSummary.totalBetAmount);
-  const commissionPercentage =
-    totalBalance < 100
-      ? Number(commissionSettings.below100Percentage ?? 20)
-      : totalBalance <= 1000
-        ? Number(commissionSettings.between100And1000Percentage ?? 25)
-        : Number(commissionSettings.above1000Percentage ?? 30);
-  const commissionAmount = Number(
-    ((totalBalance * commissionPercentage) / 100).toFixed(2),
-  );
-  game.roundSummary.commissionPercentage = commissionPercentage;
-  game.roundSummary.commissionAmount = commissionAmount;
-  game.roundSummary.playerPayoutTotal = winners.reduce(
-    (sum, winner) => sum + Number(winner.winAmount || 0),
-    0,
-  );
-
-  const winnerPrize = Math.max(0, totalBalance - commissionAmount);
-  const prizePerWinner = Number((winnerPrize / winners.length).toFixed(2));
-  winners.forEach((winner) => {
-    winner.winAmount = prizePerWinner;
-    const gamePlayer = game.players.find(
-      (entry) =>
-        normalizeTelegramId(entry.telegramId) ===
-        normalizeTelegramId(winner.telegramId),
-    );
-    if (gamePlayer) gamePlayer.winAmount = prizePerWinner;
-  });
-  game.roundSummary.playerPayoutTotal = Number(
-    (prizePerWinner * winners.length).toFixed(2),
-  );
-
-  const firstWinner = winners[0];
-
-  // ========================================================
-  // STORE WINNER
-  // ========================================================
-
-  game.winner = {
-    telegramId: firstWinner.telegramId,
-
-    username: firstWinner.username,
-
-    firstName: firstWinner.firstName,
-
-    winAmount: firstWinner.winAmount,
-
-    card: firstWinner.card,
-
-    bingoResult: firstWinner.bingoResult,
-  };
-
-  game.roundSummary.winnerTelegramId = firstWinner.telegramId;
-
-  game.roundSummary.winnerUsername = firstWinner.username;
-
-  game.roundSummary.winnerAmount = firstWinner.winAmount;
-
-  // ========================================================
-  // PAY WINNERS
-  // ========================================================
-
-  for (const winner of winners) {
-    const user = await User.findOne({
-      telegramId: normalizeTelegramId(winner.telegramId),
-    });
-
-    if (user) {
-      const payout = await creditBingoWinner({
-        telegramId: normalizeTelegramId(winner.telegramId),
-        gameId,
-        amount: winner.winAmount,
-      });
-      if (!payout.alreadyPaid) {
-        await User.updateOne(
-          { _id: user._id },
-          {
-            $inc: {
-              bingoGames: 1,
-              bingoWins: 1,
-              gamesPlayed: 1,
-              gamesWon: 1,
-            },
-          },
-        );
-      }
-    }
-
-    const ticket = await BingoTicket.findOne({
-      gameId,
-
-      telegramId: normalizeTelegramId(winner.telegramId),
-    });
-
-    if (ticket) {
-      ticket.isWinner = true;
-
-      ticket.winAmount = winner.winAmount;
-
-      ticket.markedNumbers = winner.markedNumbers;
-
-      await ticket.save();
-    }
-  }
-
-  await recordBingoCommission({ gameId, amount: commissionAmount });
-
-  await saveWithRetry(game);
+  const settlement = await settleBingoWinners({ game, gameId, winners });
 
   return {
     number,
@@ -1206,11 +1240,11 @@ export const callNumber = async (gameId) => {
 
     gameEnded: true,
 
-    winner: firstWinner,
+    winner: settlement.winners[0],
 
-    winners,
+    winners: settlement.winners,
 
-    game,
+    game: settlement.game,
   };
 };
 
@@ -1283,29 +1317,6 @@ export const markNumber = async (gameId, telegramId, number) => {
         bingoResult,
       }
     : null;
-
-  if (winner) {
-    const totalPool = Number(game.roundSummary?.totalBetAmount || 0);
-    const commissionSettings =
-      (await CommissionSettings.findOne({ key: "bingo" }).lean()) || {};
-    const commissionPercentage =
-      totalPool < 100
-        ? Number(commissionSettings.below100Percentage ?? 20)
-        : totalPool <= 1000
-          ? Number(commissionSettings.between100And1000Percentage ?? 25)
-          : Number(commissionSettings.above1000Percentage ?? 30);
-    const commissionAmount = Number(
-      ((totalPool * commissionPercentage) / 100).toFixed(2),
-    );
-    winner.winAmount = Math.max(0, totalPool - commissionAmount);
-    player.winAmount = winner.winAmount;
-    await creditBingoWinner({
-      telegramId: normalizedTelegramId,
-      gameId,
-      amount: winner.winAmount,
-    });
-    await recordBingoCommission({ gameId, amount: commissionAmount });
-  }
 
   return {
     marked: true,

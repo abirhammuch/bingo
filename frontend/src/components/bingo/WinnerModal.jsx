@@ -3,6 +3,7 @@ import React, { useEffect } from "react";
 const WinnerModal = ({
   open,
   winner,
+  winners: winnerList = [],
   onClose,
   accent = {},
   isCurrentUserWinner = false,
@@ -21,8 +22,12 @@ const WinnerModal = ({
   if (!open) return null;
 
   // Handle both single winner string and multiple winners array
-  const isArray = Array.isArray(winner);
-  const winners = isArray ? winner : [winner];
+  const winners =
+    winnerList.length > 0
+      ? winnerList
+      : Array.isArray(winner)
+        ? winner
+        : [winner];
   const winnerCount = winners.length;
   const isWinner = isCurrentUserWinner || winner === "You";
   const icon = isWinner ? "🏆" : "😢";
@@ -67,8 +72,8 @@ const WinnerModal = ({
             <div className="text-sm text-slate-400 mb-3">Winners:</div>
             <div className="space-y-2">
               {winners.map((w, idx) => {
-                const name = isArray ? w?.username || `Player ${idx + 1}` : w;
-                const amount = isArray ? w?.winAmount : undefined;
+                const name = w?.username || `Player ${idx + 1}`;
+                const amount = w?.winAmount;
                 return (
                   <div
                     key={idx}

@@ -290,6 +290,11 @@ const bingoGameSchema = new mongoose.Schema(
     //
 
     winner: {
+      userId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        default: null,
+      },
       telegramId: {
         type: String,
         default: null,
@@ -322,6 +327,25 @@ const bingoGameSchema = new mongoose.Schema(
         default: null,
       },
     },
+
+    winners: {
+      type: [
+        {
+          userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+          telegramId: { type: String, required: true },
+          username: { type: String, default: "" },
+          firstName: { type: String, default: "" },
+          winAmount: { type: Number, min: 0, default: 0 },
+          card: { type: [[Number]], default: [] },
+          bingoResult: { type: mongoose.Schema.Types.Mixed, default: null },
+        },
+      ],
+      default: [],
+    },
+
+    totalPot: { type: Number, min: 0, default: 0 },
+    commissionAmount: { type: Number, min: 0, default: 0 },
+    prizePool: { type: Number, min: 0, default: 0 },
 
     // ========================================================
     // ROUND SUMMARY

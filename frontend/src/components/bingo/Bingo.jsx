@@ -93,6 +93,7 @@ const Bingo = ({ theme, onBlocked }) => {
   const [currentNumber, setCurrentNumber] = useState(null);
 
   const [winner, setWinner] = useState(null);
+  const [winners, setWinners] = useState([]);
 
   const [roundId, setRoundId] = useState(null);
 
@@ -224,6 +225,7 @@ const Bingo = ({ theme, onBlocked }) => {
       if (status === "WAITING" || status === "READY") {
         setPhase("selection");
         setWinner(null);
+        setWinners([]);
         winnerRef.current = null;
         setWinnerCard(null);
         setWinnerName("");
@@ -312,10 +314,19 @@ const Bingo = ({ theme, onBlocked }) => {
       // WINNER
       // ----------------------------------------------------------
 
-      if (payload.winner) {
-        setWinner(payload.winner);
-
-        winnerRef.current = payload.winner;
+      if (payload.winner || Array.isArray(payload.winners)) {
+        const stateWinners = Array.isArray(payload.winners)
+          ? payload.winners
+          : [payload.winner];
+        const firstWinner = stateWinners[0];
+        setWinner(firstWinner);
+        setWinners(stateWinners);
+        winnerRef.current = firstWinner;
+        setWinnerCard(firstWinner?.card?.length ? firstWinner.card : null);
+        setWinnerName(
+          firstWinner?.firstName || firstWinner?.username || "Winner",
+        );
+        setWinnerAmount(Number(firstWinner?.winAmount || 0));
       }
 
       // ----------------------------------------------------------
@@ -596,10 +607,18 @@ const Bingo = ({ theme, onBlocked }) => {
         card: winnerData.card || payload.winnerCard || [],
         bingoResult: winnerData.bingoResult || payload.bingoResult || null,
       };
+      const normalizedWinners = Array.isArray(payload.winners)
+        ? payload.winners.map((entry) => ({
+            ...entry,
+            card: entry.card || [],
+            bingoResult: entry.bingoResult || null,
+          }))
+        : [normalizedWinner];
 
       winnerRef.current = normalizedWinner;
 
       setWinner(normalizedWinner);
+      setWinners(normalizedWinners);
 
       setWinnerName(
         payload.winnerName ||
@@ -657,6 +676,7 @@ const Bingo = ({ theme, onBlocked }) => {
       winnerRef.current = null;
 
       setWinner(null);
+      setWinners([]);
 
       setWinnerCard(null);
 
@@ -1240,10 +1260,10 @@ const Bingo = ({ theme, onBlocked }) => {
       <WinnerModal
         open={Boolean(winner) && phase === "finished"}
         winner={winner || "Unknown Player"}
-        isCurrentUserWinner={
-          typeof winner === "object" &&
-          winner?.telegramId === authUser?.telegramId
-        }
+        winners={winners}
+        isCurrentUserWinner={winners.some(
+          (entry) => String(entry?.telegramId) === String(authUser?.telegramId),
+        )}
         onClose={() => {
           setWinner(null);
 

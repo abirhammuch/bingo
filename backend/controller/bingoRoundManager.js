@@ -281,6 +281,14 @@ export const startCallingNumbers = (io, gameId) => {
 
           winners: result.winners,
 
+          totalPot: result.game?.totalPot,
+
+          commissionAmount: result.game?.commissionAmount,
+
+          prizePool: result.game?.prizePool,
+
+          winners: result.winners,
+
           winnerName: result.winner.firstName || result.winner.username,
 
           winnerCard: result.winner.card,

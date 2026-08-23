@@ -245,24 +245,9 @@ export const startCallingNumbers = (io, gameId) => {
       // WINNER
       // ====================================================
 
-      if (result.gameEnded && result.winner) {
+      if (result.gameEnded && result.winners?.length) {
         stopBingoTimers(gameId);
-
-        const winnerGame = await BingoGame.findOne({
-          gameId,
-        });
-
-        if (!winnerGame) return;
-
-        winnerGame.status = "completed";
-
-        winnerGame.roundEndedAt = new Date();
-
-        winnerGame.endTime = new Date();
-
-        await winnerGame.save();
-
-        const winner = winnerGame.winner;
+        const winner = result.winners[0];
 
         // SEND TO EVERY PARTICIPANT
         // INCLUDING SPECTATORS
@@ -271,6 +256,14 @@ export const startCallingNumbers = (io, gameId) => {
           gameId,
 
           winner,
+
+          winners: result.winners,
+
+          totalPot: result.game.totalPot,
+
+          commissionAmount: result.game.commissionAmount,
+
+          prizePool: result.game.prizePool,
 
           winnerName: winner?.firstName || winner?.username || "Winner",
 
@@ -281,7 +274,7 @@ export const startCallingNumbers = (io, gameId) => {
           bingoResult:
             winner?.bingoResult || result.winner?.bingoResult || null,
 
-          calledNumbers: winnerGame.calledNumbers,
+          calledNumbers: result.calledNumbers,
 
           status: "FINISHED",
         });
@@ -292,6 +285,8 @@ export const startCallingNumbers = (io, gameId) => {
 
           winner,
 
+          winners: result.winners,
+
           winnerCard: winner?.card || [],
         });
 
@@ -300,7 +295,7 @@ export const startCallingNumbers = (io, gameId) => {
         // ==================================================
 
         setTimeout(async () => {
-          await createNextRound(io, winnerGame);
+          await createNextRound(io, result.game);
         }, 8000);
       }
     } catch (error) {
