@@ -63,18 +63,6 @@ const stats = [
     color: "from-slate-900 to-slate-800",
   },
   {
-    label: "Total Games",
-    value: "390",
-    meta: "Active: 1",
-    color: "from-emerald-950 to-emerald-800",
-  },
-  {
-    label: "Revenue",
-    value: "952.2 ETB",
-    meta: "Today: 0 ETB",
-    color: "from-violet-950 to-violet-800",
-  },
-  {
     label: "Commission",
     value: "763.5 ETB",
     meta: "Today: 6 ETB",
@@ -93,6 +81,7 @@ const AdminLayout = () => {
   const navigate = useNavigate();
   const [dashboard, setDashboard] = useState(null);
   const [dashboardError, setDashboardError] = useState("");
+  const [financialPeriod, setFinancialPeriod] = useState("1d");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const isSuperAdmin = (() => {
     try {
@@ -133,7 +122,7 @@ const AdminLayout = () => {
 
     let active = true;
     setDashboardError("");
-    fetchAdminDashboard()
+    fetchAdminDashboard(financialPeriod)
       .then((response) => {
         if (active) setDashboard(response);
       })
@@ -144,7 +133,7 @@ const AdminLayout = () => {
     return () => {
       active = false;
     };
-  }, [location.pathname]);
+  }, [financialPeriod, location.pathname]);
 
   const dashboardStats = dashboard?.stats
     ? [
@@ -153,18 +142,6 @@ const AdminLayout = () => {
           value: dashboard.stats.totalUsers.toLocaleString(),
           meta: `Active: ${dashboard.stats.activeUsers.toLocaleString()}`,
           color: "from-slate-900 to-slate-800",
-        },
-        {
-          label: "Total Games",
-          value: dashboard.stats.totalGames.toLocaleString(),
-          meta: `Active: ${dashboard.stats.activeGames.toLocaleString()}`,
-          color: "from-emerald-950 to-emerald-800",
-        },
-        {
-          label: "Revenue",
-          value: `${Number(dashboard.stats.revenue).toFixed(2)} ETB`,
-          meta: "Completed bets",
-          color: "from-violet-950 to-violet-800",
         },
         {
           label: "Commission",
@@ -194,6 +171,17 @@ const AdminLayout = () => {
     : stats;
 
   const currentRound = dashboard?.currentRound;
+  const financialSummary = dashboard?.financialSummary || {
+    systemGain: 0,
+    systemLoss: 0,
+    netBalance: 0,
+  };
+  const financialPeriods = [
+    ["1d", "1 Day"],
+    ["2d", "2 Days"],
+    ["weekly", "Weekly"],
+    ["monthly", "Monthly"],
+  ];
 
   useEffect(() => {
     setMobileMenuOpen(false);
@@ -393,6 +381,68 @@ const AdminLayout = () => {
                   </div>
                 ))}
               </div>
+
+              <section className="rounded-4xl border border-slate-800 bg-slate-900/80 p-6 shadow-xl shadow-slate-950/40">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <div className="text-sm uppercase tracking-[0.25em] text-slate-500">
+                      Financial summary
+                    </div>
+                    <h2 className="mt-2 text-2xl font-semibold">
+                      System cash flow
+                    </h2>
+                  </div>
+                  <div
+                    className="flex flex-wrap gap-2"
+                    role="group"
+                    aria-label="Financial period"
+                  >
+                    {financialPeriods.map(([value, label]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => setFinancialPeriod(value)}
+                        className={`rounded-full border px-3 py-2 text-sm transition ${
+                          financialPeriod === value
+                            ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-300"
+                            : "border-slate-700 text-slate-300 hover:bg-slate-800/60"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="mt-6 grid gap-4 sm:grid-cols-3">
+                  {[
+                    [
+                      "System Gain",
+                      financialSummary.systemGain,
+                      "text-emerald-300",
+                    ],
+                    [
+                      "System Loss",
+                      financialSummary.systemLoss,
+                      "text-rose-300",
+                    ],
+                    [
+                      "Net Balance",
+                      financialSummary.netBalance,
+                      "text-cyan-300",
+                    ],
+                  ].map(([label, value, color]) => (
+                    <div
+                      key={label}
+                      className="rounded-3xl border border-slate-800 bg-slate-950/70 p-4"
+                    >
+                      <div className="text-sm text-slate-400">{label}</div>
+                      <div className={`mt-3 text-2xl font-semibold ${color}`}>
+                        {Number(value).toFixed(2)} ETB
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
 
               <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
                 <section className="rounded-4xl border border-slate-800 bg-slate-900/80 p-6 shadow-xl shadow-slate-950/40">

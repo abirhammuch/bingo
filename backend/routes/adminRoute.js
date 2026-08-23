@@ -370,6 +370,13 @@ router.get("/users", async (req, res) => {
 
 router.get("/dashboard", requireAdmin, async (req, res) => {
   try {
+    const period = ["1d", "2d", "weekly", "monthly"].includes(req.query.period)
+      ? req.query.period
+      : "1d";
+    const periodDays = { "1d": 1, "2d": 2, weekly: 7, monthly: 30 };
+    const periodStart = new Date(
+      Date.now() - periodDays[period] * 24 * 60 * 60 * 1000,
+    );
     const [
       totalUsers,
       activeUsers,
@@ -377,6 +384,7 @@ router.get("/dashboard", requireAdmin, async (req, res) => {
       activeGames,
       userBalanceTotals,
       walletFlowTotals,
+      periodWalletFlowTotals,
       transactionTotals,
       currentRound,
     ] = await Promise.all([
@@ -401,6 +409,26 @@ router.get("/dashboard", requireAdmin, async (req, res) => {
               $sum: { $cond: [{ $eq: ["$type", "deposit"] }, "$amount", 0] },
             },
             withdrawals: {
+              $sum: { $cond: [{ $eq: ["$type", "withdraw"] }, "$amount", 0] },
+            },
+          },
+        },
+      ]),
+      Transaction.aggregate([
+        {
+          $match: {
+            status: "completed",
+            type: { $in: ["deposit", "withdraw"] },
+            createdAt: { $gte: periodStart },
+          },
+        },
+        {
+          $group: {
+            _id: null,
+            gain: {
+              $sum: { $cond: [{ $eq: ["$type", "deposit"] }, "$amount", 0] },
+            },
+            loss: {
               $sum: { $cond: [{ $eq: ["$type", "withdraw"] }, "$amount", 0] },
             },
           },
@@ -436,6 +464,9 @@ router.get("/dashboard", requireAdmin, async (req, res) => {
     const totals = transactionTotals[0] || {};
     const totalUserBalance = userBalanceTotals[0]?.totalUserBalance || 0;
     const walletFlows = walletFlowTotals[0] || {};
+    const periodWalletFlows = periodWalletFlowTotals[0] || {};
+    const systemGain = Number(periodWalletFlows.gain || 0);
+    const systemLoss = Number(periodWalletFlows.loss || 0);
     const systemBalance =
       Number(walletFlows.deposits || 0) -
       Number(walletFlows.withdrawals || 0) -
@@ -455,6 +486,12 @@ router.get("/dashboard", requireAdmin, async (req, res) => {
         referralEarnings: 0,
         totalUserBalance,
         systemBalance,
+      },
+      financialSummary: {
+        period,
+        systemGain,
+        systemLoss,
+        netBalance: systemGain - systemLoss,
       },
       currentRound: currentRound
         ? {

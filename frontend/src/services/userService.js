@@ -60,7 +60,8 @@ export const fetchUsers = (query = {}) => {
   return api.get(`/api/users/admin/users${params ? `?${params}` : ""}`);
 };
 
-export const fetchAdminDashboard = () => api.get("/api/admin/dashboard");
+export const fetchAdminDashboard = (period = "1d") =>
+  api.get(`/api/admin/dashboard?period=${encodeURIComponent(period)}`);
 
 export const toggleUserBlock = (telegramId) =>
   api.patch(`/api/users/admin/block/${encodeURIComponent(telegramId)}`);
