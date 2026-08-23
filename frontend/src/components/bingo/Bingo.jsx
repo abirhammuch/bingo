@@ -1033,12 +1033,14 @@ const Bingo = ({ theme, onBlocked }) => {
 
   const isWinningCell = (rowIndex, columnIndex) => {
     const result = winner?.bingoResult;
+    const position = result?.position ?? result?.index;
 
     if (!result?.bingo) return false;
-    if (result.type === "row") return rowIndex === result.position;
-    if (result.type === "column") return columnIndex === result.position;
+    if (result.type === "row") return rowIndex === position;
+    if (result.type === "column") return columnIndex === position;
     if (result.type === "diagonal") {
-      return result.direction === "top-left-to-bottom-right"
+      const direction = result.direction?.replaceAll(" ", "-");
+      return direction === "top-left-to-bottom-right"
         ? rowIndex === columnIndex
         : rowIndex + columnIndex === 4;
     }
