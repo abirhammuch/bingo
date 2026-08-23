@@ -229,7 +229,7 @@ const AdminLayout = () => {
               B
             </div>
             <div>
-              <div className="font-semibold">BingoX Admin</div>
+              <div className="font-semibold">Casina Admin</div>
               <div className="text-[10px] uppercase tracking-[0.25em] text-slate-500">
                 Management Portal
               </div>
