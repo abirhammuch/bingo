@@ -11,8 +11,9 @@ const adminUserSchema = new mongoose.Schema(
     },
     passwordHash: { type: String, required: true },
     passwordSalt: { type: String, required: true },
-    role: { type: String, enum: ["admin"], default: "admin" },
+    role: { type: String, enum: ["admin", "super-admin"], default: "admin" },
     isActive: { type: Boolean, default: true },
+    bootstrapKey: { type: String, sparse: true, unique: true },
   },
   { timestamps: true },
 );

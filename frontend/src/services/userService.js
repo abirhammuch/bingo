@@ -99,8 +99,16 @@ export const updateAdminBonusSettings = (payload) =>
   api.patch("/api/admin/bonus-settings", payload);
 export const sendAdminTelegramBroadcast = (payload) =>
   api.post("/api/admin/telegram/broadcast", payload);
-export const changeAdminPassword = (currentPassword, newPassword) =>
-  api.patch("/api/admin/password", { currentPassword, newPassword });
+export const changeAdminPassword = (
+  currentPassword,
+  newPassword,
+  newUsername,
+) =>
+  api.patch("/api/admin/password", {
+    currentPassword,
+    newPassword,
+    newUsername,
+  });
 export const createAdminUser = (payload) =>
   api.post("/api/admin/admins", payload);
 export const fetchAdminUsers = () => api.get("/api/admin/admins");

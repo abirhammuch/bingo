@@ -11,7 +11,6 @@ import { creditReferralReward } from "../services/wallet/referralService.js";
 import BonusSettings from "../models/BonusSettings.js";
 import { creditDepositBonuses } from "../services/wallet/bonusService.js";
 import bot from "../services/telegram/bot.js";
-import AdminSettings from "../models/AdminSettings.js";
 import crypto from "node:crypto";
 import AdminUser from "../models/AdminUser.js";
 
@@ -47,10 +46,12 @@ const configuredSuperAdmins = [
   {
     username: process.env.ADMIN_USERNAME,
     password: process.env.ADMIN_PASSWORD,
+    key: "ADMIN_USERNAME",
   },
   {
     username: process.env.ADMIN_USERNAME_2,
     password: process.env.ADMIN_PASSWORD_2,
+    key: "ADMIN_USERNAME_2",
   },
 ].filter(({ username, password }) => username && isStrongPassword(password));
 
@@ -221,16 +222,31 @@ router.post("/login", async (req, res) => {
     const configuredAdmin = configuredSuperAdmins.find(
       (admin) => admin.username.toLowerCase() === normalizedUsername,
     );
-    const admin = configuredAdmin
-      ? { username: normalizedUsername, role: "super-admin" }
-      : await AdminUser.findOne({
-          username: normalizedUsername,
-          isActive: true,
-        });
-    const validPassword = configuredAdmin
-      ? password === configuredAdmin.password
-      : admin &&
-        passwordMatches(password, admin.passwordHash, admin.passwordSalt);
+    let admin = await AdminUser.findOne({
+      username: normalizedUsername,
+      isActive: true,
+    });
+    const bootstrapRecord = configuredAdmin
+      ? await AdminUser.findOne({ bootstrapKey: configuredAdmin.key })
+      : null;
+    if (
+      !admin &&
+      !bootstrapRecord &&
+      configuredAdmin &&
+      password === configuredAdmin.password
+    ) {
+      const { hash, salt } = hashPassword(configuredAdmin.password);
+      admin = await AdminUser.create({
+        username: normalizedUsername,
+        passwordHash: hash,
+        passwordSalt: salt,
+        bootstrapKey: configuredAdmin.key,
+        role: "super-admin",
+      });
+    }
+    const validPassword =
+      admin &&
+      passwordMatches(password, admin.passwordHash, admin.passwordSalt);
     if (!admin || !validPassword) {
       return res
         .status(401)
@@ -255,29 +271,31 @@ router.post("/login", async (req, res) => {
 });
 
 router.patch("/password", requireAdmin, requireSuperAdmin, async (req, res) => {
-  const { currentPassword, newPassword } = req.body;
+  const { currentPassword, newPassword, newUsername } = req.body;
+  const username = String(req.admin.username || "")
+    .trim()
+    .toLowerCase();
+  const normalizedNewUsername = String(newUsername || username)
+    .trim()
+    .toLowerCase();
   if (
     typeof currentPassword !== "string" ||
     typeof newPassword !== "string" ||
-    !isStrongPassword(newPassword)
+    !isStrongPassword(newPassword) ||
+    !/^[a-z0-9._-]{3,30}$/.test(normalizedNewUsername)
   ) {
     return res.status(400).json({
       success: false,
       message:
-        "New password must be at least 8 characters and include uppercase, lowercase, number, and special character",
+        "Username must be 3-30 characters and password must be at least 8 characters with uppercase, lowercase, number, and special character",
     });
   }
 
-  const settings = await AdminSettings.findOne({ key: "default" });
-  const ADMIN_SECRET = process.env.ADMIN_PASSWORD || process.env.ADMIN_SECRET;
-  const currentIsValid = settings?.passwordHash
-    ? passwordMatches(
-        currentPassword,
-        settings.passwordHash,
-        settings.passwordSalt,
-      )
-    : Boolean(ADMIN_SECRET && currentPassword === ADMIN_SECRET);
-  if (!currentIsValid) {
+  const admin = await AdminUser.findOne({ username, isActive: true });
+  if (
+    !admin ||
+    !passwordMatches(currentPassword, admin.passwordHash, admin.passwordSalt)
+  ) {
     return res.status(401).json({
       success: false,
       message: "Current password is incorrect",
@@ -285,12 +303,32 @@ router.patch("/password", requireAdmin, requireSuperAdmin, async (req, res) => {
   }
 
   const { hash, salt } = hashPassword(newPassword);
-  await AdminSettings.findOneAndUpdate(
-    { key: "default" },
-    { key: "default", passwordHash: hash, passwordSalt: salt },
-    { upsert: true, new: true },
+  try {
+    admin.username = normalizedNewUsername;
+    admin.passwordHash = hash;
+    admin.passwordSalt = salt;
+    await admin.save();
+  } catch (error) {
+    if (error.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        message: "Admin username already exists",
+      });
+    }
+    throw error;
+  }
+
+  const token = jwt.sign(
+    { role: admin.role, isAdmin: true, username: admin.username },
+    process.env.JWT_SECRET,
+    { expiresIn: "24h" },
   );
-  res.json({ success: true, message: "Admin password changed successfully" });
+  res.json({
+    success: true,
+    token,
+    username: admin.username,
+    message: "Admin username and password changed successfully",
+  });
 });
 
 router.get("/admins", requireAdmin, requireSuperAdmin, async (req, res) => {
