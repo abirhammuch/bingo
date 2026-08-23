@@ -391,6 +391,36 @@ const AdminLayout = () => {
 
           {location.pathname === "/admin" && (
             <>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="text-sm uppercase tracking-[0.25em] text-slate-500">
+                    Dashboard timeframe
+                  </div>
+                  <div className="mt-1 text-sm text-slate-400">
+                    Period-based cards update when you select a timeframe.
+                  </div>
+                </div>
+                <div
+                  className="flex flex-wrap gap-2"
+                  role="group"
+                  aria-label="Dashboard timeframe"
+                >
+                  {financialPeriods.map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setFinancialPeriod(value)}
+                      className={`rounded-full border px-3 py-2 text-sm transition ${
+                        financialPeriod === value
+                          ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-300"
+                          : "border-slate-700 text-slate-300 hover:bg-slate-800/60"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3 xl:grid-cols-7">
                 {dashboardError && (
                   <div className="xl:col-span-5 lg:col-span-2 rounded-2xl border border-rose-400/30 bg-rose-950/40 p-4 text-sm text-rose-200">
@@ -424,26 +454,6 @@ const AdminLayout = () => {
                     <h2 className="mt-2 text-2xl font-semibold">
                       System gain and loss
                     </h2>
-                  </div>
-                  <div
-                    className="flex flex-wrap gap-2"
-                    role="group"
-                    aria-label="Financial period"
-                  >
-                    {financialPeriods.map(([value, label]) => (
-                      <button
-                        key={value}
-                        type="button"
-                        onClick={() => setFinancialPeriod(value)}
-                        className={`rounded-full border px-3 py-2 text-sm transition ${
-                          financialPeriod === value
-                            ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-300"
-                            : "border-slate-700 text-slate-300 hover:bg-slate-800/60"
-                        }`}
-                      >
-                        {label}
-                      </button>
-                    ))}
                   </div>
                 </div>
                 <div className="mt-6 grid gap-4 sm:grid-cols-3">
