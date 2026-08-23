@@ -592,7 +592,23 @@ router.get("/dashboard", requireAdmin, async (req, res) => {
                 $cond: [
                   {
                     $or: [
-                      { $in: ["$type", ["COUPON", "reward"]] },
+                      { $in: ["$type", ["COUPON"]] },
+                      {
+                        $and: [
+                          { $eq: ["$type", "reward"] },
+                          { $ne: ["$metadata.rewardKind", "deposit"] },
+                          {
+                            $not: [
+                              {
+                                $in: [
+                                  "$metadata.bonusType",
+                                  ["first-deposit", "deposit-percentage"],
+                                ],
+                              },
+                            ],
+                          },
+                        ],
+                      },
                       { $eq: ["$metadata.systemWithdrawal", true] },
                     ],
                   },
@@ -641,7 +657,23 @@ router.get("/dashboard", requireAdmin, async (req, res) => {
                 $cond: [
                   {
                     $or: [
-                      { $in: ["$type", ["COUPON", "reward"]] },
+                      { $in: ["$type", ["COUPON"]] },
+                      {
+                        $and: [
+                          { $eq: ["$type", "reward"] },
+                          { $ne: ["$metadata.rewardKind", "deposit"] },
+                          {
+                            $not: [
+                              {
+                                $in: [
+                                  "$metadata.bonusType",
+                                  ["first-deposit", "deposit-percentage"],
+                                ],
+                              },
+                            ],
+                          },
+                        ],
+                      },
                       { $eq: ["$metadata.systemWithdrawal", true] },
                     ],
                   },
