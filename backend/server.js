@@ -19,15 +19,16 @@ const app = express();
 const PORT = process.env.PORT || 4000;
 
 // Frontend URL (used to redirect SPA routes on refresh)
-// Default to the Render frontend URL per deployment request
+// Default to the Vercel frontend URL for the current deployment
 const FRONTEND_URL =
-  process.env.FRONTEND_URL || "https://marshal-bingo.onrender.com";
+  process.env.FRONTEND_URL || "https://marshal-bingo.vercel.app";
 
 // Configure CORS for Express
 const corsOptions = {
   origin: [
     "https://bingo-e9bw.onrender.com",
     "https://marshal-bingo.onrender.com",
+    "https://marshal-bingo.vercel.app",
   ],
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],

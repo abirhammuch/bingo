@@ -18,6 +18,8 @@ export const initSocketServer = (server) => {
     cors: {
       origin: [
         "https://bingo-e9bw.onrender.com",
+        "https://marshal-bingo.onrender.com",
+        "https://marshal-bingo.vercel.app",
         "http://localhost:5173",
         "http://localhost:3000",
         "http://localhost:5000",
