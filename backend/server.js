@@ -1,5 +1,5 @@
 import express from "express";
-import dotenv from "dotenv";
+import "dotenv/config";
 import cors from "cors";
 import http from "http";
 import connectDB from "./config/db.js";
@@ -12,8 +12,6 @@ import adminRouter from "./routes/adminRoute.js";
 
 // ✅ Import the MAIN socket server (not bingo directly)
 import { initSocketServer } from "./sockets/socketServer.js";
-
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 4000;

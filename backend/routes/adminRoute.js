@@ -35,6 +35,25 @@ const passwordMatches = (password, hash, salt) => {
   );
 };
 
+const isStrongPassword = (password) =>
+  typeof password === "string" &&
+  password.length >= 8 &&
+  /[A-Z]/.test(password) &&
+  /[a-z]/.test(password) &&
+  /\d/.test(password) &&
+  /[^A-Za-z0-9]/.test(password);
+
+const configuredSuperAdmins = [
+  {
+    username: process.env.ADMIN_USERNAME,
+    password: process.env.ADMIN_PASSWORD,
+  },
+  {
+    username: process.env.ADMIN_USERNAME_2,
+    password: process.env.ADMIN_PASSWORD_2,
+  },
+].filter(({ username, password }) => username && isStrongPassword(password));
+
 const requireAdmin = (req, res, next) => {
   const authHeader = req.headers.authorization;
   if (!authHeader?.startsWith("Bearer ")) {
@@ -194,18 +213,25 @@ router.patch(
   },
 );
 
-// Simple admin password login (no Telegram initData required)
+// Username and password admin login (no Telegram initData required)
 router.post("/login", async (req, res) => {
   const { username, password } = req.body;
   if (username) {
-    const admin = await AdminUser.findOne({
-      username: String(username).trim().toLowerCase(),
-      isActive: true,
-    });
-    if (
-      !admin ||
-      !passwordMatches(password, admin.passwordHash, admin.passwordSalt)
-    ) {
+    const normalizedUsername = String(username).trim().toLowerCase();
+    const configuredAdmin = configuredSuperAdmins.find(
+      (admin) => admin.username.toLowerCase() === normalizedUsername,
+    );
+    const admin = configuredAdmin
+      ? { username: normalizedUsername, role: "super-admin" }
+      : await AdminUser.findOne({
+          username: normalizedUsername,
+          isActive: true,
+        });
+    const validPassword = configuredAdmin
+      ? password === configuredAdmin.password
+      : admin &&
+        passwordMatches(password, admin.passwordHash, admin.passwordSalt);
+    if (!admin || !validPassword) {
       return res
         .status(401)
         .json({ success: false, message: "Invalid admin credentials" });
@@ -222,30 +248,10 @@ router.post("/login", async (req, res) => {
       username: admin.username,
     });
   }
-  const ADMIN_SECRET = process.env.ADMIN_PASSWORD || process.env.ADMIN_SECRET;
-  const storedSettings = await AdminSettings.findOne({ key: "default" }).lean();
-  const validPassword = storedSettings?.passwordHash
-    ? passwordMatches(
-        password,
-        storedSettings.passwordHash,
-        storedSettings.passwordSalt,
-      )
-    : Boolean(ADMIN_SECRET && password === ADMIN_SECRET);
-
-  if (!validPassword) {
-    return res
-      .status(401)
-      .json({ success: false, message: "Invalid admin password" });
-  }
-
-  // Generate a JWT that marks the user as an admin
-  const token = jwt.sign(
-    { role: "super-admin", isAdmin: true },
-    process.env.JWT_SECRET,
-    { expiresIn: "24h" },
-  );
-
-  res.json({ success: true, token });
+  return res.status(400).json({
+    success: false,
+    message: "Username and password are required",
+  });
 });
 
 router.patch("/password", requireAdmin, requireSuperAdmin, async (req, res) => {
@@ -253,11 +259,12 @@ router.patch("/password", requireAdmin, requireSuperAdmin, async (req, res) => {
   if (
     typeof currentPassword !== "string" ||
     typeof newPassword !== "string" ||
-    newPassword.length < 8
+    !isStrongPassword(newPassword)
   ) {
     return res.status(400).json({
       success: false,
-      message: "New password must be at least 8 characters",
+      message:
+        "New password must be at least 8 characters and include uppercase, lowercase, number, and special character",
     });
   }
 
@@ -299,11 +306,11 @@ router.post("/admins", requireAdmin, requireSuperAdmin, async (req, res) => {
     .trim()
     .toLowerCase();
   const password = String(req.body.password || "");
-  if (!/^[a-z0-9._-]{3,30}$/.test(username) || password.length < 8) {
+  if (!/^[a-z0-9._-]{3,30}$/.test(username) || !isStrongPassword(password)) {
     return res.status(400).json({
       success: false,
       message:
-        "Username must be 3-30 characters and password at least 8 characters",
+        "Username must be 3-30 characters and password must be at least 8 characters with uppercase, lowercase, number, and special character",
     });
   }
   const { hash, salt } = hashPassword(password);
