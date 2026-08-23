@@ -35,12 +35,7 @@ const WinnerModal = ({
         ? "You are winner!"
         : `You are one of ${winnerCount} winners!`;
   } else {
-    if (winnerCount === 1) {
-      const winnerName = isArray ? winners[0]?.username || winners[0] : winner;
-      messageText = `${winnerName} won the game`;
-    } else {
-      messageText = `${winnerCount} players won the game!`;
-    }
+    messageText = "You lost. Better luck next time!";
   }
 
   return (
