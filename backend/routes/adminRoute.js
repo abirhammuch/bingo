@@ -423,8 +423,9 @@ router.get("/dashboard", requireAdmin, async (req, res) => {
               { type: "COMMISSION" },
               { type: "withdraw", "metadata.fee": { $exists: true } },
               { type: "COUPON" },
-              { type: "reward", "metadata.bonusType": "registration" },
+              { type: "reward", "metadata.bonus": true },
               { type: "reward", "metadata.referralReward": true },
+              { type: "withdraw", "metadata.systemWithdrawal": true },
             ],
           },
         },
@@ -448,7 +449,16 @@ router.get("/dashboard", requireAdmin, async (req, res) => {
             },
             loss: {
               $sum: {
-                $cond: [{ $in: ["$type", ["COUPON", "reward"]] }, "$amount", 0],
+                $cond: [
+                  {
+                    $or: [
+                      { $in: ["$type", ["COUPON", "reward"]] },
+                      { $eq: ["$metadata.systemWithdrawal", true] },
+                    ],
+                  },
+                  "$amount",
+                  0,
+                ],
               },
             },
           },
@@ -530,6 +540,109 @@ router.get("/dashboard", requireAdmin, async (req, res) => {
     });
   }
 });
+
+router.post(
+  "/system-withdrawal",
+  requireAdmin,
+  requireSuperAdmin,
+  async (req, res) => {
+    try {
+      const amount = Number(req.body.amount);
+      const method = String(req.body.method || "").trim();
+      const account = String(req.body.account || "").trim();
+
+      if (!Number.isFinite(amount) || amount <= 0 || !method || !account) {
+        return res.status(400).json({
+          success: false,
+          message: "A positive amount, method, and account are required",
+        });
+      }
+
+      const [gainTotals, lossTotals] = await Promise.all([
+        Transaction.aggregate([
+          {
+            $match: {
+              status: "completed",
+              $or: [
+                { type: "COMMISSION" },
+                { type: "withdraw", "metadata.fee": { $exists: true } },
+              ],
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              total: {
+                $sum: {
+                  $cond: [
+                    { $eq: ["$type", "COMMISSION"] },
+                    "$amount",
+                    { $ifNull: ["$metadata.fee", 0] },
+                  ],
+                },
+              },
+            },
+          },
+        ]),
+        Transaction.aggregate([
+          {
+            $match: {
+              status: "completed",
+              $or: [
+                { type: "COUPON" },
+                { type: "reward" },
+                { type: "withdraw", "metadata.systemWithdrawal": true },
+              ],
+            },
+          },
+          {
+            $group: {
+              _id: null,
+              total: { $sum: "$amount" },
+            },
+          },
+        ]),
+      ]);
+
+      const available =
+        Number(gainTotals[0]?.total || 0) - Number(lossTotals[0]?.total || 0);
+      if (amount > available) {
+        return res.status(400).json({
+          success: false,
+          message: `Insufficient system balance. Available: ${available.toFixed(2)} ETB`,
+        });
+      }
+
+      const transaction = await Transaction.create({
+        transactionId: `system-withdrawal:${crypto.randomUUID()}`,
+        telegramId: "SYSTEM",
+        type: "withdraw",
+        amount,
+        status: "completed",
+        description: "Super admin system withdrawal",
+        metadata: {
+          systemWithdrawal: true,
+          method,
+          account,
+          approvedBy: req.admin?.id || req.admin?.sub || "super-admin",
+        },
+      });
+
+      res.status(201).json({
+        success: true,
+        message: "System withdrawal recorded successfully",
+        transaction,
+        availableBalance: available - amount,
+      });
+    } catch (error) {
+      console.error("System withdrawal error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to record system withdrawal",
+      });
+    }
+  },
+);
 
 router.get("/coupons", requireAdmin, requireSuperAdmin, async (req, res) => {
   try {

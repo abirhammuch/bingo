@@ -63,6 +63,9 @@ export const fetchUsers = (query = {}) => {
 export const fetchAdminDashboard = (period = "1d") =>
   api.get(`/api/admin/dashboard?period=${encodeURIComponent(period)}`);
 
+export const createSystemWithdrawal = (payload) =>
+  api.post("/api/admin/system-withdrawal", payload);
+
 export const toggleUserBlock = (telegramId) =>
   api.patch(`/api/users/admin/block/${encodeURIComponent(telegramId)}`);
 

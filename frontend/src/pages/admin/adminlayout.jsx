@@ -16,7 +16,10 @@ import {
   FaKey,
   FaUserShield,
 } from "react-icons/fa";
-import { fetchAdminDashboard } from "../../services/userService";
+import {
+  createSystemWithdrawal,
+  fetchAdminDashboard,
+} from "../../services/userService";
 
 const adminMenu = [
   { to: "/admin", label: "Dashboard", icon: <FaChartLine /> },
@@ -82,6 +85,14 @@ const AdminLayout = () => {
   const [dashboard, setDashboard] = useState(null);
   const [dashboardError, setDashboardError] = useState("");
   const [financialPeriod, setFinancialPeriod] = useState("1d");
+  const [systemWithdrawal, setSystemWithdrawal] = useState({
+    amount: "",
+    method: "",
+    account: "",
+  });
+  const [systemWithdrawalMessage, setSystemWithdrawalMessage] = useState("");
+  const [systemWithdrawalError, setSystemWithdrawalError] = useState("");
+  const [systemWithdrawalLoading, setSystemWithdrawalLoading] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const isSuperAdmin = (() => {
     try {
@@ -191,6 +202,24 @@ const AdminLayout = () => {
     localStorage.removeItem("adminToken");
     setMobileMenuOpen(false);
     navigate("/admin/login", { replace: true });
+  };
+
+  const handleSystemWithdrawal = async (event) => {
+    event.preventDefault();
+    setSystemWithdrawalMessage("");
+    setSystemWithdrawalError("");
+    setSystemWithdrawalLoading(true);
+    try {
+      await createSystemWithdrawal(systemWithdrawal);
+      setSystemWithdrawal({ amount: "", method: "", account: "" });
+      setSystemWithdrawalMessage("System withdrawal recorded.");
+      const response = await fetchAdminDashboard(financialPeriod);
+      setDashboard(response);
+    } catch (error) {
+      setSystemWithdrawalError(error.message || "System withdrawal failed");
+    } finally {
+      setSystemWithdrawalLoading(false);
+    }
   };
 
   return (
@@ -443,6 +472,81 @@ const AdminLayout = () => {
                   ))}
                 </div>
               </section>
+
+              {isSuperAdmin && (
+                <section className="rounded-4xl border border-rose-500/20 bg-slate-900/80 p-6 shadow-xl shadow-slate-950/40">
+                  <div>
+                    <div className="text-sm uppercase tracking-[0.25em] text-rose-300/70">
+                      Super admin
+                    </div>
+                    <h2 className="mt-2 text-2xl font-semibold">
+                      Withdraw from system
+                    </h2>
+                  </div>
+                  <form
+                    onSubmit={handleSystemWithdrawal}
+                    className="mt-5 grid gap-3 md:grid-cols-[1fr_1fr_1.4fr_auto]"
+                  >
+                    <input
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      required
+                      placeholder="Amount (ETB)"
+                      value={systemWithdrawal.amount}
+                      onChange={(event) =>
+                        setSystemWithdrawal({
+                          ...systemWithdrawal,
+                          amount: event.target.value,
+                        })
+                      }
+                      className="rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100 outline-none focus:border-rose-400"
+                    />
+                    <input
+                      required
+                      placeholder="Payment method"
+                      value={systemWithdrawal.method}
+                      onChange={(event) =>
+                        setSystemWithdrawal({
+                          ...systemWithdrawal,
+                          method: event.target.value,
+                        })
+                      }
+                      className="rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100 outline-none focus:border-rose-400"
+                    />
+                    <input
+                      required
+                      placeholder="Account or phone number"
+                      value={systemWithdrawal.account}
+                      onChange={(event) =>
+                        setSystemWithdrawal({
+                          ...systemWithdrawal,
+                          account: event.target.value,
+                        })
+                      }
+                      className="rounded-2xl border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100 outline-none focus:border-rose-400"
+                    />
+                    <button
+                      type="submit"
+                      disabled={systemWithdrawalLoading}
+                      className="rounded-2xl bg-rose-500 px-5 py-3 font-medium text-white hover:bg-rose-400 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {systemWithdrawalLoading ? "Processing..." : "Withdraw"}
+                    </button>
+                  </form>
+                  {(systemWithdrawalMessage || systemWithdrawalError) && (
+                    <p
+                      className={`mt-3 text-sm ${
+                        systemWithdrawalError
+                          ? "text-rose-300"
+                          : "text-emerald-300"
+                      }`}
+                    >
+                      {systemWithdrawalError || systemWithdrawalMessage}
+                    </p>
+                  )}
+                </section>
+              )}
 
               <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
                 <section className="rounded-4xl border border-slate-800 bg-slate-900/80 p-6 shadow-xl shadow-slate-950/40">
