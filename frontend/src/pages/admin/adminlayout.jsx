@@ -174,12 +174,6 @@ const AdminLayout = () => {
           meta: "Total balance held by users",
           color: "from-cyan-950 to-cyan-800",
         },
-        {
-          label: "System Balance",
-          value: `${Number(dashboard.stats.systemBalance).toFixed(2)} ETB`,
-          meta: "Current platform snapshot",
-          color: "from-amber-950 to-amber-800",
-        },
       ]
     : stats;
 
