@@ -360,6 +360,21 @@ export const checkBingo = (card, markedNumbers) => {
   };
 };
 
+export const calculateBingoPrizePool = async (totalPool) => {
+  const commissionSettings =
+    (await CommissionSettings.findOne({ key: "bingo" }).lean()) || {};
+  const commissionPercentage =
+    totalPool < 100
+      ? Number(commissionSettings.below100Percentage ?? 20)
+      : totalPool <= 1000
+        ? Number(commissionSettings.between100And1000Percentage ?? 25)
+        : Number(commissionSettings.above1000Percentage ?? 30);
+  return Math.max(
+    0,
+    Number((totalPool - (totalPool * commissionPercentage) / 100).toFixed(2)),
+  );
+};
+
 // ============================================================
 // CREATE GAME
 // ============================================================

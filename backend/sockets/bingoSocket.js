@@ -14,6 +14,7 @@ import {
   saveWithRetry,
   resetEmptyRound,
   generateCardWithLuckyNumber,
+  calculateBingoPrizePool,
 } from "../services/bingo/bingoService.js";
 
 import {
@@ -40,7 +41,7 @@ const getRemainingSeconds = (selectionEndsAt) => {
   );
 };
 
-const buildRoundState = (game) => {
+const buildRoundState = async (game) => {
   const realPlayers = (game.players || []).filter(
     (player) => !player.isSpectator,
   );
@@ -49,10 +50,11 @@ const buildRoundState = (game) => {
     (player) => player.isSpectator,
   );
 
-  const prizePool = realPlayers.reduce(
+  const totalPool = realPlayers.reduce(
     (sum, player) => sum + Number(player.betAmount || 0),
     0,
   );
+  const prizePool = await calculateBingoPrizePool(totalPool);
 
   return {
     gameId: game.gameId,
@@ -91,7 +93,9 @@ const buildRoundState = (game) => {
 };
 
 const emitRoundState = (io, game) => {
-  io.to(`bingo:${game.gameId}`).emit("bingo:roundState", buildRoundState(game));
+  buildRoundState(game).then((state) => {
+    io.to(`bingo:${game.gameId}`).emit("bingo:roundState", state);
+  });
 };
 
 const normalizeIncomingSelectionValues = (value) => {
@@ -143,7 +147,7 @@ export const initBingoSocket = (io) => {
             startCallingNumbers(io, game.gameId);
           }
 
-          const state = buildRoundState(game);
+          const state = await buildRoundState(game);
           socket.emit("bingo:roundState", state);
 
           if (game.status === "active") {
@@ -754,7 +758,9 @@ export const initBingoSocket = (io) => {
         // Make sure socket is in the correct room
         socket.join(`bingo:${gameId}`);
 
-        socket.emit("bingo:roundState", buildRoundState(game));
+        buildRoundState(game).then((state) =>
+          socket.emit("bingo:roundState", state),
+        );
       } catch (error) {
         socket.emit("bingo:error", {
           message: error.message,

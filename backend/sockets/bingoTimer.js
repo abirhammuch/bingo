@@ -5,6 +5,7 @@ import {
   resetEmptyRound,
   createBingoGame,
   callNumber,
+  calculateBingoPrizePool,
 } from "../services/bingo/bingoService.js";
 
 const selectionTimers = new Map();
@@ -154,6 +155,10 @@ export const startSelectionTimer = async (io, gameId) => {
 
       await liveGame.save();
 
+      const totalPool = liveGame.players
+        .filter((p) => !p.isSpectator)
+        .reduce((sum, player) => sum + Number(player.betAmount || 0), 0);
+
       io.to(`bingo:${gameId}`).emit("bingo:gameStarted", {
         gameId,
 
@@ -161,9 +166,7 @@ export const startSelectionTimer = async (io, gameId) => {
 
         playerCount: liveGame.players.filter((p) => !p.isSpectator).length,
 
-        prizePool: liveGame.players
-          .filter((p) => !p.isSpectator)
-          .reduce((sum, player) => sum + Number(player.betAmount || 0), 0),
+        prizePool: await calculateBingoPrizePool(totalPool),
 
         spectatorCount: liveGame.players.filter((p) => p.isSpectator).length,
 
