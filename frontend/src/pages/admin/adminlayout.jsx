@@ -150,14 +150,16 @@ const AdminLayout = () => {
     ? [
         {
           label: "Total Users",
-          value: dashboard.stats.totalUsers.toLocaleString(),
-          meta: `Active: ${dashboard.stats.activeUsers.toLocaleString()}`,
+          value: (
+            dashboard.periodStats?.totalUsers ?? dashboard.stats.totalUsers
+          ).toLocaleString(),
+          meta: `Active: ${(dashboard.periodStats?.activeUsers ?? dashboard.stats.activeUsers).toLocaleString()}`,
           color: "from-slate-900 to-slate-800",
         },
         {
           label: "Commission",
-          value: `${Number(dashboard.stats.commission).toFixed(2)} ETB`,
-          meta: "From completed game rounds",
+          value: `${Number(dashboard.financialSummary?.commission ?? dashboard.stats.commission).toFixed(2)} ETB`,
+          meta: "From completed game rounds in period",
           color: "from-amber-950 to-amber-800",
         },
         {

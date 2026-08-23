@@ -385,6 +385,8 @@ router.get("/dashboard", requireAdmin, async (req, res) => {
       activeUsers,
       totalGames,
       activeGames,
+      periodUserTotals,
+      periodGameTotals,
       userBalanceTotals,
       walletFlowTotals,
       periodWalletFlowTotals,
@@ -396,6 +398,37 @@ router.get("/dashboard", requireAdmin, async (req, res) => {
       User.countDocuments({ isActive: true, isBlocked: false }),
       BingoGame.countDocuments(),
       BingoGame.countDocuments({ status: { $in: ["waiting", "active"] } }),
+      User.aggregate([
+        {
+          $match: periodStart ? { createdAt: { $gte: periodStart } } : {},
+        },
+        {
+          $group: {
+            _id: null,
+            totalUsers: { $sum: 1 },
+            activeUsers: {
+              $sum: {
+                $cond: [
+                  {
+                    $and: [
+                      { $eq: ["$isActive", true] },
+                      { $ne: ["$isBlocked", true] },
+                    ],
+                  },
+                  1,
+                  0,
+                ],
+              },
+            },
+          },
+        },
+      ]),
+      BingoGame.aggregate([
+        {
+          $match: periodStart ? { createdAt: { $gte: periodStart } } : {},
+        },
+        { $group: { _id: null, totalGames: { $sum: 1 } } },
+      ]),
       User.aggregate([
         { $group: { _id: null, totalUserBalance: { $sum: "$balance" } } },
       ]),
@@ -441,6 +474,11 @@ router.get("/dashboard", requireAdmin, async (req, res) => {
                   "$amount",
                   { $ifNull: ["$metadata.fee", 0] },
                 ],
+              },
+            },
+            commission: {
+              $sum: {
+                $cond: [{ $eq: ["$type", "COMMISSION"] }, "$amount", 0],
               },
             },
             loss: {
@@ -539,6 +577,8 @@ router.get("/dashboard", requireAdmin, async (req, res) => {
 
     const totals = transactionTotals[0] || {};
     const totalUserBalance = userBalanceTotals[0]?.totalUserBalance || 0;
+    const periodUsers = periodUserTotals[0] || {};
+    const periodGames = periodGameTotals[0] || {};
     const walletFlows = walletFlowTotals[0] || {};
     const periodWalletFlows = periodWalletFlowTotals[0] || {};
     const withdrawableSystemTotals = withdrawableTotals[0] || {};
@@ -571,8 +611,14 @@ router.get("/dashboard", requireAdmin, async (req, res) => {
         period,
         systemGain,
         systemLoss,
+        commission: Number(periodWalletFlows.commission || 0),
         netBalance: systemGain - systemLoss,
         withdrawableBalance,
+      },
+      periodStats: {
+        totalUsers: periodUsers.totalUsers || 0,
+        activeUsers: periodUsers.activeUsers || 0,
+        totalGames: periodGames.totalGames || 0,
       },
       currentRound: currentRound
         ? {
