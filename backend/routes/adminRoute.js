@@ -418,18 +418,38 @@ router.get("/dashboard", requireAdmin, async (req, res) => {
         {
           $match: {
             status: "completed",
-            type: { $in: ["deposit", "withdraw"] },
             createdAt: { $gte: periodStart },
+            $or: [
+              { type: "COMMISSION" },
+              { type: "withdraw", "metadata.fee": { $exists: true } },
+              { type: "COUPON" },
+              { type: "reward", "metadata.bonusType": "registration" },
+              { type: "reward", "metadata.referralReward": true },
+            ],
           },
         },
         {
           $group: {
             _id: null,
             gain: {
-              $sum: { $cond: [{ $eq: ["$type", "deposit"] }, "$amount", 0] },
+              $sum: {
+                $cond: [
+                  { $eq: ["$type", "COMMISSION"] },
+                  "$amount",
+                  {
+                    $cond: [
+                      { $eq: ["$type", "withdraw"] },
+                      { $ifNull: ["$metadata.fee", 0] },
+                      0,
+                    ],
+                  },
+                ],
+              },
             },
             loss: {
-              $sum: { $cond: [{ $eq: ["$type", "withdraw"] }, "$amount", 0] },
+              $sum: {
+                $cond: [{ $in: ["$type", ["COUPON", "reward"]] }, "$amount", 0],
+              },
             },
           },
         },

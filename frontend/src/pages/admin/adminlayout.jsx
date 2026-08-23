@@ -389,7 +389,7 @@ const AdminLayout = () => {
                       Financial summary
                     </div>
                     <h2 className="mt-2 text-2xl font-semibold">
-                      System cash flow
+                      System gain and loss
                     </h2>
                   </div>
                   <div
