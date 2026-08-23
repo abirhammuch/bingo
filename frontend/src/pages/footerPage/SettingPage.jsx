@@ -21,31 +21,31 @@ const SettingPage = () => {
       id: "card-selection",
       title: "Card Selection",
       content:
-        "Select your bingo card at the start of each game round. You can choose from available cards displayed on the screen.",
+        "Before the timer ends, select up to 3 available lucky numbers. Each selected number reserves a card and requires the displayed stake. Unselected players cannot join after the selection period.",
     },
     {
       id: "gameplay",
       title: "Gameplay",
       content:
-        "Numbers are called randomly. Your card is marked automatically when numbers match. The game continues until someone wins.",
+        "After selection closes, numbers from 1 to 75 are called randomly. Matching numbers are marked automatically on your card, and you can follow all called numbers on the live board.",
     },
     {
       id: "win-conditions",
       title: "Win Conditions",
       content:
-        "Win by completing a line (horizontal, vertical, or diagonal) or a full house (all numbers marked). Be the first to complete the pattern.",
+        "You win when one complete row, column, or diagonal is marked. The first qualifying players are recorded as winners, and spectators cannot win.",
     },
     {
       id: "claiming-prize",
       title: "Claiming Prize",
       content:
-        "When you win, your prize is automatically credited to your wallet. Check your transaction history for details.",
+        "Winning prizes are credited automatically to the winner's wallet after the round is completed. The prize is based on the round pool after the configured system commission. Check your transaction history for details.",
     },
     {
       id: "penalty",
-      title: "Penalty",
+      title: "Round Completion",
       content:
-        "Leaving the game before completion may result in penalties or disqualification. Always complete the game round.",
+        "When a winner is found, the round ends and the result is displayed. If all 75 numbers are called without a winner, the round ends without a winner. Wait for the next round to select again.",
     },
   ];
 
@@ -54,7 +54,7 @@ const SettingPage = () => {
   };
 
   return (
-    <div className="pb-16 min-h-screen bg-gradient-to-b from-slate-950 to-slate-900">
+    <div className="pb-16 min-h-screen bg-linear-to-b from-slate-950 to-slate-900">
       {/* Page Header */}
       <div className="bg-slate-900/60 border-b border-slate-700 p-4">
         <div className="max-w-4xl mx-auto">
