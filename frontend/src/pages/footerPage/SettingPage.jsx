@@ -14,9 +14,6 @@ const SettingPage = () => {
   const languages = [
     { id: "english", name: "English", flag: "🇬🇧" },
     { id: "amharic", name: "አማርኛ", flag: "🇪🇹" },
-    { id: "tigrinya", name: "ትግርኛ", flag: "🇪🇹" },
-    { id: "afaan", name: "Afaan Oromoo", flag: "🇪🇹" },
-    { id: "somali", name: "Soomaali", flag: "🇪🇹" },
   ];
 
   const gameRules = [
@@ -224,7 +221,7 @@ const SettingPage = () => {
       {/* App Version */}
       <div className="text-center py-6 border-t border-slate-700/50">
         <p className="text-xs uppercase tracking-widest text-slate-500 font-semibold">
-         CASINA BINGO · V2.0.4
+          CASINA BINGO · V2.0.4
         </p>
       </div>
 
