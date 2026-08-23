@@ -140,51 +140,55 @@ const UserPage = () => {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
-      <div className="max-w-[1500px] mx-auto px-4 py-8">
-        <div className="rounded-4xl border border-slate-800 bg-slate-900/80 p-6 shadow-xl shadow-slate-950/40">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+      <div className="mx-auto max-w-375 px-1 py-3 sm:px-2 sm:py-5 lg:px-4 lg:py-8">
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-3 shadow-xl shadow-slate-950/40 sm:rounded-3xl sm:p-4 lg:rounded-4xl lg:p-6">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <div className="text-sm uppercase tracking-[0.25em] text-slate-500">
                 Users
               </div>
-              <h1 className="mt-2 text-4xl font-semibold">User Management</h1>
+              <h1 className="mt-1 text-2xl font-semibold sm:text-3xl lg:mt-2 lg:text-4xl">
+                User Management
+              </h1>
             </div>
 
-            <button className="rounded-full border border-emerald-500/30 bg-emerald-500/15 px-4 py-2 text-sm font-medium text-emerald-300 hover:bg-emerald-500/20">
+            <button className="rounded-full border border-emerald-500/30 bg-emerald-500/15 px-3 py-1.5 text-xs font-medium text-emerald-300 hover:bg-emerald-500/20 sm:px-4 sm:py-2 sm:text-sm">
               + Add User
             </button>
           </div>
         </div>
 
-        <div className="mt-6 grid gap-4 md:grid-cols-3">
-          <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5">
+        <div className="mt-3 grid gap-2 sm:mt-4 sm:gap-3 md:grid-cols-3 lg:mt-6">
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-3 sm:rounded-3xl sm:p-4 lg:p-5">
             <div className="text-sm text-slate-400">Total Users</div>
-            <div className="mt-4 text-3xl font-semibold">{users.length}</div>
+            <div className="mt-2 text-2xl font-semibold sm:mt-3 sm:text-3xl">
+              {users.length}
+            </div>
           </div>
 
-          <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5">
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-3 sm:rounded-3xl sm:p-4 lg:p-5">
             <div className="text-sm text-slate-400">Active Users</div>
-            <div className="mt-4 text-3xl font-semibold text-emerald-300">
+            <div className="mt-2 text-2xl font-semibold text-emerald-300 sm:mt-3 sm:text-3xl">
               {activeUsers}
             </div>
           </div>
 
-          <div className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5">
+          <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-3 sm:rounded-3xl sm:p-4 lg:p-5">
             <div className="text-sm text-slate-400">Wallet Balance</div>
-            <div className="mt-4 text-3xl font-semibold text-violet-300">
+            <div className="mt-2 text-2xl font-semibold text-violet-300 sm:mt-3 sm:text-3xl">
               {totalWallet.toFixed(2)} ETB
             </div>
           </div>
         </div>
 
-        <div className="mt-6 rounded-4xl border border-slate-800 bg-slate-900/80 p-6 shadow-xl shadow-slate-950/40">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <div className="mt-3 rounded-2xl border border-slate-800 bg-slate-900/80 p-3 shadow-xl shadow-slate-950/40 sm:mt-4 sm:rounded-3xl sm:p-4 lg:mt-6 lg:rounded-4xl lg:p-6">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex-1">
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search users by name, username, phone, role, telegram id..."
-                className="w-full rounded-2xl border border-slate-700 bg-slate-950/80 px-4 py-3 text-sm text-slate-100 placeholder:text-slate-500 outline-none focus:border-emerald-500"
+                className="w-full rounded-xl border border-slate-700 bg-slate-950/80 px-3 py-2.5 text-xs text-slate-100 placeholder:text-slate-500 outline-none focus:border-emerald-500 sm:rounded-2xl sm:px-4 sm:py-3 sm:text-sm"
               />
             </div>
 
@@ -223,25 +227,41 @@ const UserPage = () => {
             </div>
           )}
 
-          <div className="mt-6 overflow-x-auto rounded-3xl border border-slate-800 bg-slate-950/70">
+          <div className="mt-3 overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/70 sm:mt-4 sm:rounded-3xl lg:mt-6">
             <table className="min-w-full text-left text-sm">
               <thead className="bg-slate-900/90 text-slate-400">
                 <tr>
-                  <th className="px-4 py-3 font-medium">User</th>
-                  <th className="px-4 py-3 font-medium">Telegram</th>
-                  <th className="px-4 py-3 font-medium">Role</th>
-                  <th className="px-4 py-3 font-medium">Phone</th>
-                  <th className="px-4 py-3 font-medium">Wallet</th>
-                  <th className="px-4 py-3 font-medium">Status</th>
-                  <th className="px-4 py-3 font-medium">Joined</th>
-                  <th className="px-4 py-3 font-medium">Action</th>
+                  <th className="px-3 py-2 font-medium sm:px-4 sm:py-3">
+                    User
+                  </th>
+                  <th className="px-3 py-2 font-medium sm:px-4 sm:py-3">
+                    Telegram
+                  </th>
+                  <th className="px-3 py-2 font-medium sm:px-4 sm:py-3">
+                    Role
+                  </th>
+                  <th className="px-3 py-2 font-medium sm:px-4 sm:py-3">
+                    Phone
+                  </th>
+                  <th className="px-3 py-2 font-medium sm:px-4 sm:py-3">
+                    Wallet
+                  </th>
+                  <th className="px-3 py-2 font-medium sm:px-4 sm:py-3">
+                    Status
+                  </th>
+                  <th className="px-3 py-2 font-medium sm:px-4 sm:py-3">
+                    Joined
+                  </th>
+                  <th className="px-3 py-2 font-medium sm:px-4 sm:py-3">
+                    Action
+                  </th>
                 </tr>
               </thead>
 
               <tbody>
                 {filteredUsers.map((user) => (
                   <tr key={user.id} className="border-t border-slate-800">
-                    <td className="px-4 py-4">
+                    <td className="px-3 py-3 sm:px-4 sm:py-4">
                       <div>
                         <div className="font-semibold text-slate-100">
                           {user.name}
@@ -252,14 +272,18 @@ const UserPage = () => {
                       </div>
                     </td>
 
-                    <td className="px-4 py-4 text-slate-300">
+                    <td className="px-3 py-3 text-slate-300 sm:px-4 sm:py-4">
                       <div className="font-medium text-sky-300">
                         #{user.telegramId}
                       </div>
                     </td>
-                    <td className="px-4 py-4 text-slate-300">{user.role}</td>
-                    <td className="px-4 py-4 text-slate-300">{user.phone}</td>
-                    <td className="px-4 py-4 text-slate-100 font-medium">
+                    <td className="px-3 py-3 text-slate-300 sm:px-4 sm:py-4">
+                      {user.role}
+                    </td>
+                    <td className="px-3 py-3 text-slate-300 sm:px-4 sm:py-4">
+                      {user.phone}
+                    </td>
+                    <td className="px-3 py-3 text-slate-100 font-medium sm:px-4 sm:py-4">
                       {editingBalanceId === user.id ? (
                         <div className="flex items-center gap-2">
                           <input
@@ -300,15 +324,17 @@ const UserPage = () => {
                         </div>
                       )}
                     </td>
-                    <td className="px-4 py-4">
+                    <td className="px-3 py-3 sm:px-4 sm:py-4">
                       <span
                         className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${statusClasses[user.status]}`}
                       >
                         {user.status}
                       </span>
                     </td>
-                    <td className="px-4 py-4 text-slate-300">{user.joined}</td>
-                    <td className="px-4 py-4">
+                    <td className="px-3 py-3 text-slate-300 sm:px-4 sm:py-4">
+                      {user.joined}
+                    </td>
+                    <td className="px-3 py-3 sm:px-4 sm:py-4">
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => updateUserStatus(user, "active")}

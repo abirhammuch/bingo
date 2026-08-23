@@ -644,7 +644,7 @@ const AdminLayout = () => {
           )}
 
           {location.pathname !== "/admin" && (
-            <section className="rounded-4xl border border-slate-800 bg-slate-900/80 p-6 shadow-xl shadow-slate-950/40">
+            <section className="rounded-2xl border border-slate-800 bg-slate-900/80 p-2 shadow-xl shadow-slate-950/40 sm:rounded-3xl sm:p-4 lg:rounded-4xl lg:p-6">
               <Outlet />
             </section>
           )}

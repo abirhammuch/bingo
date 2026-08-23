@@ -133,7 +133,7 @@ const DepositPage = () => {
           {error}
         </div>
       )}
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-2 sm:grid-cols-2 sm:gap-3 xl:grid-cols-4">
         {[
           ["Pending Deposits", pendingCount, "text-sky-300", "bg-sky-500/15"],
           [
@@ -152,28 +152,28 @@ const DepositPage = () => {
         ].map(([label, value, textColor, iconColor]) => (
           <div
             key={label}
-            className="flex items-center justify-between rounded-2xl border border-slate-800 bg-slate-900/90 p-4 shadow-lg shadow-slate-950/20"
+            className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-900/90 p-3 shadow-lg shadow-slate-950/20 sm:rounded-2xl sm:p-4"
           >
             <div>
               <div className="text-xs text-slate-400">{label}</div>
               <div className="mt-1 text-2xl font-semibold">{value}</div>
             </div>
             <div
-              className={`grid h-10 w-10 place-items-center rounded-full ${iconColor} ${textColor}`}
+              className={`grid h-8 w-8 place-items-center rounded-full text-sm ${iconColor} ${textColor} sm:h-10 sm:w-10`}
             >
               $
             </div>
           </div>
         ))}
       </div>
-      <div className="flex flex-wrap items-end gap-3 rounded-2xl border border-slate-800 bg-slate-900/90 p-4 shadow-lg shadow-slate-950/20">
+      <div className="flex flex-wrap items-end gap-2 rounded-xl border border-slate-800 bg-slate-900/90 p-3 shadow-lg shadow-slate-950/20 sm:gap-3 sm:rounded-2xl sm:p-4">
         <label className="text-xs text-slate-400">
           Search
           <input
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Search"
-            className="mt-1 block h-9 w-44 rounded-lg border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 outline-none placeholder:text-slate-600 focus:border-teal-500"
+            className="mt-1 block h-9 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 text-sm text-slate-100 outline-none placeholder:text-slate-600 focus:border-teal-500 sm:w-44"
           />
         </label>
         <label className="text-xs text-slate-400">

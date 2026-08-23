@@ -28,9 +28,9 @@ const statusStyles = {
 
 const Panel = ({ title, action, children, className = "" }) => (
   <section
-    className={`overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/90 shadow-lg shadow-slate-950/20 ${className}`}
+    className={`overflow-hidden rounded-xl border border-slate-800 bg-slate-900/90 shadow-lg shadow-slate-950/20 sm:rounded-2xl ${className}`}
   >
-    <div className="flex items-center justify-between gap-3 border-b border-slate-800 px-4 py-3">
+    <div className="flex items-center justify-between gap-2 border-b border-slate-800 px-3 py-2.5 sm:gap-3 sm:px-4 sm:py-3">
       <h2 className="font-semibold">{title}</h2>
       {action && (
         <button className="rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-500">
@@ -252,7 +252,7 @@ const BonusPage = ({ section = "all" }) => {
   return (
     <div className="space-y-5 text-slate-100">
       {section === "all" && (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-2 sm:grid-cols-2 sm:gap-3 xl:grid-cols-4">
           {[
             ["Active Coupons", "12", "text-sky-300", "bg-sky-500/15"],
             [
@@ -276,14 +276,14 @@ const BonusPage = ({ section = "all" }) => {
           ].map(([label, value, textColor, iconColor]) => (
             <div
               key={label}
-              className="flex items-center justify-between rounded-2xl border border-slate-800 bg-slate-900/90 p-4 shadow-lg shadow-slate-950/20"
+              className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-900/90 p-3 shadow-lg shadow-slate-950/20 sm:rounded-2xl sm:p-4"
             >
               <div>
                 <div className="text-xs text-slate-400">{label}</div>
                 <div className="mt-1 text-2xl font-semibold">{value}</div>
               </div>
               <div
-                className={`grid h-10 w-10 place-items-center rounded-full ${iconColor} ${textColor}`}
+                className={`grid h-8 w-8 place-items-center rounded-full text-sm ${iconColor} ${textColor} sm:h-10 sm:w-10`}
               >
                 $
               </div>
@@ -293,7 +293,7 @@ const BonusPage = ({ section = "all" }) => {
       )}
 
       <div
-        className={`grid gap-4 ${section === "all" ? "xl:grid-cols-2" : "xl:grid-cols-1"}`}
+        className={`grid gap-3 sm:gap-4 ${section === "all" ? "xl:grid-cols-2" : "xl:grid-cols-1"}`}
       >
         {show("coupons") && (
           <Panel title="Coupon Code Management">

@@ -90,20 +90,22 @@ const TransactionPage = () => {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
-      <div className="mx-auto max-w-375 px-4 py-8">
+      <div className="mx-auto max-w-375 px-1 py-3 sm:px-2 sm:py-5 lg:px-4 lg:py-8">
         {error && (
           <div className="mb-6 rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-300">
             {error}
           </div>
         )}
-        <div className="rounded-4xl border border-slate-800 bg-slate-900/80 p-6 shadow-xl shadow-slate-950/40">
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-3 shadow-xl shadow-slate-950/40 sm:rounded-3xl sm:p-4 lg:rounded-4xl lg:p-6">
           <div className="text-sm uppercase tracking-[0.25em] text-slate-500">
             Transactions
           </div>
-          <h1 className="mt-2 text-4xl font-semibold">Financial Activity</h1>
+          <h1 className="mt-1 text-2xl font-semibold sm:text-3xl lg:mt-2 lg:text-4xl">
+            Financial Activity
+          </h1>
         </div>
 
-        <div className="mt-6 grid gap-4 md:grid-cols-3">
+        <div className="mt-3 grid gap-2 sm:mt-4 sm:gap-3 md:grid-cols-3 lg:mt-6">
           {[
             [
               "Total Volume",
@@ -115,17 +117,19 @@ const TransactionPage = () => {
           ].map(([label, value, color]) => (
             <div
               key={label}
-              className="rounded-3xl border border-slate-800 bg-slate-900/80 p-5"
+              className="rounded-2xl border border-slate-800 bg-slate-900/80 p-3 sm:rounded-3xl sm:p-4"
             >
               <div className="text-sm text-slate-400">{label}</div>
-              <div className={`mt-4 text-3xl font-semibold ${color}`}>
+              <div
+                className={`mt-2 text-2xl font-semibold ${color} sm:mt-3 sm:text-3xl`}
+              >
                 {value}
               </div>
             </div>
           ))}
         </div>
 
-        <div className="mt-6 rounded-4xl border border-slate-800 bg-slate-900/80 p-6 shadow-xl shadow-slate-950/40">
+        <div className="mt-3 rounded-2xl border border-slate-800 bg-slate-900/80 p-3 shadow-xl shadow-slate-950/40 sm:mt-4 sm:rounded-3xl sm:p-4 lg:mt-6 lg:rounded-4xl lg:p-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <input
               value={query}
@@ -146,7 +150,7 @@ const TransactionPage = () => {
             </div>
           </div>
 
-          <div className="mt-6 overflow-x-auto rounded-3xl border border-slate-800 bg-slate-950/70">
+          <div className="mt-3 overflow-x-auto rounded-2xl border border-slate-800 bg-slate-950/70 sm:mt-4 sm:rounded-3xl lg:mt-6">
             <table className="min-w-full text-left text-sm">
               <thead className="bg-slate-900/90 text-slate-400">
                 <tr>
