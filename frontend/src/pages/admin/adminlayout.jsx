@@ -157,7 +157,7 @@ const AdminLayout = () => {
         {
           label: "Commission",
           value: `${Number(dashboard.stats.commission).toFixed(2)} ETB`,
-          meta: "Recorded commission",
+          meta: "From completed game rounds",
           color: "from-amber-950 to-amber-800",
         },
         {
@@ -455,7 +455,7 @@ const AdminLayout = () => {
                       "text-rose-300",
                     ],
                     [
-                      "Net Balance",
+                      "Net Balance (Withdrawable)",
                       financialSummary.netBalance,
                       "text-cyan-300",
                     ],
@@ -468,6 +468,11 @@ const AdminLayout = () => {
                       <div className={`mt-3 text-2xl font-semibold ${color}`}>
                         {Number(value).toFixed(2)} ETB
                       </div>
+                      {label === "Net Balance (Withdrawable)" && (
+                        <div className="mt-1 text-xs text-slate-500">
+                          Available for system withdrawal
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
