@@ -164,20 +164,20 @@ const AdminLayout = () => {
         },
         {
           label: "Referral",
-          value: dashboard.stats.referralCount.toLocaleString(),
-          meta: `Earnings: ${Number(dashboard.stats.referralEarnings).toFixed(2)} ETB`,
+          value: `${Number(dashboard.financialSummary?.referralEarnings ?? dashboard.stats.referralEarnings).toFixed(2)} ETB`,
+          meta: `${dashboard.financialSummary?.referralCount ?? dashboard.stats.referralCount} rewards in period`,
           color: "from-cyan-950 to-cyan-800",
         },
         {
           label: "User Balance",
           value: `${Number(dashboard.stats.totalUserBalance).toFixed(2)} ETB`,
-          meta: "Total wallet liability",
+          meta: "Current wallet snapshot",
           color: "from-cyan-950 to-cyan-800",
         },
         {
           label: "System Balance",
           value: `${Number(dashboard.stats.systemBalance).toFixed(2)} ETB`,
-          meta: "Net platform funds",
+          meta: "Current platform snapshot",
           color: "from-amber-950 to-amber-800",
         },
       ]

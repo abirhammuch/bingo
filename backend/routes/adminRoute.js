@@ -481,6 +481,20 @@ router.get("/dashboard", requireAdmin, async (req, res) => {
                 $cond: [{ $eq: ["$type", "COMMISSION"] }, "$amount", 0],
               },
             },
+            referralCount: {
+              $sum: {
+                $cond: [{ $eq: ["$metadata.referralReward", true] }, 1, 0],
+              },
+            },
+            referralEarnings: {
+              $sum: {
+                $cond: [
+                  { $eq: ["$metadata.referralReward", true] },
+                  "$amount",
+                  0,
+                ],
+              },
+            },
             loss: {
               $sum: {
                 $cond: [
@@ -612,6 +626,8 @@ router.get("/dashboard", requireAdmin, async (req, res) => {
         systemGain,
         systemLoss,
         commission: Number(periodWalletFlows.commission || 0),
+        referralCount: Number(periodWalletFlows.referralCount || 0),
+        referralEarnings: Number(periodWalletFlows.referralEarnings || 0),
         netBalance: systemGain - systemLoss,
         withdrawableBalance,
       },
