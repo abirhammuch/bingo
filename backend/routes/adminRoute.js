@@ -568,8 +568,8 @@ router.get("/dashboard", requireAdmin, async (req, res) => {
         period,
         systemGain,
         systemLoss,
-        netBalance: withdrawableBalance,
-        periodNetBalance: systemGain - systemLoss,
+        netBalance: systemGain - systemLoss,
+        withdrawableBalance,
       },
       currentRound: currentRound
         ? {

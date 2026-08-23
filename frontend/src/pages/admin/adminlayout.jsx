@@ -186,6 +186,7 @@ const AdminLayout = () => {
     systemGain: 0,
     systemLoss: 0,
     netBalance: 0,
+    withdrawableBalance: 0,
   };
   const financialPeriods = [
     ["1d", "1 Day"],
@@ -455,9 +456,14 @@ const AdminLayout = () => {
                       "text-rose-300",
                     ],
                     [
-                      "Net Balance (Withdrawable)",
+                      "Net Balance",
                       financialSummary.netBalance,
                       "text-cyan-300",
+                    ],
+                    [
+                      "Withdrawable Balance",
+                      financialSummary.withdrawableBalance,
+                      "text-amber-300",
                     ],
                   ].map(([label, value, color]) => (
                     <div
@@ -468,9 +474,14 @@ const AdminLayout = () => {
                       <div className={`mt-3 text-2xl font-semibold ${color}`}>
                         {Number(value).toFixed(2)} ETB
                       </div>
-                      {label === "Net Balance (Withdrawable)" && (
+                      {label === "Net Balance" && (
                         <div className="mt-1 text-xs text-slate-500">
-                          Available for system withdrawal
+                          For the selected period
+                        </div>
+                      )}
+                      {label === "Withdrawable Balance" && (
+                        <div className="mt-1 text-xs text-slate-500">
+                          All-time amount available to withdraw
                         </div>
                       )}
                     </div>
