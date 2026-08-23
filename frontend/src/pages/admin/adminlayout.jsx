@@ -170,8 +170,8 @@ const AdminLayout = () => {
         },
         {
           label: "User Balance",
-          value: `${Number(dashboard.periodStats?.userBalanceChange ?? dashboard.stats.totalUserBalance).toFixed(2)} ETB`,
-          meta: "Net wallet movement in period",
+          value: `${Number(dashboard.stats.totalUserBalance).toFixed(2)} ETB`,
+          meta: "Total balance held by users",
           color: "from-cyan-950 to-cyan-800",
         },
         {
