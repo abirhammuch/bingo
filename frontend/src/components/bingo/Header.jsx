@@ -12,6 +12,8 @@ const Header = ({
   derash = 0,
   selectionEndsAt = null,
   selectedCardsCount = 0,
+  soundEnabled = true,
+  onToggleSound,
 }) => {
   const safeCalled = Math.min(Math.max(Number(called) || 0, 0), 75);
 
@@ -117,6 +119,15 @@ const Header = ({
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
               LIVE
             </span>
+            <button
+              type="button"
+              onClick={onToggleSound}
+              aria-label={soundEnabled ? "Turn sound off" : "Turn sound on"}
+              title={soundEnabled ? "Turn sound off" : "Turn sound on"}
+              className="inline-flex h-7 w-7 items-center justify-center rounded border border-slate-700 bg-slate-800 text-slate-200 transition hover:bg-slate-700"
+            >
+              {soundEnabled ? "🔊" : "🔇"}
+            </button>
           </div>
 
           <div className="text-xs text-slate-500">

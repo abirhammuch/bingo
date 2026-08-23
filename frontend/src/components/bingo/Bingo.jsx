@@ -112,6 +112,7 @@ const Bingo = ({ theme, onBlocked }) => {
 
   const [toastMessage, setToastMessage] = useState("");
   const [isBlocked, setIsBlocked] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(true);
 
   // ============================================================
   // REFS
@@ -126,6 +127,7 @@ const Bingo = ({ theme, onBlocked }) => {
   const mySelectionsRef = useRef([]);
 
   const winnerRef = useRef(null);
+  const soundEnabledRef = useRef(true);
 
   // ============================================================
   // KEEP REFS UPDATED
@@ -150,6 +152,10 @@ const Bingo = ({ theme, onBlocked }) => {
   useEffect(() => {
     winnerRef.current = winner;
   }, [winner]);
+
+  useEffect(() => {
+    soundEnabledRef.current = soundEnabled;
+  }, [soundEnabled]);
 
   useEffect(() => {
     if (!toastMessage) return undefined;
@@ -450,7 +456,7 @@ const Bingo = ({ theme, onBlocked }) => {
 
       if (typeof payload.number === "number") {
         setCurrentNumber(payload.number);
-        speakCalledNumber(payload.number);
+        if (soundEnabledRef.current) speakCalledNumber(payload.number);
       }
 
       if (Array.isArray(payload.calledNumbers)) {
@@ -1095,6 +1101,8 @@ const Bingo = ({ theme, onBlocked }) => {
           derash={prizePool}
           round="LIVE"
           stake={stakeAmount}
+          soundEnabled={soundEnabled}
+          onToggleSound={() => setSoundEnabled((enabled) => !enabled)}
         />
       )}
 
