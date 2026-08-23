@@ -1192,6 +1192,14 @@ const Bingo = ({ theme, onBlocked }) => {
                       );
                     })}
                   </div>
+
+                  <p className="mt-3 max-w-xs mx-auto text-sm leading-6 text-slate-400">
+                    Winning card numbers:{" "}
+                    {winnerCard
+                      .flat()
+                      .map((number) => (number === 0 ? "FREE" : number))
+                      .join(", ")}
+                  </p>
                 </div>
               )}
             </div>
