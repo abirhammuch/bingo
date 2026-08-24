@@ -96,6 +96,17 @@ const LivePhase = ({
                       : "Ready"}
                   </div>
                 </div>
+                <div className="grid grid-cols-5 gap-1 mb-1">
+                  {["B", "I", "N", "G", "O"].map((letter) => (
+                    <div
+                      key={letter}
+                      className="text-center text-xs font-bold text-emerald-300"
+                    >
+                      {letter}
+                    </div>
+                  ))}
+                </div>
+
                 <div className="grid grid-cols-5 gap-1">
                   {card.map((row, rowIndex) =>
                     row.map((cell, columnIndex) => (

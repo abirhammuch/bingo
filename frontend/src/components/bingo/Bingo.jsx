@@ -1240,23 +1240,39 @@ const Bingo = ({ theme, onBlocked }) => {
                 <div className="mt-6">
                   <p className="text-slate-300 mb-3">Winning Card</p>
 
+                  <div className="inline-grid grid-cols-5 gap-1 mb-1 w-full max-w-xs">
+                    {["B", "I", "N", "G", "O"].map((letter) => (
+                      <div
+                        key={letter}
+                        className="text-center text-xs font-bold text-emerald-300"
+                      >
+                        {letter}
+                      </div>
+                    ))}
+                  </div>
+
                   <div className="inline-grid grid-cols-5 gap-1">
                     {winnerCard.flat().map((number, index) => {
                       const rowIndex = Math.floor(index / 5);
                       const columnIndex = index % 5;
+                      const value = number?.value ?? number;
+                      const isCalled =
+                        value !== 0 && calledNumbers.includes(Number(value));
 
                       return (
                         <div
-                          key={`${number}-${index}`}
+                          key={`${value}-${index}`}
                           className={`w-10 h-10 flex items-center justify-center rounded text-sm font-bold ${
                             isWinningCell(rowIndex, columnIndex)
                               ? "bg-emerald-500 text-slate-950 ring-2 ring-emerald-200"
-                              : number === 0
-                                ? "bg-amber-500 text-white"
-                                : "bg-slate-800 text-white"
+                              : isCalled
+                                ? "bg-sky-500 text-white ring-2 ring-sky-200"
+                                : value === 0
+                                  ? "bg-amber-500 text-white"
+                                  : "bg-slate-800 text-white"
                           }`}
                         >
-                          {number === 0 ? "★" : number}
+                          {value === 0 ? "★" : value}
                         </div>
                       );
                     })}
@@ -1266,7 +1282,10 @@ const Bingo = ({ theme, onBlocked }) => {
                     Winning card numbers:{" "}
                     {winnerCard
                       .flat()
-                      .map((number) => (number === 0 ? "FREE" : number))
+                      .map((number) => {
+                        const value = number?.value ?? number;
+                        return value === 0 ? "FREE" : value;
+                      })
                       .join(", ")}
                   </p>
                 </div>
