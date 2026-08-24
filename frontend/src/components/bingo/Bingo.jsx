@@ -633,8 +633,6 @@ const Bingo = ({ theme, onBlocked }) => {
         return;
       }
 
-      if (soundEnabledRef.current) speakWinner();
-
       const normalizedWinner = {
         ...winnerData,
         card: winnerData.card || payload.winnerCard || [],
@@ -677,6 +675,8 @@ const Bingo = ({ theme, onBlocked }) => {
       setPhase("finished");
 
       updateServerTimer(0);
+
+      if (soundEnabledRef.current) speakWinner();
     };
 
     // ==========================================================
