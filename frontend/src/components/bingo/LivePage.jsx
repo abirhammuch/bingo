@@ -9,11 +9,22 @@ const LivePage = ({
   accent = {},
 }) => {
   const safeCalledNumbers = Array.isArray(calledNumbers) ? calledNumbers : [];
-  const recentCalls = [currentNumber, ...safeCalledNumbers]
+  const normalizedCurrentNumber = Number(currentNumber);
+  const normalizedCalledNumbers = safeCalledNumbers
     .map((number) => Number(number))
     .filter((number) => Number.isInteger(number) && number >= 1 && number <= 75)
-    .filter((number, index, numbers) => numbers.indexOf(number) === index)
-    .slice(0, 3);
+    .filter((number, index, numbers) => numbers.indexOf(number) === index);
+  const previousCalls = normalizedCalledNumbers
+    .filter((number) => number !== normalizedCurrentNumber)
+    .reverse();
+  const recentCalls = [
+    ...(Number.isInteger(normalizedCurrentNumber) &&
+    normalizedCurrentNumber >= 1 &&
+    normalizedCurrentNumber <= 75
+      ? [normalizedCurrentNumber]
+      : []),
+    ...previousCalls,
+  ].slice(0, 3);
 
   return (
     <div className="max-w-6xl mx-auto grid grid-cols-2 gap-6">
@@ -78,7 +89,8 @@ const LivePage = ({
           <div className="flex min-h-16 items-center justify-center gap-3">
             {Array.from({ length: 3 }, (_, index) => {
               const number = recentCalls[index];
-              const isCurrent = index === 0 && number === Number(currentNumber);
+              const isCurrent =
+                index === 0 && number === normalizedCurrentNumber;
 
               return (
                 <div
