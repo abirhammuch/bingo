@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
-import { promptTelegramShareContact } from "../../utils/telegramWebApp";
 import Bingo from "../../components/bingo/Bingo";
 
 const BingoPage = () => {
@@ -56,7 +55,6 @@ const BingoPage = () => {
             console.error("❌ Login failed:", err);
             setAuthError(err.message || "Login failed");
             setDebugInfo("Login failed - " + (err.message || "Unknown error"));
-            promptTelegramShareContact();
           });
       } catch (error) {
         console.error("❌ Exception:", error);

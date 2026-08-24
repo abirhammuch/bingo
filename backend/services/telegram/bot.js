@@ -344,6 +344,10 @@ bot.start(async (ctx) => {
           .resize()
           .oneTime(),
       );
+      await ctx.reply(
+        "You can open the game now, or share your contact first to unlock account features.",
+        openGameKeyboard(),
+      );
       return;
     }
 

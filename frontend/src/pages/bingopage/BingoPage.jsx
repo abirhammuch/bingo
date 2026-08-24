@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
-import { promptTelegramShareContact } from "../../utils/telegramWebApp";
 import Bingo from "../../components/bingo/Bingo";
 
 const BingoPage = ({ onBlocked }) => {
@@ -21,7 +20,6 @@ const BingoPage = ({ onBlocked }) => {
       .catch((error) => {
         console.error("Telegram WebApp login failed:", error);
         setAuthError(error?.message || "Telegram authentication failed.");
-        promptTelegramShareContact();
       })
       .finally(() => setAuthenticating(false));
   }, [user, loading, loginWithTelegramInitData]);

@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { promptTelegramShareContact } from "../utils/telegramWebApp";
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -116,9 +115,6 @@ const LoginPage = () => {
         );
 
         setIsAuthenticating(false);
-
-        // Ask the user to complete registration/contact sharing
-        promptTelegramShareContact();
       }
     };
 
