@@ -52,10 +52,12 @@ export const speakCalledNumber = (number) => {
 };
 
 export const speakWinner = () => {
-  if (typeof window === "undefined") return;
+  if (typeof window === "undefined") return Promise.resolve();
 
-  announcementQueue.push({ type: "winner" });
-  playNextAnnouncement();
+  return new Promise((resolve) => {
+    announcementQueue.push({ type: "winner", resolve });
+    playNextAnnouncement();
+  });
 };
 
 const playNextAnnouncement = () => {
@@ -67,10 +69,14 @@ const playNextAnnouncement = () => {
   if (announcement.type === "winner") {
     const winnerAudio = new Audio("/Bingo.mp3");
     winnerAudio.volume = 1;
-    winnerAudio.addEventListener("ended", finishAnnouncement, { once: true });
+    winnerAudio.addEventListener(
+      "ended",
+      () => finishAnnouncement(announcement.resolve),
+      { once: true },
+    );
     winnerAudio.play().catch(() => {
       speakBrowserWinner();
-      finishAnnouncement();
+      finishAnnouncement(announcement.resolve);
     });
     return;
   }
@@ -101,7 +107,8 @@ const playNextAnnouncement = () => {
   });
 };
 
-const finishAnnouncement = () => {
+const finishAnnouncement = (onComplete) => {
+  onComplete?.();
   isPlayingAnnouncement = false;
   playNextAnnouncement();
 };

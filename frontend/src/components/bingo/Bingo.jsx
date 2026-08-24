@@ -108,6 +108,8 @@ const Bingo = ({ theme, onBlocked }) => {
 
   const [winnerAmount, setWinnerAmount] = useState(0);
 
+  const [winnerAudioFinished, setWinnerAudioFinished] = useState(false);
+
   const [noSelectionsMessage, setNoSelectionsMessage] = useState(null);
 
   const [selectionError, setSelectionError] = useState("");
@@ -255,6 +257,7 @@ const Bingo = ({ theme, onBlocked }) => {
         setPhase("selection");
         setWinner(null);
         setWinners([]);
+        setWinnerAudioFinished(false);
         winnerRef.current = null;
         setWinnerCard(null);
         setWinnerName("");
@@ -585,6 +588,8 @@ const Bingo = ({ theme, onBlocked }) => {
 
       setWinner(null);
 
+      setWinnerAudioFinished(false);
+
       winnerRef.current = null;
 
       setWinnerCard(null);
@@ -628,7 +633,7 @@ const Bingo = ({ theme, onBlocked }) => {
     const handleWinner = (payload) => {
       console.log("🏆 WINNER:", payload);
 
-      if (!payload) {
+      if (!payload || winnerRef.current) {
         return;
       }
 
@@ -669,6 +674,8 @@ const Bingo = ({ theme, onBlocked }) => {
 
       setWinnerAmount(payload.winAmount ?? normalizedWinner.winAmount ?? 0);
 
+      setWinnerAudioFinished(!soundEnabledRef.current);
+
       if (Array.isArray(payload.calledNumbers)) {
         setCalledNumbers(payload.calledNumbers);
       }
@@ -681,7 +688,9 @@ const Bingo = ({ theme, onBlocked }) => {
 
       updateServerTimer(0);
 
-      if (soundEnabledRef.current) speakWinner();
+      if (soundEnabledRef.current) {
+        speakWinner().then(() => setWinnerAudioFinished(true));
+      }
     };
 
     // ==========================================================
@@ -717,6 +726,7 @@ const Bingo = ({ theme, onBlocked }) => {
 
       setWinner(null);
       setWinners([]);
+      setWinnerAudioFinished(false);
 
       setWinnerCard(null);
 
@@ -1323,7 +1333,7 @@ const Bingo = ({ theme, onBlocked }) => {
       ====================================================== */}
 
       <WinnerModal
-        open={Boolean(winner) && phase === "finished"}
+        open={Boolean(winner) && phase === "finished" && winnerAudioFinished}
         winner={winner || "Unknown Player"}
         winners={winners}
         isCurrentUserWinner={winners.some(
