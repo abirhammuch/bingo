@@ -9,6 +9,11 @@ const LivePage = ({
   accent = {},
 }) => {
   const safeCalledNumbers = Array.isArray(calledNumbers) ? calledNumbers : [];
+  const recentCalls = [currentNumber, ...safeCalledNumbers]
+    .map((number) => Number(number))
+    .filter((number) => Number.isInteger(number) && number >= 1 && number <= 75)
+    .filter((number, index, numbers) => numbers.indexOf(number) === index)
+    .slice(0, 3);
 
   return (
     <div className="max-w-6xl mx-auto grid grid-cols-2 gap-6">
@@ -65,23 +70,32 @@ const LivePage = ({
           RIGHT
       ================================================= */}
       <div className="flex flex-col gap-4">
-        {/* Current Number */}
-        <div className="flex items-center justify-center py-3">
-          {currentNumber ? (
-            <div className="relative w-14 h-14 flex items-center justify-center">
-              <div className="absolute inset-0 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 opacity-20 animate-pulse" />
+        {/* Recent Calls */}
+        <div className="py-3">
+          <div className="mb-2 text-center text-xs font-bold text-slate-400">
+            RECENT CALLS
+          </div>
+          <div className="flex min-h-16 items-center justify-center gap-3">
+            {Array.from({ length: 3 }, (_, index) => {
+              const number = recentCalls[index];
+              const isCurrent = index === 0 && number === Number(currentNumber);
 
-              <div className="relative w-12 h-12 rounded-full border-2 border-purple-400 bg-purple-600/30 flex items-center justify-center shadow-lg shadow-purple-500/20">
-                <div className="text-2xl font-bold text-purple-100">
-                  {currentNumber}
+              return (
+                <div
+                  key={number ?? `empty-${index}`}
+                  className={`flex h-14 w-14 items-center justify-center rounded-full border-2 text-xl font-bold ${
+                    number
+                      ? isCurrent
+                        ? "border-purple-400 bg-purple-600 text-white shadow-lg shadow-purple-500/30"
+                        : "border-slate-500 bg-slate-800 text-slate-200"
+                      : "border-dashed border-slate-700 text-slate-600"
+                  }`}
+                >
+                  {number ?? "-"}
                 </div>
-              </div>
-            </div>
-          ) : (
-            <div className="w-14 h-14 flex items-center justify-center border-2 border-dashed border-slate-600 rounded-full">
-              <span className="text-slate-500 text-sm">Waiting...</span>
-            </div>
-          )}
+              );
+            })}
+          </div>
         </div>
 
         {/* No card */}
@@ -97,7 +111,7 @@ const LivePage = ({
 
         {/* Cards */}
         {cards.length > 0 && (
-          <div className="space-y-3 max-h-[500px] overflow-y-auto pr-1">
+          <div className="space-y-3 max-h-125 overflow-y-auto pr-1">
             {cards.map((card, index) => (
               <div
                 key={`${selectionNumbers[index] || "card"}-${index}`}
