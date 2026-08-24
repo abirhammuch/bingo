@@ -16,6 +16,9 @@ const getLetterAudioPath = (number) =>
     getBingoColumn(number) === "B" ? "B" : getBingoColumn(number).toLowerCase()
   }.mp3`;
 
+const announcementQueue = [];
+let isPlayingAnnouncement = false;
+
 const speakWithBrowserVoice = (number) => {
   if (
     !("speechSynthesis" in window) ||
@@ -44,36 +47,75 @@ export const speakCalledNumber = (number) => {
     return;
   }
 
-  const numberAudio = new Audio(getNumberAudioPath(number));
-  const letterAudio = new Audio(getLetterAudioPath(number));
-  numberAudio.volume = 1;
-  letterAudio.volume = 1;
-
-  letterAudio.addEventListener("ended", () => {
-    numberAudio.play().catch(() => speakWithBrowserVoice(number));
-  });
-
-  letterAudio.play().catch(() => {
-    numberAudio.play().catch(() => speakWithBrowserVoice(number));
-  });
+  announcementQueue.push({ type: "number", number });
+  playNextAnnouncement();
 };
 
 export const speakWinner = () => {
   if (typeof window === "undefined") return;
 
-  const winnerAudio = new Audio("/Bingo.mp3");
-  winnerAudio.volume = 1;
-  winnerAudio.play().catch(() => {
-    if (
-      !("speechSynthesis" in window) ||
-      typeof SpeechSynthesisUtterance === "undefined"
-    ) {
-      return;
-    }
+  announcementQueue.push({ type: "winner" });
+  playNextAnnouncement();
+};
 
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance("Bingo");
-    utterance.lang = "en-US";
-    window.speechSynthesis.speak(utterance);
+const playNextAnnouncement = () => {
+  if (isPlayingAnnouncement || announcementQueue.length === 0) return;
+
+  const announcement = announcementQueue.shift();
+  isPlayingAnnouncement = true;
+
+  if (announcement.type === "winner") {
+    const winnerAudio = new Audio("/Bingo.mp3");
+    winnerAudio.volume = 1;
+    winnerAudio.addEventListener("ended", finishAnnouncement, { once: true });
+    winnerAudio.play().catch(() => {
+      speakBrowserWinner();
+      finishAnnouncement();
+    });
+    return;
+  }
+
+  const numberAudio = new Audio(getNumberAudioPath(announcement.number));
+  const letterAudio = new Audio(getLetterAudioPath(announcement.number));
+  numberAudio.volume = 1;
+  letterAudio.volume = 1;
+
+  letterAudio.addEventListener(
+    "ended",
+    () => {
+      numberAudio.addEventListener("ended", finishAnnouncement, { once: true });
+      numberAudio.play().catch(() => {
+        speakWithBrowserVoice(announcement.number);
+        finishAnnouncement();
+      });
+    },
+    { once: true },
+  );
+
+  letterAudio.play().catch(() => {
+    numberAudio.addEventListener("ended", finishAnnouncement, { once: true });
+    numberAudio.play().catch(() => {
+      speakWithBrowserVoice(announcement.number);
+      finishAnnouncement();
+    });
   });
+};
+
+const finishAnnouncement = () => {
+  isPlayingAnnouncement = false;
+  playNextAnnouncement();
+};
+
+const speakBrowserWinner = () => {
+  if (
+    !("speechSynthesis" in window) ||
+    typeof SpeechSynthesisUtterance === "undefined"
+  ) {
+    return;
+  }
+
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance("Bingo");
+  utterance.lang = "en-US";
+  window.speechSynthesis.speak(utterance);
 };

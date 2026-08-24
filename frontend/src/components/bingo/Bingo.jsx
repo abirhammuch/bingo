@@ -132,6 +132,7 @@ const Bingo = ({ theme, onBlocked }) => {
 
   const winnerRef = useRef(null);
   const soundEnabledRef = useRef(true);
+  const announcedNumberRef = useRef(null);
 
   // ============================================================
   // KEEP REFS UPDATED
@@ -495,8 +496,12 @@ const Bingo = ({ theme, onBlocked }) => {
       }
 
       if (typeof payload.number === "number") {
-        setCurrentNumber(payload.number);
-        if (soundEnabledRef.current) speakCalledNumber(payload.number);
+        const announcementKey = `${payload.gameId || roundIdRef.current || "round"}:${payload.number}`;
+        if (announcedNumberRef.current !== announcementKey) {
+          announcedNumberRef.current = announcementKey;
+          setCurrentNumber(payload.number);
+          if (soundEnabledRef.current) speakCalledNumber(payload.number);
+        }
       }
 
       if (Array.isArray(payload.calledNumbers)) {
