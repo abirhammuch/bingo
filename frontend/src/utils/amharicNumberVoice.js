@@ -49,9 +49,31 @@ export const speakCalledNumber = (number) => {
   numberAudio.volume = 1;
   letterAudio.volume = 1;
 
-  numberAudio.addEventListener("ended", () => {
-    letterAudio.play().catch(() => speakWithBrowserVoice(number));
+  letterAudio.addEventListener("ended", () => {
+    numberAudio.play().catch(() => speakWithBrowserVoice(number));
   });
 
-  numberAudio.play().catch(() => speakWithBrowserVoice(number));
+  letterAudio.play().catch(() => {
+    numberAudio.play().catch(() => speakWithBrowserVoice(number));
+  });
+};
+
+export const speakWinner = () => {
+  if (typeof window === "undefined") return;
+
+  const winnerAudio = new Audio("/Bingo.mp3");
+  winnerAudio.volume = 1;
+  winnerAudio.play().catch(() => {
+    if (
+      !("speechSynthesis" in window) ||
+      typeof SpeechSynthesisUtterance === "undefined"
+    ) {
+      return;
+    }
+
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance("Bingo");
+    utterance.lang = "en-US";
+    window.speechSynthesis.speak(utterance);
+  });
 };

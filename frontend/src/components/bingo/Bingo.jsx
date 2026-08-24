@@ -8,7 +8,7 @@ import WinnerModal from "./WinnerModal";
 import socket, { authenticateTelegram } from "../../socket/socket";
 import { useAuth } from "../../context/AuthContext";
 import { getUserBalance } from "../../services/userService";
-import { speakCalledNumber } from "../../utils/amharicNumberVoice";
+import { speakCalledNumber, speakWinner } from "../../utils/amharicNumberVoice";
 
 const MAX_LUCKY_NUMBERS = 3;
 const DEFAULT_SELECTION_TIME = 30;
@@ -632,6 +632,8 @@ const Bingo = ({ theme, onBlocked }) => {
       if (!winnerData) {
         return;
       }
+
+      if (soundEnabledRef.current) speakWinner();
 
       const normalizedWinner = {
         ...winnerData,
