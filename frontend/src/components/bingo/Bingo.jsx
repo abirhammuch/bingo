@@ -7,6 +7,7 @@ import WinnerModal from "./WinnerModal";
 
 import socket, { authenticateTelegram } from "../../socket/socket";
 import { useAuth } from "../../context/AuthContext";
+import { getUserBalance } from "../../services/userService";
 import { speakCalledNumber } from "../../utils/amharicNumberVoice";
 
 const MAX_LUCKY_NUMBERS = 3;
@@ -123,6 +124,8 @@ const Bingo = ({ theme, onBlocked }) => {
 
   const roundIdRef = useRef(null);
 
+  const balanceRoundRef = useRef(null);
+
   const remainingSecondsRef = useRef(DEFAULT_SELECTION_TIME);
 
   const mySelectionsRef = useRef([]);
@@ -199,6 +202,31 @@ const Bingo = ({ theme, onBlocked }) => {
     roundIdRef.current = gameId;
     setRoundId(gameId);
   }, []);
+
+  const refreshWalletBalance = useCallback(
+    (gameId = null) => {
+      if (!authUser?.telegramId) return;
+
+      const roundKey = gameId ? String(gameId) : null;
+      if (roundKey && balanceRoundRef.current === roundKey) return;
+
+      if (roundKey) {
+        balanceRoundRef.current = roundKey;
+      }
+
+      getUserBalance(authUser.telegramId)
+        .then((response) => {
+          const balance = Number(response?.balance);
+          if (Number.isFinite(balance)) {
+            updateUserBalance(balance);
+          }
+        })
+        .catch((error) => {
+          console.error("Failed to refresh wallet balance for round:", error);
+        });
+    },
+    [authUser?.telegramId, updateUserBalance],
+  );
 
   // ============================================================
   // SYNC ROUND STATE
@@ -368,6 +396,7 @@ const Bingo = ({ theme, onBlocked }) => {
     // ==========================================================
 
     const handleRoundState = (payload) => {
+      refreshWalletBalance(payload?.gameId);
       syncRoundState(payload);
     };
 
@@ -515,6 +544,8 @@ const Bingo = ({ theme, onBlocked }) => {
 
     const handleRoundReset = (payload) => {
       console.log("🔄 ROUND RESET:", payload);
+
+      refreshWalletBalance(payload?.gameId);
 
       setRoundStatus("WAITING");
 
@@ -672,6 +703,8 @@ const Bingo = ({ theme, onBlocked }) => {
 
     const handleNextRound = (payload) => {
       console.log("🔄 NEXT ROUND:", payload);
+
+      refreshWalletBalance(payload?.gameId);
 
       winnerRef.current = null;
 
@@ -836,7 +869,13 @@ const Bingo = ({ theme, onBlocked }) => {
 
       socket.off("bingo:nextRound", handleNextRound);
     };
-  }, [authUser?.telegramId, syncRoundState, updateRoundId, updateServerTimer]);
+  }, [
+    authUser?.telegramId,
+    refreshWalletBalance,
+    syncRoundState,
+    updateRoundId,
+    updateServerTimer,
+  ]);
 
   // ============================================================
   // SELECT / DESELECT LUCKY NUMBER
