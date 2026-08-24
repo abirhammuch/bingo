@@ -4,11 +4,23 @@ import { submitDeposit } from "../../services/userService";
 
 const CBEDepositePage = () => {
   const navigate = useNavigate();
+  const [copied, setCopied] = useState(false);
   const [amount, setAmount] = useState("");
   const [account, setAccount] = useState("");
   const [receipt, setReceipt] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  const cbeData = {
+    accountNumber: "1000123456789",
+    name: "Marshal",
+  };
+
+  const handleCopyAccount = async () => {
+    await navigator.clipboard.writeText(cbeData.accountNumber);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -21,7 +33,7 @@ const CBEDepositePage = () => {
     try {
       await submitDeposit({
         amount: Number(amount),
-        method: "CBE Birr",
+        method: "CBE",
         account,
         receipt,
       });
@@ -38,7 +50,7 @@ const CBEDepositePage = () => {
       <div className="w-full max-w-md mx-auto rounded-t-3xl border-t border-slate-700 bg-slate-900 p-6 pb-8">
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-white">CBE BIRR DEPOSIT</h1>
+            <h1 className="text-2xl font-bold text-white">CBE DEPOSIT</h1>
             <p className="mt-1 text-sm text-slate-400">
               Minimum deposit: 50 ETB
             </p>
@@ -54,6 +66,33 @@ const CBEDepositePage = () => {
         <div className="mb-5 rounded-xl border border-slate-700 bg-slate-800/40 p-4 text-sm text-slate-400">
           Send the deposit to the configured CBE account, then submit the
           receipt for admin review.
+        </div>
+
+        <div className="mb-5 rounded-xl border border-slate-700 bg-slate-800/30 p-5">
+          <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-slate-500">
+            Send your deposit to this account
+          </p>
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="font-mono text-2xl font-bold tracking-wider text-white">
+                {cbeData.accountNumber}
+              </p>
+              <p className="mt-2 text-sm text-slate-400">{cbeData.name}</p>
+            </div>
+            <button
+              type="button"
+              onClick={handleCopyAccount}
+              aria-label="Copy CBE account number"
+              className={`flex shrink-0 items-center gap-2 rounded-lg border px-3 py-2 text-xs font-semibold uppercase tracking-wide transition ${
+                copied
+                  ? "border-emerald-400 bg-emerald-500/20 text-emerald-300"
+                  : "border-slate-600 bg-slate-700/50 text-slate-300 hover:border-slate-500 hover:bg-slate-700"
+              }`}
+            >
+              <span aria-hidden="true">{copied ? "✓" : "📋"}</span>
+              {copied ? "COPIED" : "COPY"}
+            </button>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">

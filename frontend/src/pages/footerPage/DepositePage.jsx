@@ -56,7 +56,7 @@ const DepositePage = () => {
     },
     {
       id: 2,
-      name: "CBE Birr",
+      name: "CBE",
       description: "Commercial Bank of Ethiopia",
       icon: "🏦",
       color: "from-blue-600 to-blue-700",
