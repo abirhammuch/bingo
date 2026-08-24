@@ -12,10 +12,13 @@ const callingTimers = new Map();
 
 const emitState = (io, game) => {
   const remainingSeconds = game.selectionEndsAt
-    ? Math.max(
-        0,
-        Math.ceil(
-          (new Date(game.selectionEndsAt).getTime() - Date.now()) / 1000,
+    ? Math.min(
+        SELECTION_TIME_SECONDS,
+        Math.max(
+          0,
+          Math.ceil(
+            (new Date(game.selectionEndsAt).getTime() - Date.now()) / 1000,
+          ),
         ),
       )
     : 0;
@@ -87,10 +90,13 @@ export const startSelectionTimer = async (io, gameId) => {
         return;
       }
 
-      const remaining = Math.max(
-        0,
-        Math.ceil(
-          (new Date(game.selectionEndsAt).getTime() - Date.now()) / 1000,
+      const remaining = Math.min(
+        SELECTION_TIME_SECONDS,
+        Math.max(
+          0,
+          Math.ceil(
+            (new Date(game.selectionEndsAt).getTime() - Date.now()) / 1000,
+          ),
         ),
       );
 

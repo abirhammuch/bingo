@@ -13,6 +13,7 @@ import { creditDepositBonuses } from "../services/wallet/bonusService.js";
 import bot from "../services/telegram/bot.js";
 import crypto from "node:crypto";
 import AdminUser from "../models/AdminUser.js";
+import { SELECTION_TIME_SECONDS } from "../services/bingo/bingoService.js";
 
 const router = express.Router();
 
@@ -775,6 +776,20 @@ router.get("/dashboard", requireAdmin, async (req, res) => {
             stakeAmount: currentRound.minBet ?? 0,
             playerCount: players.filter((player) => !player.isSpectator).length,
             selectionEndsAt: currentRound.selectionEndsAt || null,
+            remainingSeconds:
+              currentRound.status === "waiting" && currentRound.selectionEndsAt
+                ? Math.min(
+                    SELECTION_TIME_SECONDS,
+                    Math.max(
+                      0,
+                      Math.ceil(
+                        (new Date(currentRound.selectionEndsAt).getTime() -
+                          Date.now()) /
+                          1000,
+                      ),
+                    ),
+                  )
+                : 0,
             roundNumber: currentRound.roundNumber || null,
           }
         : null,

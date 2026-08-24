@@ -69,11 +69,7 @@ const Bingo = ({ theme, onBlocked }) => {
   //
   // DO NOT decrement this value locally.
   //
-  const [remainingSeconds, setRemainingSeconds] = useState(
-    DEFAULT_SELECTION_TIME,
-  );
-
-  const [selectionEndsAt, setSelectionEndsAt] = useState(null);
+  const [remainingSeconds, setRemainingSeconds] = useState(0);
 
   const [participantCount, setParticipantCount] = useState(0);
 
@@ -128,7 +124,7 @@ const Bingo = ({ theme, onBlocked }) => {
 
   const balanceRoundRef = useRef(null);
 
-  const remainingSecondsRef = useRef(DEFAULT_SELECTION_TIME);
+  const remainingSecondsRef = useRef(0);
 
   const mySelectionsRef = useRef([]);
 
@@ -184,7 +180,10 @@ const Bingo = ({ theme, onBlocked }) => {
       return;
     }
 
-    const value = Math.max(0, Math.ceil(seconds));
+    const value = Math.max(
+      0,
+      Math.min(DEFAULT_SELECTION_TIME, Math.ceil(seconds)),
+    );
 
     // Store server value.
     remainingSecondsRef.current = value;
@@ -278,10 +277,6 @@ const Bingo = ({ theme, onBlocked }) => {
 
       if (typeof payload.remainingSeconds === "number") {
         updateServerTimer(payload.remainingSeconds);
-      }
-
-      if (payload.selectionEndsAt) {
-        setSelectionEndsAt(payload.selectionEndsAt);
       }
 
       if (payload.stakeAmount !== undefined) {
@@ -436,16 +431,11 @@ const Bingo = ({ theme, onBlocked }) => {
         updateServerTimer(payload.remainingSeconds);
       }
 
-      if (payload.selectionEndsAt) {
-        setSelectionEndsAt(payload.selectionEndsAt);
-      }
-
       // --------------------------------------------------------
       // IMPORTANT
       //
       // The frontend does NOT do:
       //
-      // setInterval(() => setTime(time - 1))
       //
       // The server is the only clock.
       // --------------------------------------------------------
@@ -543,8 +533,6 @@ const Bingo = ({ theme, onBlocked }) => {
       if (payload?.prizePool !== undefined) {
         setPrizePool(Number(payload.prizePool) || 0);
       }
-
-      setSelectionEndsAt(null);
     };
 
     // ==========================================================
@@ -562,16 +550,9 @@ const Bingo = ({ theme, onBlocked }) => {
 
       setPhase("selection");
 
-      setRemainingSeconds(
-        typeof payload?.remainingSeconds === "number"
-          ? Math.ceil(payload.remainingSeconds)
-          : DEFAULT_SELECTION_TIME,
-      );
-
-      remainingSecondsRef.current =
-        typeof payload?.remainingSeconds === "number"
-          ? Math.ceil(payload.remainingSeconds)
-          : DEFAULT_SELECTION_TIME;
+      if (typeof payload?.remainingSeconds === "number") {
+        updateServerTimer(payload.remainingSeconds);
+      }
 
       setParticipantCount(0);
 
@@ -580,8 +561,6 @@ const Bingo = ({ theme, onBlocked }) => {
       setSpectatorCount(0);
 
       setSelectedNumbersGlobal([]);
-
-      setSelectionEndsAt(payload?.selectionEndsAt || null);
 
       setCalledNumbers([]);
 
@@ -747,8 +726,6 @@ const Bingo = ({ theme, onBlocked }) => {
 
       setSelectedNumbersGlobal([]);
 
-      setSelectionEndsAt(payload?.selectionEndsAt || null);
-
       setParticipantCount(0);
 
       setSpectatorCount(0);
@@ -767,11 +744,9 @@ const Bingo = ({ theme, onBlocked }) => {
 
       setPhase("selection");
 
-      updateServerTimer(
-        typeof payload?.remainingSeconds === "number"
-          ? payload.remainingSeconds
-          : DEFAULT_SELECTION_TIME,
-      );
+      if (typeof payload?.remainingSeconds === "number") {
+        updateServerTimer(payload.remainingSeconds);
+      }
     };
 
     // ==========================================================
@@ -1167,7 +1142,6 @@ const Bingo = ({ theme, onBlocked }) => {
           timeLeft={Math.max(0, remainingSeconds)}
           stake={stakeAmount}
           balance={authUser?.balance ?? 0}
-          selectionEndsAt={selectionEndsAt}
           selectedCardsCount={mySelections.length}
         />
       ) : (
@@ -1195,7 +1169,6 @@ const Bingo = ({ theme, onBlocked }) => {
         {phase === "selection" && (
           <SelectionPage
             selectionCountdown={remainingSeconds}
-            selectionEndsAt={selectionEndsAt}
             calledNumbers={calledNumbers}
             selectedNumbersGlobal={selectedNumbersGlobal}
             mySelections={mySelections}

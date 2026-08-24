@@ -1,39 +1,13 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 
 const Countdown = ({
-  selectionEndsAt = null,
   seconds = 30,
   label = "Next Number In",
   selectedCardsCount = 0,
   stake = null,
   balance = null,
 }) => {
-  const calculateRemaining = () => {
-    if (!selectionEndsAt) {
-      return Math.max(0, Number(seconds) || 0);
-    }
-
-    return Math.max(
-      0,
-      Math.ceil((new Date(selectionEndsAt).getTime() - Date.now()) / 1000),
-    );
-  };
-
-  const [timeLeft, setTimeLeft] = useState(calculateRemaining);
-
-  useEffect(() => {
-    setTimeLeft(calculateRemaining());
-
-    if (!selectionEndsAt) {
-      return undefined;
-    }
-
-    const intervalId = setInterval(() => {
-      setTimeLeft(calculateRemaining());
-    }, 250);
-
-    return () => clearInterval(intervalId);
-  }, [selectionEndsAt, seconds]);
+  const timeLeft = Math.max(0, Number(seconds) || 0);
 
   return (
     <div

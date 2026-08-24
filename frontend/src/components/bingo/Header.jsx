@@ -10,7 +10,6 @@ const Header = ({
   called = 0,
   round = "1",
   derash = 0,
-  selectionEndsAt = null,
   selectedCardsCount = 0,
   soundEnabled = true,
   onToggleSound,
@@ -25,7 +24,6 @@ const Header = ({
       <header className="bg-slate-900 border-b border-slate-700 px-4 py-3">
         <div className="max-w-4xl mx-auto">
           <Countdown
-            selectionEndsAt={selectionEndsAt}
             seconds={timeLeft}
             label="Time To Close Selection"
             selectedCardsCount={selectedCardsCount}
