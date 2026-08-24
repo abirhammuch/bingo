@@ -498,12 +498,13 @@ const Bingo = ({ theme, onBlocked }) => {
         return;
       }
 
-      if (typeof payload.number === "number") {
-        const announcementKey = `${payload.gameId || roundIdRef.current || "round"}:${payload.number}`;
+      const calledNumber = Number(payload.number);
+      if (Number.isInteger(calledNumber)) {
+        const announcementKey = `${payload.gameId || roundIdRef.current || "round"}:${calledNumber}`;
         if (announcedNumberRef.current !== announcementKey) {
           announcedNumberRef.current = announcementKey;
-          setCurrentNumber(payload.number);
-          if (soundEnabledRef.current) speakCalledNumber(payload.number);
+          setCurrentNumber(calledNumber);
+          if (soundEnabledRef.current) speakCalledNumber(calledNumber);
         }
       }
 

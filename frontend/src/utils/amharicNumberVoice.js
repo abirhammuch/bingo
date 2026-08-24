@@ -86,26 +86,37 @@ const playNextAnnouncement = () => {
   numberAudio.volume = 1;
   letterAudio.volume = 1;
 
-  letterAudio.addEventListener(
-    "ended",
-    () => {
-      numberAudio.addEventListener("ended", finishAnnouncement, { once: true });
-      numberAudio.play().catch(() => {
+  playAudio(letterAudio)
+    .then(() => playAudio(numberAudio))
+    .catch(() => {
+      return playAudio(numberAudio).catch(() => {
         speakWithBrowserVoice(announcement.number);
-        finishAnnouncement();
       });
-    },
-    { once: true },
-  );
-
-  letterAudio.play().catch(() => {
-    numberAudio.addEventListener("ended", finishAnnouncement, { once: true });
-    numberAudio.play().catch(() => {
-      speakWithBrowserVoice(announcement.number);
-      finishAnnouncement();
-    });
-  });
+    })
+    .finally(() => finishAnnouncement());
 };
+
+const playAudio = (audio) =>
+  new Promise((resolve, reject) => {
+    const finish = () => {
+      audio.removeEventListener("ended", handleEnded);
+      audio.removeEventListener("error", handleError);
+      audio.removeEventListener("abort", handleError);
+    };
+    const handleEnded = () => {
+      finish();
+      resolve();
+    };
+    const handleError = () => {
+      finish();
+      reject(new Error("Audio playback failed"));
+    };
+
+    audio.addEventListener("ended", handleEnded, { once: true });
+    audio.addEventListener("error", handleError, { once: true });
+    audio.addEventListener("abort", handleError, { once: true });
+    audio.play().catch(handleError);
+  });
 
 const finishAnnouncement = (onComplete) => {
   onComplete?.();
