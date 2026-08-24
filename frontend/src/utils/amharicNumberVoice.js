@@ -6,8 +6,15 @@ const getBingoColumn = (number) => {
   return "O";
 };
 
-const getAudioPath = (number) =>
-  `/audio/amharic/${getBingoColumn(number)}-${number}.mp3`;
+const getNumberAudioPath = (number) =>
+  number === 1
+    ? "/audio/numbers/01.mp3.wav"
+    : `/audio/numbers/${String(number).padStart(2, "0")}.mp3`;
+
+const getLetterAudioPath = (number) =>
+  `/audio/letters/${
+    getBingoColumn(number) === "B" ? "B" : getBingoColumn(number).toLowerCase()
+  }.mp3`;
 
 const speakWithBrowserVoice = (number) => {
   if (
@@ -28,9 +35,23 @@ const speakWithBrowserVoice = (number) => {
 };
 
 export const speakCalledNumber = (number) => {
-  if (!Number.isInteger(number) || typeof window === "undefined") return;
+  if (
+    !Number.isInteger(number) ||
+    number < 1 ||
+    number > 75 ||
+    typeof window === "undefined"
+  ) {
+    return;
+  }
 
-  const audio = new Audio(getAudioPath(number));
-  audio.volume = 1;
-  audio.play().catch(() => speakWithBrowserVoice(number));
+  const numberAudio = new Audio(getNumberAudioPath(number));
+  const letterAudio = new Audio(getLetterAudioPath(number));
+  numberAudio.volume = 1;
+  letterAudio.volume = 1;
+
+  numberAudio.addEventListener("ended", () => {
+    letterAudio.play().catch(() => speakWithBrowserVoice(number));
+  });
+
+  numberAudio.play().catch(() => speakWithBrowserVoice(number));
 };
