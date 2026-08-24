@@ -7,6 +7,7 @@ const TelebirrDepositePage = () => {
   const [copied, setCopied] = useState(false);
   const [step, setStep] = useState(1); // Step 1: Send money, Step 2: Enter receipt
   const [amount, setAmount] = useState("");
+  const [account, setAccount] = useState("");
   const [receipt, setReceipt] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -37,8 +38,8 @@ const TelebirrDepositePage = () => {
   };
 
   const handleSubmit = async () => {
-    if (!receipt.trim()) {
-      setError("Paste the payment receipt");
+    if (!account.trim() || !receipt.trim()) {
+      setError("Sender account and payment receipt are required");
       return;
     }
     setSubmitting(true);
@@ -47,6 +48,7 @@ const TelebirrDepositePage = () => {
       await submitDeposit({
         amount: Number(amount),
         method: telebirrData.method,
+        account,
         receipt,
       });
       navigate("/history");
@@ -158,6 +160,15 @@ const TelebirrDepositePage = () => {
         {step === 2 && (
           <>
             <div className="mb-6">
+              <label className="block text-sm font-semibold text-slate-300 mb-3">
+                Sender Telebirr Account
+              </label>
+              <input
+                value={account}
+                onChange={(event) => setAccount(event.target.value)}
+                placeholder="Your Telebirr phone number"
+                className="mb-4 w-full bg-slate-800/50 border border-slate-700 rounded-lg p-4 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30"
+              />
               <label className="block text-sm font-semibold text-slate-300 mb-3">
                 Paste SMS Receipt
               </label>

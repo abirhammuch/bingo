@@ -21,7 +21,8 @@ const mapTransaction = (transaction) => ({
   amount: `${Number(transaction.amount || 0).toFixed(2)} ETB`,
   method: transaction.metadata?.method || "Unknown",
   date: new Date(transaction.createdAt).toLocaleString(),
-  account: transaction.metadata?.account || "-",
+  account: transaction.metadata?.account || "Not provided",
+  receipt: transaction.reference || "Not provided",
   status:
     transaction.status === "completed"
       ? "Approved"
@@ -89,9 +90,10 @@ const DepositPage = () => {
     const today = new Date();
     return deposits.filter((deposit) => {
       const transactionDate = new Date(deposit.createdAt);
-      const matchesSearch = `${deposit.id} ${deposit.user} ${deposit.method}`
-        .toLowerCase()
-        .includes(search.toLowerCase());
+      const matchesSearch =
+        `${deposit.id} ${deposit.user} ${deposit.method} ${deposit.account} ${deposit.receipt}`
+          .toLowerCase()
+          .includes(search.toLowerCase());
       const matchesDate =
         dateRange === "Date Range" ||
         (dateRange === "Today" &&
@@ -253,7 +255,8 @@ const DepositPage = () => {
                   "Amount",
                   "Method",
                   "Deposit Date",
-                  "Source Account",
+                  "Sender Account",
+                  "Receipt / Reference",
                   "Status",
                   "Actions",
                 ].map((heading) => (
@@ -267,7 +270,7 @@ const DepositPage = () => {
               {!loading && filteredDeposits.length === 0 && (
                 <tr>
                   <td
-                    colSpan="8"
+                    colSpan="9"
                     className="px-3 py-10 text-center text-slate-500"
                   >
                     No deposits match the selected filters.
@@ -300,7 +303,12 @@ const DepositPage = () => {
                   <td className="whitespace-nowrap px-3 py-3">
                     {deposit.date}
                   </td>
-                  <td className="px-3 py-3">{deposit.account}</td>
+                  <td className="max-w-48 wrap-break-word px-3 py-3 font-medium text-sky-200">
+                    {deposit.account}
+                  </td>
+                  <td className="max-w-64 wrap-break-word px-3 py-3 text-slate-300">
+                    {deposit.receipt}
+                  </td>
                   <td className="px-3 py-3">
                     <span
                       className={`rounded-full border px-2 py-1 text-[10px] font-medium ${statusStyles[deposit.status]}`}
