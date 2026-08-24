@@ -70,14 +70,9 @@ const accountKeyboard = () =>
 const getReferralLink = (user) =>
   `https://t.me/${telegramBotUsername}?start=ref_${user.referralCode || getReferralCode(user.telegramId)}`;
 
-const restartBotKeyboard = () =>
+const openGameKeyboard = () =>
   Markup.inlineKeyboard([
-    [
-      Markup.button.url(
-        "🔄 Restart Bot",
-        `https://t.me/${telegramBotUsername}?start=restart`,
-      ),
-    ],
+    [Markup.button.webApp("🎮 Open Casina Bingo", telegramWebAppUrl)],
   ]);
 
 const launchBot = async () => {
@@ -143,8 +138,8 @@ const sendLoginPrompt = async (ctx, user) => {
       inline_keyboard: [
         [
           {
-            text: "🔄 Restart Bot",
-            url: `https://t.me/${telegramBotUsername}?start=restart`,
+            text: "🎮 Open Game",
+            web_app: { url: telegramWebAppUrl },
           },
         ],
       ],
@@ -251,7 +246,7 @@ bot.hears("💰 Wallet", async (ctx) => {
 });
 
 bot.hears("🎮 Play Game", async (ctx) => {
-  await ctx.reply("🔄 Tap below to restart the bot.", restartBotKeyboard());
+  await ctx.reply("🎮 Open the game and start playing.", openGameKeyboard());
 });
 
 const openWalletPage = async (ctx, label, url) => {
@@ -356,7 +351,7 @@ bot.start(async (ctx) => {
       );
       await ctx.reply(
         "You can open the game now, or share your contact first to unlock account features.",
-        restartBotKeyboard(),
+        openGameKeyboard(),
       );
       return;
     }
@@ -366,7 +361,7 @@ bot.start(async (ctx) => {
       accountKeyboard(),
     );
 
-    await ctx.reply("🔄 Restart the bot from Telegram.", restartBotKeyboard());
+    await ctx.reply("🎮 Start the game in Telegram.", openGameKeyboard());
   } catch (error) {
     console.error("Telegram /start error:", error);
 
@@ -420,7 +415,7 @@ bot.on("contact", async (ctx) => {
 
     await ctx.reply(
       "🎮 Tap below to open the game in Telegram.",
-      restartBotKeyboard(),
+      openGameKeyboard(),
     );
   } catch (error) {
     console.error("Telegram registration error:", error);
