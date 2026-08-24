@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { FaChevronDown, FaChevronUp } from "react-icons/fa";
 import {
   fetchAdminWalletRequests,
   updateAdminWalletRequest,
@@ -41,6 +42,7 @@ const DepositPage = () => {
   const [selected, setSelected] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [expandedReceipt, setExpandedReceipt] = useState(null);
 
   const loadDeposits = () => {
     setLoading(true);
@@ -306,8 +308,47 @@ const DepositPage = () => {
                   <td className="max-w-48 wrap-break-word px-3 py-3 font-medium text-sky-200">
                     {deposit.account}
                   </td>
-                  <td className="max-w-64 wrap-break-word px-3 py-3 text-slate-300">
-                    {deposit.receipt}
+                  <td className="max-w-64 px-3 py-3 text-slate-300">
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="max-w-48 truncate"
+                        title={deposit.receipt}
+                      >
+                        {deposit.receipt}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setExpandedReceipt((current) =>
+                            current === deposit.transactionId
+                              ? null
+                              : deposit.transactionId,
+                          )
+                        }
+                        aria-label={
+                          expandedReceipt === deposit.transactionId
+                            ? "Hide receipt"
+                            : "Show receipt"
+                        }
+                        title={
+                          expandedReceipt === deposit.transactionId
+                            ? "Hide receipt"
+                            : "Show receipt"
+                        }
+                        className="grid h-7 w-7 shrink-0 place-items-center rounded-md border border-slate-700 text-slate-400 hover:bg-slate-800 hover:text-white"
+                      >
+                        {expandedReceipt === deposit.transactionId ? (
+                          <FaChevronUp aria-hidden="true" />
+                        ) : (
+                          <FaChevronDown aria-hidden="true" />
+                        )}
+                      </button>
+                    </div>
+                    {expandedReceipt === deposit.transactionId && (
+                      <div className="mt-2 max-w-64 wrap-break-word rounded-lg border border-slate-700 bg-slate-950 p-2 text-xs text-slate-200">
+                        {deposit.receipt}
+                      </div>
+                    )}
                   </td>
                   <td className="px-3 py-3">
                     <span
