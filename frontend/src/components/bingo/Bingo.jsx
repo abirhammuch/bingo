@@ -944,6 +944,9 @@ const Bingo = ({ theme, onBlocked }) => {
           (item) => item !== number,
         );
 
+        mySelectionsRef.current = nextSelections;
+        setMySelections(nextSelections);
+
         socket.emit(
           "deselectLuckyNumber",
           {
@@ -954,6 +957,13 @@ const Bingo = ({ theme, onBlocked }) => {
           (response) => {
             if (!response?.success) {
               console.error("❌ Number deselection failed:", response?.message);
+              setMySelections((previous) => {
+                const restored = previous.includes(number)
+                  ? previous
+                  : [...previous, number];
+                mySelectionsRef.current = restored;
+                return restored;
+              });
               return;
             }
 
@@ -1010,6 +1020,10 @@ const Bingo = ({ theme, onBlocked }) => {
       // SEND SELECTION TO SERVER
       // --------------------------------------------------------
 
+      const optimisticSelections = [...currentSelections, number];
+      mySelectionsRef.current = optimisticSelections;
+      setMySelections(optimisticSelections);
+
       socket.emit(
         "selectLuckyNumber",
         {
@@ -1035,6 +1049,14 @@ const Bingo = ({ theme, onBlocked }) => {
             setSelectionError(
               response?.message || "The server rejected this number.",
             );
+
+            setMySelections((previous) => {
+              const restored = previous.includes(number)
+                ? previous
+                : [...previous, number];
+              mySelectionsRef.current = restored;
+              return restored;
+            });
 
             return;
           }
