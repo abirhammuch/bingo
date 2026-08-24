@@ -13,12 +13,14 @@ import {
   FaTimes,
   FaSignOutAlt,
   FaBullhorn,
+  FaBell,
   FaKey,
   FaUserShield,
 } from "react-icons/fa";
 import {
   createSystemWithdrawal,
   fetchAdminDashboard,
+  fetchAdminWalletRequests,
 } from "../../services/userService";
 
 const adminMenu = [
@@ -94,6 +96,10 @@ const AdminLayout = () => {
   const [systemWithdrawalError, setSystemWithdrawalError] = useState("");
   const [systemWithdrawalLoading, setSystemWithdrawalLoading] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [walletNotifications, setWalletNotifications] = useState({
+    deposit: 0,
+    withdraw: 0,
+  });
   const isSuperAdmin = (() => {
     try {
       const token = localStorage.getItem("adminToken");
@@ -120,6 +126,42 @@ const AdminLayout = () => {
           ].includes(item.to),
       );
   const query = location.search.replace("?", "");
+  const unreadDepositCount = walletNotifications.deposit;
+  const unreadWithdrawCount = walletNotifications.withdraw;
+  const unreadWalletCount = unreadDepositCount + unreadWithdrawCount;
+
+  const loadWalletNotifications = () => {
+    fetchAdminWalletRequests()
+      .then((response) => {
+        const pendingRequests = (response.transactions || []).filter(
+          (transaction) => transaction.status === "pending",
+        );
+        setWalletNotifications({
+          deposit: pendingRequests.filter(
+            (transaction) => transaction.type === "deposit",
+          ).length,
+          withdraw: pendingRequests.filter(
+            (transaction) => transaction.type === "withdraw",
+          ).length,
+        });
+      })
+      .catch(() => {
+        setWalletNotifications({ deposit: 0, withdraw: 0 });
+      });
+  };
+
+  useEffect(() => {
+    loadWalletNotifications();
+    const timer = window.setInterval(loadWalletNotifications, 30000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const getMenuCount = (path) => {
+    if (path === "/admin/deposit") return unreadDepositCount;
+    if (path === "/admin/withdraw") return unreadWithdrawCount;
+    return 0;
+  };
+
   const isActive = (to) => {
     const [path, mode] = to.split("?");
     if (mode) {
@@ -282,7 +324,14 @@ const AdminLayout = () => {
                     }`}
                   >
                     <span className="text-lg">{item.icon}</span>
-                    <span>{item.label}</span>
+                    <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
+                      <span>{item.label}</span>
+                      {getMenuCount(item.to) > 0 && (
+                        <span className="rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-bold text-white">
+                          {getMenuCount(item.to)}
+                        </span>
+                      )}
+                    </span>
                   </Link>
                 ))}
               </nav>
@@ -337,7 +386,14 @@ const AdminLayout = () => {
                 }`}
               >
                 <span className="text-lg">{item.icon}</span>
-                <span>{item.label}</span>
+                <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
+                  <span>{item.label}</span>
+                  {getMenuCount(item.to) > 0 && (
+                    <span className="rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-bold text-white">
+                      {getMenuCount(item.to)}
+                    </span>
+                  )}
+                </span>
               </Link>
             ))}
           </nav>
@@ -381,6 +437,21 @@ const AdminLayout = () => {
                 View reports
               </Link>
             </div>
+            {unreadWalletCount > 0 && (
+              <Link
+                to="/admin/transactions"
+                className="mt-5 flex items-center gap-3 rounded-2xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-sm text-amber-200 hover:bg-amber-400/15"
+              >
+                <FaBell aria-hidden="true" />
+                <span>
+                  {unreadWalletCount} unread wallet request
+                  {unreadWalletCount === 1 ? "" : "s"}: {unreadDepositCount}{" "}
+                  deposit{unreadDepositCount === 1 ? "" : "s"},{" "}
+                  {unreadWithdrawCount} withdrawal
+                  {unreadWithdrawCount === 1 ? "" : "s"}
+                </span>
+              </Link>
+            )}
           </div>
 
           {location.pathname === "/admin" && (
