@@ -1038,6 +1038,7 @@ const Bingo = ({ theme, onBlocked }) => {
         (response) => {
           console.log("🎯 SERVER SELECTION RESPONSE:", response);
 
+          
           if (!response?.success) {
             console.error("❌ Number selection failed:", response?.message);
             if (
