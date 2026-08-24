@@ -70,9 +70,14 @@ const accountKeyboard = () =>
 const getReferralLink = (user) =>
   `https://t.me/${telegramBotUsername}?start=ref_${user.referralCode || getReferralCode(user.telegramId)}`;
 
-const openGameKeyboard = () =>
+const restartBotKeyboard = () =>
   Markup.inlineKeyboard([
-    [Markup.button.webApp("🎮 Open Casina Bingo", telegramWebAppUrl)],
+    [
+      Markup.button.url(
+        "🔄 Restart Bot",
+        `https://t.me/${telegramBotUsername}?start=restart`,
+      ),
+    ],
   ]);
 
 const launchBot = async () => {
@@ -136,7 +141,12 @@ const sendLoginPrompt = async (ctx, user) => {
   await ctx.reply(message, {
     reply_markup: {
       inline_keyboard: [
-        [{ text: "🎮 Open Game", web_app: { url: telegramWebAppUrl } }],
+        [
+          {
+            text: "🔄 Restart Bot",
+            url: `https://t.me/${telegramBotUsername}?start=restart`,
+          },
+        ],
       ],
     },
   });
@@ -241,7 +251,7 @@ bot.hears("💰 Wallet", async (ctx) => {
 });
 
 bot.hears("🎮 Play Game", async (ctx) => {
-  await ctx.reply("🎮 Open the game and start playing.", openGameKeyboard());
+  await ctx.reply("🔄 Tap below to restart the bot.", restartBotKeyboard());
 });
 
 const openWalletPage = async (ctx, label, url) => {
@@ -346,7 +356,7 @@ bot.start(async (ctx) => {
       );
       await ctx.reply(
         "You can open the game now, or share your contact first to unlock account features.",
-        openGameKeyboard(),
+        restartBotKeyboard(),
       );
       return;
     }
@@ -356,7 +366,7 @@ bot.start(async (ctx) => {
       accountKeyboard(),
     );
 
-    await ctx.reply("🎮 Start the game in Telegram.", openGameKeyboard());
+    await ctx.reply("🔄 Restart the bot from Telegram.", restartBotKeyboard());
   } catch (error) {
     console.error("Telegram /start error:", error);
 
@@ -410,7 +420,7 @@ bot.on("contact", async (ctx) => {
 
     await ctx.reply(
       "🎮 Tap below to open the game in Telegram.",
-      openGameKeyboard(),
+      restartBotKeyboard(),
     );
   } catch (error) {
     console.error("Telegram registration error:", error);
