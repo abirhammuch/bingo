@@ -83,7 +83,6 @@ const buildRoundState = async (game) => {
     winners: game.winners || [],
     totalPot: game.totalPot || 0,
     commissionAmount: game.commissionAmount || 0,
-    prizePool: game.prizePool || 0,
 
     selectionEndsAt: game.selectionEndsAt || null,
 
