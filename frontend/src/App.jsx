@@ -18,6 +18,7 @@ import DepositePage from "./pages/footerPage/DepositePage";
 import TelebirrDepositePage from "./pages/footerPage/TelebirrDepositePage";
 import WithdrawPage from "./pages/footerPage/WithdrawPage";
 import TeleBirrWithdrawPage from "./pages/footerPage/TeleBirrWithdrawPage";
+import CBEWithdrawPage from "./pages/footerPage/CBEWithdrawPage";
 import SettingPage from "./pages/footerPage/SettingPage";
 import AdminLayout from "./pages/admin/adminlayout.jsx";
 import UserPage from "./pages/admin/UserPage.jsx";
@@ -200,6 +201,7 @@ const App = () => {
                 path="/telebirr-withdraw"
                 element={<TeleBirrWithdrawPage />}
               />
+              <Route path="/cbe-withdraw" element={<CBEWithdrawPage />} />
               <Route path="/appearance" element={<SettingPage />} />
               <Route path="/coupon" element={<Coupon />} />
             </Routes>

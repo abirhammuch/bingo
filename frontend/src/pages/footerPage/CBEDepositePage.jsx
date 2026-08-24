@@ -6,7 +6,6 @@ const CBEDepositePage = () => {
   const navigate = useNavigate();
   const [copied, setCopied] = useState(false);
   const [amount, setAmount] = useState("");
-  const [account, setAccount] = useState("");
   const [receipt, setReceipt] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -25,8 +24,8 @@ const CBEDepositePage = () => {
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (Number(amount) < 50) return setError("Minimum deposit is 50 ETB");
-    if (!account.trim() || !receipt.trim()) {
-      return setError("CBE account and receipt are required");
+    if (!receipt.trim()) {
+      return setError("Payment receipt is required");
     }
     setSubmitting(true);
     setError("");
@@ -34,7 +33,6 @@ const CBEDepositePage = () => {
       await submitDeposit({
         amount: Number(amount),
         method: "CBE",
-        account,
         receipt,
       });
       navigate("/history");
@@ -102,12 +100,6 @@ const CBEDepositePage = () => {
             value={amount}
             onChange={(event) => setAmount(event.target.value)}
             placeholder="Amount in ETB"
-            className="w-full rounded-lg border border-slate-700 bg-slate-800/50 p-4 text-white outline-none focus:border-emerald-500"
-          />
-          <input
-            value={account}
-            onChange={(event) => setAccount(event.target.value)}
-            placeholder="Your CBE account or phone"
             className="w-full rounded-lg border border-slate-700 bg-slate-800/50 p-4 text-white outline-none focus:border-emerald-500"
           />
           <textarea
