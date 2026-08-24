@@ -7,7 +7,6 @@ const TOTAL_LUCKY_NUMBERS = 300;
 
 const SelectionPhase = ({
   selectionCountdown,
-  selectionEndsAt,
   calledNumbers = [],
   selectedNumbersGlobal = [],
   mySelections = [],
@@ -281,7 +280,6 @@ const SelectionPhase = ({
       ========================================= */}
 
       <Countdown
-        selectionEndsAt={selectionEndsAt}
         seconds={selectionCountdown}
         label="Time To Close Selection"
         selectedCardsCount={mySelections.length}

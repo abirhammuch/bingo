@@ -27,9 +27,9 @@ export const normalizeStatus = (status) => {
 // Calculate remaining seconds from stored endTime
 const getRemainingSeconds = (endTime) => {
   if (!endTime) return 0;
-  return Math.max(
-    0,
-    Math.ceil((new Date(endTime).getTime() - Date.now()) / 1000),
+  return Math.min(
+    ROUND_SELECTION_SECONDS,
+    Math.max(0, Math.ceil((new Date(endTime).getTime() - Date.now()) / 1000)),
   );
 };
 
@@ -115,7 +115,10 @@ export const startSelectionPhase = async (io, gameId, roomId) => {
   const intervalId = setInterval(async () => {
     try {
       const now = Date.now();
-      const remainingSeconds = Math.max(0, Math.ceil((endTime - now) / 1000));
+      const remainingSeconds = Math.min(
+        ROUND_SELECTION_SECONDS,
+        Math.max(0, Math.ceil((endTime - now) / 1000)),
+      );
 
       // Emit only when seconds change
       if (remainingSeconds !== lastEmittedSeconds) {
@@ -211,7 +214,10 @@ const startNoSelectionsWaitPhase = async (io, gameId, roomId, game) => {
   const intervalId = setInterval(async () => {
     try {
       const now = Date.now();
-      const remainingSeconds = Math.max(0, Math.ceil((endTime - now) / 1000));
+      const remainingSeconds = Math.min(
+        ROUND_SELECTION_SECONDS,
+        Math.max(0, Math.ceil((endTime - now) / 1000)),
+      );
 
       if (remainingSeconds !== lastEmittedSeconds) {
         lastEmittedSeconds = remainingSeconds;

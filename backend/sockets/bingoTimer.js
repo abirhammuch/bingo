@@ -13,10 +13,13 @@ const callingTimers = new Map();
 
 const emitSelectionTick = (io, game) => {
   const remaining = game.selectionEndsAt
-    ? Math.max(
-        0,
-        Math.ceil(
-          (new Date(game.selectionEndsAt).getTime() - Date.now()) / 1000,
+    ? Math.min(
+        SELECTION_TIME_SECONDS,
+        Math.max(
+          0,
+          Math.ceil(
+            (new Date(game.selectionEndsAt).getTime() - Date.now()) / 1000,
+          ),
         ),
       )
     : 0;
@@ -61,8 +64,10 @@ export const startSelectionTimer = async (io, gameId) => {
     game.selectedNumbers = [];
     game.winner = null;
 
-    await game.save();
+    game = await game.save();
   }
+
+  emitSelectionTick(io, game);
 
   const timer = setInterval(async () => {
     try {

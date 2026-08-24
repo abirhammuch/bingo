@@ -35,9 +35,12 @@ const getPlayerSummary = (players = []) =>
 const getRemainingSeconds = (selectionEndsAt) => {
   if (!selectionEndsAt) return 0;
 
-  return Math.max(
-    0,
-    Math.ceil((new Date(selectionEndsAt).getTime() - Date.now()) / 1000),
+  return Math.min(
+    SELECTION_TIME_SECONDS,
+    Math.max(
+      0,
+      Math.ceil((new Date(selectionEndsAt).getTime() - Date.now()) / 1000),
+    ),
   );
 };
 

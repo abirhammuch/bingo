@@ -675,8 +675,8 @@ const AdminLayout = () => {
                         Timer
                       </div>
                       <div className="mt-3 text-2xl font-semibold text-amber-300">
-                        {currentRound?.selectionEndsAt
-                          ? `${Math.max(0, Math.ceil((new Date(currentRound.selectionEndsAt).getTime() - Date.now()) / 1000))}s`
+                        {typeof currentRound?.remainingSeconds === "number"
+                          ? `${currentRound.remainingSeconds}s`
                           : "--"}
                       </div>
                     </div>

@@ -2,7 +2,6 @@ import React, { memo } from "react";
 
 const SelectionPage = ({
   selectionCountdown,
-  selectionEndsAt,
   calledNumbers,
   selectedNumbersGlobal,
   mySelections,
