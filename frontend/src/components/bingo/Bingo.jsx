@@ -494,7 +494,7 @@ const Bingo = ({ theme, onBlocked }) => {
     // ==========================================================
 
     const handleNumberCalled = (payload) => {
-      if (!payload) {
+      if (!payload || winnerRef.current) {
         return;
       }
 

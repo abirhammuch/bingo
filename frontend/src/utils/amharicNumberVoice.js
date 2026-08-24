@@ -55,7 +55,16 @@ export const speakWinner = () => {
   if (typeof window === "undefined") return Promise.resolve();
 
   return new Promise((resolve) => {
-    announcementQueue.push({ type: "winner", resolve });
+    const winnerAnnouncement = { type: "winner", resolve };
+    const firstNonNumberIndex = announcementQueue.findIndex(
+      (announcement) => announcement.type !== "number",
+    );
+
+    if (firstNonNumberIndex === -1) {
+      announcementQueue.push(winnerAnnouncement);
+    } else {
+      announcementQueue.splice(firstNonNumberIndex, 0, winnerAnnouncement);
+    }
     playNextAnnouncement();
   });
 };
