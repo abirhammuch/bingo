@@ -11,8 +11,8 @@ const CBEDepositePage = () => {
   const [submitting, setSubmitting] = useState(false);
 
   const cbeData = {
-    accountNumber: "1000123456789",
-    name: "Marshal",
+    accountNumber: "1000766599641",
+    name: "Abirham",
   };
 
   const handleCopyAccount = async () => {
