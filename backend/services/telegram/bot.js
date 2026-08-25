@@ -1,7 +1,11 @@
 import dotenv from "dotenv";
 import { Telegraf, Markup } from "telegraf";
 import User from "../../models/User.js";
-import { creditRegistrationBonus } from "../wallet/bonusService.js";
+import {
+  creditRegistrationBonus,
+  getBonusSettings,
+} from "../wallet/bonusService.js";
+import { getReferralSettings } from "../wallet/referralService.js";
 
 dotenv.config();
 
@@ -304,9 +308,14 @@ bot.hears("🔗 Referral Link", async (ctx) => {
     user.referralCode = code;
     await user.save();
   }
-  await creditRegistrationBonus(telegramId);
+  const [bonusSettings, referralSettings] = await Promise.all([
+    getBonusSettings(),
+    getReferralSettings(),
+  ]);
   await ctx.reply(
-    `🔗 Your referral link:\nhttps://t.me/${telegramBotUsername}?start=ref_${code}`,
+    `🔗 Your referral link:\nhttps://t.me/${telegramBotUsername}?start=ref_${code}\n\n` +
+      `🎁 New users receive ${Number(bonusSettings.registrationBonus || 0).toLocaleString()} ETB registration bonus after completing registration and ${Number(bonusSettings.firstDepositBonus || 0).toLocaleString()} ETB first-deposit bonus after their first approved deposit.\n` +
+      `💰 You earn ${Number(referralSettings.depositPercentage || 0)}% from their approved deposits and ${Number(referralSettings.wagerPercentage || 0)}% from their game wagers.`,
   );
 });
 

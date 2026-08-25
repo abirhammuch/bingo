@@ -2,7 +2,7 @@ import ReferralSettings from "../../models/ReferralSettings.js";
 import Transaction from "../../models/Transaction.js";
 import User from "../../models/User.js";
 
-const getReferralSettings = async () =>
+export const getReferralSettings = async () =>
   (await ReferralSettings.findOne({ key: "default" }).lean()) || {
     depositPercentage: 5,
     wagerPercentage: 1,
