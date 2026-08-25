@@ -12,6 +12,7 @@ const TeleBirrWithdrawPage = () => {
   const { user, updateUserBalance } = useAuth();
   const [step, setStep] = useState(1);
   const [withdrawAmount, setWithdrawAmount] = useState("");
+  const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [withdrawData, setWithdrawData] = useState({
     method: "Telebirr",
@@ -83,6 +84,11 @@ const TeleBirrWithdrawPage = () => {
   };
 
   const handleSubmitWithdrawal = async () => {
+    if (!name.trim()) {
+      setError("Enter the Telebirr account holder name");
+      setStep(2);
+      return;
+    }
     if (!phone.trim()) {
       setError("Enter your Telebirr phone number");
       setStep(2);
@@ -93,6 +99,7 @@ const TeleBirrWithdrawPage = () => {
       const response = await submitWithdrawal({
         amount,
         method: withdrawData.method,
+        name: name.trim(),
         account: phone,
       });
       if (typeof response.transaction?.balance === "number") {
@@ -200,6 +207,18 @@ const TeleBirrWithdrawPage = () => {
         {/* Step 2: Enter Phone Number */}
         {step === 2 && (
           <>
+            <div className="mb-4">
+              <label className="block text-sm font-semibold text-slate-300 mb-3">
+                Telebirr Account Holder Name
+              </label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Enter account holder name"
+                className="w-full bg-slate-800/50 border border-slate-700 rounded-lg p-4 text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500/30"
+              />
+            </div>
             <div className="mb-6">
               <label className="block text-sm font-semibold text-slate-300 mb-3">
                 Telebirr Phone Number

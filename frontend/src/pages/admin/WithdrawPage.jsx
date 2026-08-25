@@ -42,6 +42,7 @@ const WithdrawPage = () => {
               amount: `${Number(transaction.amount || 0).toFixed(2)} ETB`,
               method: transaction.metadata?.method || "Unknown",
               date: new Date(transaction.createdAt).toLocaleString(),
+              name: transaction.metadata?.name || "-",
               account: transaction.metadata?.account || "-",
               activity: "Wallet withdrawal",
               status:
@@ -390,7 +391,12 @@ const WithdrawPage = () => {
                   </td>
                   <td className="px-3 py-3">
                     <div className="flex items-center gap-2">
-                      <span>{request.account}</span>
+                      <div>
+                        <div className="font-medium text-slate-200">
+                          {request.name}
+                        </div>
+                        <div>{request.account}</div>
+                      </div>
                       <button
                         type="button"
                         onClick={() => copyAccount(request)}

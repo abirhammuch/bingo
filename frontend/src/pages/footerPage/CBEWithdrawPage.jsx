@@ -12,6 +12,7 @@ const CBEWithdrawPage = () => {
   const { user, updateUserBalance } = useAuth();
   const [step, setStep] = useState(1);
   const [amountInput, setAmountInput] = useState("");
+  const [name, setName] = useState("");
   const [account, setAccount] = useState("");
   const [withdrawData, setWithdrawData] = useState({
     method: "CBE",
@@ -78,6 +79,10 @@ const CBEWithdrawPage = () => {
   };
 
   const handleSubmit = async () => {
+    if (!name.trim()) {
+      setError("Enter the CBE account holder name");
+      return;
+    }
     if (!account.trim()) {
       setError("Enter your CBE account number");
       return;
@@ -88,6 +93,7 @@ const CBEWithdrawPage = () => {
       const response = await submitWithdrawal({
         amount,
         method: withdrawData.method,
+        name: name.trim(),
         account: account.trim(),
       });
       if (typeof response.transaction?.balance === "number") {
@@ -178,6 +184,16 @@ const CBEWithdrawPage = () => {
                 <span>{total.toFixed(2)} ETB</span>
               </div>
             </div>
+            <label className="mb-3 block text-sm font-semibold text-slate-300">
+              CBE Account Holder Name
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              placeholder="Enter account holder name"
+              className="mb-4 w-full rounded-lg border border-slate-700 bg-slate-800/50 p-4 text-white outline-none focus:border-emerald-500"
+            />
             <label className="mb-3 block text-sm font-semibold text-slate-300">
               CBE Account Number
             </label>

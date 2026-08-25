@@ -8,6 +8,7 @@ const submitWithdrawal = async (req, res) => {
     const telegramId = String(req.user.telegramId || "");
     const amount = Number(req.body.amount);
     const method = String(req.body.method || "").trim();
+    const name = String(req.body.name || "").trim();
     const account = String(req.body.account || "").trim();
 
     const settings = (await WithdrawalSettings.findOne({
@@ -24,10 +25,10 @@ const submitWithdrawal = async (req, res) => {
         : Number(settings.feeAmount || 0);
     const total = amount + fee;
 
-    if (!telegramId || !method || !account) {
+    if (!telegramId || !method || !name || !account) {
       return res.status(400).json({
         success: false,
-        message: "Method, account, and amount are required",
+        message: "Method, name, account, and amount are required",
       });
     }
     if (
@@ -71,7 +72,7 @@ const submitWithdrawal = async (req, res) => {
         description: `${method} withdrawal request`,
         balanceBefore,
         balanceAfter: updatedUser.balance,
-        metadata: { method, account, fee, total, walletDebited: true },
+        metadata: { method, name, account, fee, total, walletDebited: true },
       });
     } catch (error) {
       await User.updateOne({ _id: user._id }, { $inc: { balance: total } });
