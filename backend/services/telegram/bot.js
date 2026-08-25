@@ -421,9 +421,7 @@ bot.on("contact", async (ctx) => {
       if (!wasRegistered) await creditRegistrationBonus(telegramId);
     }
 
-    const keyboard = Markup.keyboard([["👤 My Profile", "💰 Wallet"]])
-      .resize()
-      .oneTime();
+    const keyboard = accountKeyboard();
 
     await ctx.reply(
       `🎉 Registration successful!\n\n` +
