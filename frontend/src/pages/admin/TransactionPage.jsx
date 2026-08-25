@@ -43,6 +43,7 @@ const TransactionPage = () => {
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("All");
   const [transactions, setTransactions] = useState([]);
+  const [selected, setSelected] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -57,6 +58,23 @@ const TransactionPage = () => {
       );
     } catch (requestError) {
       setError(requestError.message || "Failed to delete transaction");
+    }
+  };
+
+  const deleteSelectedTransactions = async () => {
+    if (!selected.length) return;
+    if (!window.confirm(`Delete ${selected.length} selected transactions?`))
+      return;
+    try {
+      await Promise.all(selected.map((id) => deleteAdminTransaction(id)));
+      setTransactions((items) =>
+        items.filter((item) => !selected.includes(item.transactionId)),
+      );
+      setSelected([]);
+    } catch (requestError) {
+      setError(
+        requestError.message || "Failed to delete selected transactions",
+      );
     }
   };
 
@@ -172,6 +190,28 @@ const TransactionPage = () => {
             <table className="min-w-full text-left text-sm">
               <thead className="bg-slate-900/90 text-slate-400">
                 <tr>
+                  <th className="px-4 py-3">
+                    <input
+                      type="checkbox"
+                      checked={
+                        filteredTransactions.length > 0 &&
+                        filteredTransactions.every((transaction) =>
+                          selected.includes(transaction.transactionId),
+                        )
+                      }
+                      onChange={(event) => {
+                        const ids = filteredTransactions.map(
+                          (transaction) => transaction.transactionId,
+                        );
+                        setSelected((items) =>
+                          event.target.checked
+                            ? [...new Set([...items, ...ids])]
+                            : items.filter((id) => !ids.includes(id)),
+                        );
+                      }}
+                      aria-label="Select all visible transactions"
+                    />
+                  </th>
                   {[
                     "User",
                     "Telegram",
@@ -192,9 +232,25 @@ const TransactionPage = () => {
                 {loading && (
                   <tr>
                     <td
-                      colSpan="8"
+                      colSpan="9"
                       className="px-4 py-10 text-center text-slate-400"
                     >
+                      <td className="px-4 py-4">
+                        <input
+                          type="checkbox"
+                          checked={selected.includes(transaction.transactionId)}
+                          onChange={() =>
+                            setSelected((items) =>
+                              items.includes(transaction.transactionId)
+                                ? items.filter(
+                                    (id) => id !== transaction.transactionId,
+                                  )
+                                : [...items, transaction.transactionId],
+                            )
+                          }
+                          aria-label={`Select transaction ${transaction.transactionId}`}
+                        />
+                      </td>
                       Loading transactions...
                     </td>
                   </tr>
@@ -253,6 +309,18 @@ const TransactionPage = () => {
               No transactions match your search.
             </div>
           )}
+          <div className="flex items-center justify-between border-t border-slate-800 px-4 py-3 text-xs">
+            <span className="text-slate-500">{selected.length} selected</span>
+            <button
+              onClick={deleteSelectedTransactions}
+              disabled={!selected.length}
+              title="Delete selected transactions"
+              aria-label="Delete selected transactions"
+              className="grid h-8 w-8 place-items-center rounded border border-rose-500/30 text-rose-300 disabled:opacity-40 hover:bg-rose-500/10"
+            >
+              <FaTrash aria-hidden="true" />
+            </button>
+          </div>
         </div>
       </div>
     </div>

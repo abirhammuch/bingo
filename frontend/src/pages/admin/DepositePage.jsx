@@ -103,6 +103,26 @@ const DepositPage = () => {
     }
   };
 
+  const deleteSelectedDeposits = async () => {
+    if (!selectedRows.length) return;
+    if (!window.confirm(`Delete ${selectedRows.length} selected deposits?`))
+      return;
+    try {
+      await Promise.all(
+        selectedRows.map((deposit) =>
+          deleteAdminTransaction(deposit.transactionId),
+        ),
+      );
+      const ids = selectedRows.map((deposit) => deposit.transactionId);
+      setDeposits((items) =>
+        items.filter((item) => !ids.includes(item.transactionId)),
+      );
+      setSelected([]);
+    } catch (requestError) {
+      setError(requestError.message || "Failed to delete selected deposits");
+    }
+  };
+
   const filteredDeposits = useMemo(() => {
     const minimumAmount = Number(amountRange);
     const today = new Date();
@@ -279,6 +299,29 @@ const DepositPage = () => {
                   "Actions",
                 ].map((heading) => (
                   <th key={heading} className="px-3 py-3">
+                    {heading === "Deposit ID" && (
+                      <input
+                        type="checkbox"
+                        checked={
+                          filteredDeposits.length > 0 &&
+                          filteredDeposits.every((deposit) =>
+                            selected.includes(deposit.transactionId),
+                          )
+                        }
+                        onChange={(event) => {
+                          const ids = filteredDeposits.map(
+                            (deposit) => deposit.transactionId,
+                          );
+                          setSelected((items) =>
+                            event.target.checked
+                              ? [...new Set([...items, ...ids])]
+                              : items.filter((id) => !ids.includes(id)),
+                          );
+                        }}
+                        aria-label="Select all visible deposits"
+                        className="mr-2"
+                      />
+                    )}
                     {heading}
                   </th>
                 ))}
@@ -421,6 +464,15 @@ const DepositPage = () => {
               className="rounded-lg border border-slate-700 px-2 py-1 text-slate-300 disabled:opacity-40"
             >
               Deny Selected
+            </button>
+            <button
+              onClick={deleteSelectedDeposits}
+              disabled={!selectedRows.length}
+              title="Delete selected deposits"
+              aria-label="Delete selected deposits"
+              className="grid h-7 w-7 place-items-center rounded border border-rose-500/30 text-rose-300 disabled:opacity-40 hover:bg-rose-500/10"
+            >
+              <FaTrash aria-hidden="true" />
             </button>
           </div>
           <span className="text-slate-500">{selectedRows.length} selected</span>

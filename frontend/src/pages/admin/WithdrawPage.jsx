@@ -100,6 +100,26 @@ const WithdrawPage = () => {
     }
   };
 
+  const deleteSelectedWithdrawals = async () => {
+    const rows = withdrawalRequests.filter((request) =>
+      selected.includes(request.transactionId),
+    );
+    if (!rows.length) return;
+    if (!window.confirm(`Delete ${rows.length} selected withdrawals?`)) return;
+    try {
+      await Promise.all(
+        rows.map((request) => deleteAdminTransaction(request.transactionId)),
+      );
+      const ids = rows.map((request) => request.transactionId);
+      setWithdrawalRequests((items) =>
+        items.filter((item) => !ids.includes(item.transactionId)),
+      );
+      setSelected([]);
+    } catch (requestError) {
+      setError(requestError.message || "Failed to delete selected withdrawals");
+    }
+  };
+
   const copyAccount = async (request) => {
     if (!request.account || request.account === "-") return;
     try {
@@ -303,6 +323,29 @@ const WithdrawPage = () => {
                   "Actions",
                 ].map((heading) => (
                   <th key={heading} className="px-3 py-3">
+                    {heading === "Request ID" && (
+                      <input
+                        type="checkbox"
+                        checked={
+                          filteredWithControls.length > 0 &&
+                          filteredWithControls.every((request) =>
+                            selected.includes(request.transactionId),
+                          )
+                        }
+                        onChange={(event) => {
+                          const ids = filteredWithControls.map(
+                            (request) => request.transactionId,
+                          );
+                          setSelected((items) =>
+                            event.target.checked
+                              ? [...new Set([...items, ...ids])]
+                              : items.filter((id) => !ids.includes(id)),
+                          );
+                        }}
+                        aria-label="Select all visible withdrawals"
+                        className="mr-2"
+                      />
+                    )}
                     {heading}
                   </th>
                 ))}
@@ -426,6 +469,15 @@ const WithdrawPage = () => {
               className="rounded border border-slate-700 px-2 py-1 text-slate-300 disabled:opacity-40"
             >
               Deny Selected
+            </button>
+            <button
+              onClick={deleteSelectedWithdrawals}
+              disabled={!selected.length}
+              title="Delete selected withdrawals"
+              aria-label="Delete selected withdrawals"
+              className="grid h-7 w-7 place-items-center rounded border border-rose-500/30 text-rose-300 disabled:opacity-40 hover:bg-rose-500/10"
+            >
+              <FaTrash aria-hidden="true" />
             </button>
           </div>
           <span className="text-slate-500">{selected.length} selected</span>

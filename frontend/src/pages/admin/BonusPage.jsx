@@ -55,6 +55,7 @@ const BonusPage = ({ section = "all" }) => {
     above1000Percentage: 30,
   });
   const [commissionError, setCommissionError] = useState("");
+  const [selectedCommissionRounds, setSelectedCommissionRounds] = useState([]);
   const [referralForm, setReferralForm] = useState({
     depositPercentage: 5,
     wagerPercentage: 1,
@@ -223,6 +224,31 @@ const BonusPage = ({ section = "all" }) => {
       }));
     } catch (error) {
       setCommissionError(error.message || "Failed to delete commission log");
+    }
+  };
+
+  const removeSelectedCommissionRounds = async () => {
+    if (!selectedCommissionRounds.length) return;
+    if (
+      !window.confirm(
+        `Delete ${selectedCommissionRounds.length} selected commission logs?`,
+      )
+    )
+      return;
+    setCommissionError("");
+    try {
+      await Promise.all(
+        selectedCommissionRounds.map((id) => deleteAdminCommissionRound(id)),
+      );
+      setCommissionData((current) => ({
+        ...current,
+        rounds: (current?.rounds || []).filter(
+          (round) => !selectedCommissionRounds.includes(round._id),
+        ),
+      }));
+      setSelectedCommissionRounds([]);
+    } catch (error) {
+      setCommissionError(error.message || "Failed to delete commission logs");
     }
   };
 
@@ -860,6 +886,27 @@ const BonusPage = ({ section = "all" }) => {
               <table className="w-full text-left text-xs">
                 <thead className="text-[10px] uppercase text-slate-500">
                   <tr>
+                    <th className="py-2">
+                      <input
+                        type="checkbox"
+                        checked={
+                          (commissionData?.rounds || []).length > 0 &&
+                          (commissionData?.rounds || []).every((round) =>
+                            selectedCommissionRounds.includes(round._id),
+                          )
+                        }
+                        onChange={(event) =>
+                          setSelectedCommissionRounds(
+                            event.target.checked
+                              ? (commissionData?.rounds || []).map(
+                                  (round) => round._id,
+                                )
+                              : [],
+                          )
+                        }
+                        aria-label="Select all commission logs"
+                      />
+                    </th>
                     <th className="py-2">Game ID</th>
                     <th>Pot Size</th>
                     <th>Rate</th>
@@ -871,6 +918,20 @@ const BonusPage = ({ section = "all" }) => {
                 <tbody>
                   {(commissionData?.rounds || []).map((round) => (
                     <tr key={round._id} className="border-t border-slate-800">
+                      <td className="py-2">
+                        <input
+                          type="checkbox"
+                          checked={selectedCommissionRounds.includes(round._id)}
+                          onChange={() =>
+                            setSelectedCommissionRounds((items) =>
+                              items.includes(round._id)
+                                ? items.filter((id) => id !== round._id)
+                                : [...items, round._id],
+                            )
+                          }
+                          aria-label={`Select commission log ${round.gameId}`}
+                        />
+                      </td>
                       <td className="py-2">{round.gameId}</td>
                       <td>
                         {Number(
@@ -910,6 +971,21 @@ const BonusPage = ({ section = "all" }) => {
                   ))}
                 </tbody>
               </table>
+              <div className="mt-3 flex items-center justify-between border-t border-slate-800 pt-3">
+                <span className="text-[10px] text-slate-500">
+                  {selectedCommissionRounds.length} selected
+                </span>
+                <button
+                  type="button"
+                  onClick={removeSelectedCommissionRounds}
+                  disabled={!selectedCommissionRounds.length}
+                  title="Delete selected commission logs"
+                  aria-label="Delete selected commission logs"
+                  className="grid h-7 w-7 place-items-center rounded border border-rose-500/30 text-rose-300 disabled:opacity-40 hover:bg-rose-500/10"
+                >
+                  <FaTrash aria-hidden="true" />
+                </button>
+              </div>
             </div>
           </Panel>
         )}
