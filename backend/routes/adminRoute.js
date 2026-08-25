@@ -16,7 +16,6 @@ import AdminUser from "../models/AdminUser.js";
 import { SELECTION_TIME_SECONDS } from "../services/bingo/bingoService.js";
 
 const router = express.Router();
-
 const hashPassword = (
   password,
   salt = crypto.randomBytes(16).toString("hex"),
@@ -160,6 +159,30 @@ router.post(
   },
 );
 
+router.delete(
+  "/commission/rounds/:id",
+  requireAdmin,
+  requireSuperAdmin,
+  async (req, res) => {
+    try {
+      const round = await BingoGame.findOneAndDelete({
+        _id: req.params.id,
+        "roundSummary.commissionAmount": { $gt: 0 },
+      });
+      if (!round) {
+        return res
+          .status(404)
+          .json({ success: false, message: "Commission log not found" });
+      }
+      res.json({ success: true, message: "Commission log deleted" });
+    } catch (error) {
+      console.error("Commission log deletion error:", error);
+      res
+        .status(500)
+        .json({ success: false, message: "Failed to delete commission log" });
+    }
+  },
+);
 router.get(
   "/withdraw-fee",
   requireAdmin,
@@ -1235,6 +1258,29 @@ router.get("/transactions", requireAdmin, async (req, res) => {
       .json({ success: false, message: "Failed to load transactions" });
   }
 });
+
+router.delete(
+  "/transactions/:transactionId",
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const transaction = await Transaction.findOneAndDelete({
+        transactionId: req.params.transactionId,
+      });
+      if (!transaction) {
+        return res
+          .status(404)
+          .json({ success: false, message: "Transaction not found" });
+      }
+      res.json({ success: true, message: "Transaction deleted" });
+    } catch (error) {
+      console.error("Transaction deletion error:", error);
+      res
+        .status(500)
+        .json({ success: false, message: "Failed to delete transaction" });
+    }
+  },
+);
 
 router.patch(
   "/transactions/:transactionId/:action",

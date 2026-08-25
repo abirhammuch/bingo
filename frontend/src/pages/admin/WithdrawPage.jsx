@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
+  deleteAdminTransaction,
   fetchAdminWalletRequests,
   updateAdminWalletRequest,
 } from "../../services/userService";
-import { FaCopy } from "react-icons/fa";
+import { FaCopy, FaTrash } from "react-icons/fa";
 
 const statusStyles = {
   Pending: "border border-amber-500/30 bg-amber-500/15 text-amber-300",
@@ -81,6 +82,21 @@ const WithdrawPage = () => {
       );
     } catch (requestError) {
       setError(requestError.message || "Failed to update withdrawal");
+    }
+  };
+
+  const deleteWithdrawal = async (request) => {
+    if (!window.confirm("Delete this withdrawal record?")) return;
+    try {
+      await deleteAdminTransaction(request.transactionId);
+      setWithdrawalRequests((items) =>
+        items.filter((item) => item.transactionId !== request.transactionId),
+      );
+      setSelected((items) =>
+        items.filter((id) => id !== request.transactionId),
+      );
+    } catch (requestError) {
+      setError(requestError.message || "Failed to delete withdrawal");
     }
   };
 
@@ -374,6 +390,15 @@ const WithdrawPage = () => {
                         className="rounded border border-slate-700 px-2 py-1 text-[10px] text-slate-300 hover:bg-slate-800 disabled:opacity-40"
                       >
                         Deny
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => deleteWithdrawal(request)}
+                        title="Delete withdrawal"
+                        aria-label={`Delete withdrawal ${request.id}`}
+                        className="grid h-7 w-7 place-items-center rounded border border-rose-500/30 text-rose-300 hover:bg-rose-500/10"
+                      >
+                        <FaTrash aria-hidden="true" />
                       </button>
                       <button className="rounded border border-slate-700 px-2 py-1 text-[10px] text-slate-300 whitespace-nowrap hover:bg-slate-800">
                         View Profile

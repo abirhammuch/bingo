@@ -25,6 +25,12 @@ export const updateAdminWalletRequest = (transactionId, action) =>
     `/api/admin/transactions/${encodeURIComponent(transactionId)}/${action}`,
   );
 
+export const deleteAdminTransaction = (transactionId) =>
+  api.del(`/api/admin/transactions/${encodeURIComponent(transactionId)}`);
+
+export const deleteAdminCommissionRound = (id) =>
+  api.del(`/api/admin/commission/rounds/${encodeURIComponent(id)}`);
+
 export const getUserStats = (telegramId) =>
   api.get(`/api/users/stats/${encodeURIComponent(telegramId)}`);
 

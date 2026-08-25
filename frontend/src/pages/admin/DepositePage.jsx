@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { FaChevronDown, FaChevronUp } from "react-icons/fa";
+import { FaChevronDown, FaChevronUp, FaTrash } from "react-icons/fa";
 import {
+  deleteAdminTransaction,
   fetchAdminWalletRequests,
   updateAdminWalletRequest,
 } from "../../services/userService";
@@ -84,6 +85,21 @@ const DepositPage = () => {
       setSelected([]);
     } catch (requestError) {
       setError(requestError.message || "Failed to update deposits");
+    }
+  };
+
+  const deleteDeposit = async (deposit) => {
+    if (!window.confirm("Delete this deposit record?")) return;
+    try {
+      await deleteAdminTransaction(deposit.transactionId);
+      setDeposits((items) =>
+        items.filter((item) => item.transactionId !== deposit.transactionId),
+      );
+      setSelected((items) =>
+        items.filter((id) => id !== deposit.transactionId),
+      );
+    } catch (requestError) {
+      setError(requestError.message || "Failed to delete deposit");
     }
   };
 
@@ -372,6 +388,15 @@ const DepositPage = () => {
                         className="rounded-lg border border-slate-700 px-2 py-1 text-[10px] text-slate-300 disabled:opacity-40"
                       >
                         Reject
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => deleteDeposit(deposit)}
+                        title="Delete deposit"
+                        aria-label={`Delete deposit ${deposit.id}`}
+                        className="grid h-7 w-7 place-items-center rounded border border-rose-500/30 text-rose-300 hover:bg-rose-500/10"
+                      >
+                        <FaTrash aria-hidden="true" />
                       </button>
                     </div>
                   </td>

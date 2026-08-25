@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from "react";
+import { FaEdit, FaTrash } from "react-icons/fa";
 import {
   createAdminCoupon,
+  deleteAdminCommissionRound,
   deleteCommissionSettings,
   fetchAdminCoupons,
   fetchAdminWithdrawalSettings,
@@ -205,6 +207,22 @@ const BonusPage = ({ section = "all" }) => {
       }));
     } catch (error) {
       setCommissionError(error.message || "Failed to delete commission rules");
+    }
+  };
+
+  const removeCommissionRound = async (round) => {
+    if (!window.confirm("Delete this game commission log?")) return;
+    setCommissionError("");
+    try {
+      await deleteAdminCommissionRound(round._id);
+      setCommissionData((current) => ({
+        ...current,
+        rounds: (current?.rounds || []).filter(
+          (item) => item._id !== round._id,
+        ),
+      }));
+    } catch (error) {
+      setCommissionError(error.message || "Failed to delete commission log");
     }
   };
 
@@ -793,16 +811,20 @@ const BonusPage = ({ section = "all" }) => {
                           <button
                             type="button"
                             onClick={editCommission}
-                            className="mr-2 rounded border border-slate-700 px-2 py-1 text-[10px] text-slate-300 hover:bg-slate-800"
+                            title="Edit commission rules"
+                            aria-label="Edit commission rules"
+                            className="mr-2 inline-grid h-7 w-7 place-items-center rounded border border-slate-700 text-slate-300 hover:bg-slate-800"
                           >
-                            Edit
+                            <FaEdit aria-hidden="true" />
                           </button>
                           <button
                             type="button"
                             onClick={removeCommission}
-                            className="rounded border border-rose-500/30 px-2 py-1 text-[10px] text-rose-300 hover:bg-rose-500/10"
+                            title="Delete commission rules"
+                            aria-label="Delete commission rules"
+                            className="inline-grid h-7 w-7 place-items-center rounded border border-rose-500/30 text-rose-300 hover:bg-rose-500/10"
                           >
-                            Delete
+                            <FaTrash aria-hidden="true" />
                           </button>
                         </td>
                       </tr>
@@ -843,6 +865,7 @@ const BonusPage = ({ section = "all" }) => {
                     <th>Rate</th>
                     <th>Commission Earned</th>
                     <th>Date</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -871,6 +894,17 @@ const BonusPage = ({ section = "all" }) => {
                         {round.roundEndedAt
                           ? new Date(round.roundEndedAt).toLocaleString()
                           : "-"}
+                      </td>
+                      <td>
+                        <button
+                          type="button"
+                          onClick={() => removeCommissionRound(round)}
+                          title="Delete commission log"
+                          aria-label={`Delete commission log ${round.gameId}`}
+                          className="inline-grid h-7 w-7 place-items-center rounded border border-rose-500/30 text-rose-300 hover:bg-rose-500/10"
+                        >
+                          <FaTrash aria-hidden="true" />
+                        </button>
                       </td>
                     </tr>
                   ))}

@@ -1,5 +1,9 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { fetchAdminTransactions } from "../../services/userService";
+import { FaTrash } from "react-icons/fa";
+import {
+  deleteAdminTransaction,
+  fetchAdminTransactions,
+} from "../../services/userService";
 
 const statusClasses = {
   Completed: "border-emerald-500/30 bg-emerald-500/15 text-emerald-300",
@@ -41,6 +45,20 @@ const TransactionPage = () => {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+
+  const deleteTransaction = async (transaction) => {
+    if (!window.confirm("Delete this transaction?")) return;
+    try {
+      await deleteAdminTransaction(transaction.transactionId);
+      setTransactions((items) =>
+        items.filter(
+          (item) => item.transactionId !== transaction.transactionId,
+        ),
+      );
+    } catch (requestError) {
+      setError(requestError.message || "Failed to delete transaction");
+    }
+  };
 
   useEffect(() => {
     fetchAdminTransactions()
@@ -162,6 +180,7 @@ const TransactionPage = () => {
                     "Amount",
                     "Status",
                     "Date",
+                    "Actions",
                   ].map((heading) => (
                     <th key={heading} className="px-4 py-3 font-medium">
                       {heading}
@@ -173,7 +192,7 @@ const TransactionPage = () => {
                 {loading && (
                   <tr>
                     <td
-                      colSpan="7"
+                      colSpan="8"
                       className="px-4 py-10 text-center text-slate-400"
                     >
                       Loading transactions...
@@ -212,6 +231,17 @@ const TransactionPage = () => {
                       </td>
                       <td className="px-4 py-4 text-slate-300">
                         {new Date(transaction.createdAt).toLocaleString()}
+                      </td>
+                      <td className="px-4 py-4">
+                        <button
+                          type="button"
+                          onClick={() => deleteTransaction(transaction)}
+                          title="Delete transaction"
+                          aria-label={`Delete transaction ${transaction.transactionId}`}
+                          className="grid h-8 w-8 place-items-center rounded border border-rose-500/30 text-rose-300 hover:bg-rose-500/10"
+                        >
+                          <FaTrash aria-hidden="true" />
+                        </button>
                       </td>
                     </tr>
                   ))}
