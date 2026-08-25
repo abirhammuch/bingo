@@ -286,7 +286,13 @@ bot.hears("🏦 Withdraw", (ctx) =>
 );
 
 bot.hears("🆘 Support", async (ctx) => {
-  await ctx.reply(`🆘 Support: ${telegramSupportUrl}`);
+  await ctx.reply(
+    "Need help or looking for coupons? Use one of the links below.",
+    Markup.inlineKeyboard([
+      [Markup.button.url("🆘 Contact Support Team", telegramSupportUrl)],
+      [Markup.button.url("🎟️ Get Coupon Codes", telegramCouponChannelUrl)],
+    ]),
+  );
 });
 
 bot.hears("🔗 Referral Link", async (ctx) => {
