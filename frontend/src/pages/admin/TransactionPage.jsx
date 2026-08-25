@@ -235,6 +235,16 @@ const TransactionPage = () => {
                       colSpan="9"
                       className="px-4 py-10 text-center text-slate-400"
                     >
+                      Loading transactions...
+                    </td>
+                  </tr>
+                )}
+                {!loading &&
+                  filteredTransactions.map((transaction) => (
+                    <tr
+                      key={transaction.transactionId}
+                      className="border-t border-slate-800"
+                    >
                       <td className="px-4 py-4">
                         <input
                           type="checkbox"
@@ -251,16 +261,6 @@ const TransactionPage = () => {
                           aria-label={`Select transaction ${transaction.transactionId}`}
                         />
                       </td>
-                      Loading transactions...
-                    </td>
-                  </tr>
-                )}
-                {!loading &&
-                  filteredTransactions.map((transaction) => (
-                    <tr
-                      key={transaction.transactionId}
-                      className="border-t border-slate-800"
-                    >
                       <td className="px-4 py-4 font-semibold text-slate-100">
                         {transaction.user}
                       </td>
