@@ -298,7 +298,7 @@ const AdminLayout = () => {
             <aside className="relative h-full w-[min(86vw,320px)] overflow-y-auto border-r border-slate-800 bg-slate-900 p-5 shadow-2xl shadow-black/50">
               <div className="mb-6 flex items-center justify-between">
                 <div>
-                  <div className="font-semibold text-lg">BingoX Admin</div>
+                  <div className="font-semibold text-lg">Casina bingo Admin</div>
                   <div className="text-xs uppercase tracking-[0.25em] text-slate-500">
                     Management Portal
                   </div>
@@ -362,17 +362,7 @@ const AdminLayout = () => {
             </div>
           </div>
 
-          <div className="mb-8 rounded-3xl border border-slate-800 bg-slate-950 p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-slate-800 grid place-items-center text-slate-100 text-xl">
-                Y
-              </div>
-              <div>
-                <div className="font-semibold">yegna$bingo!</div>
-                <div className="text-xs text-slate-500">Super Admin</div>
-              </div>
-            </div>
-          </div>
+         
 
           <nav className="space-y-2">
             {visibleAdminMenu.map((item) => (
