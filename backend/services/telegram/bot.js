@@ -56,6 +56,8 @@ const telegramBotUsername =
   process.env.TELEGRAM_BOT_USERNAME || "casinabingo_bot";
 const telegramSupportUrl =
   process.env.TELEGRAM_SUPPORT_URL || "https://t.me/casina_bingo_support";
+const telegramCouponChannelUrl =
+  process.env.TELEGRAM_COUPON_CHANNEL_URL || "https://t.me/casinabingochannel";
 
 const accountKeyboard = () =>
   Markup.keyboard([
@@ -148,6 +150,16 @@ const sendLoginPrompt = async (ctx, user) => {
 
   await ctx.reply("You can also use the buttons below.", accountKeyboard());
 };
+
+bot.command("help", async (ctx) => {
+  await ctx.reply(
+    "Need help or looking for coupons? Use one of the links below.",
+    Markup.inlineKeyboard([
+      [Markup.button.url("🆘 Contact Support Team", telegramSupportUrl)],
+      [Markup.button.url("🎟️ Get Coupon Codes", telegramCouponChannelUrl)],
+    ]),
+  );
+});
 
 bot.command("login", async (ctx) => {
   try {
