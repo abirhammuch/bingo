@@ -41,39 +41,48 @@ const LivePage = ({
         </div>
 
         <div className="grid grid-cols-5 gap-2">
-          {Array.from({ length: 75 }, (_, index) => index + 1).map((number) => {
-            const isCalled = safeCalledNumbers.includes(number);
-
-            const isCurrent = number === currentNumber;
-
-            return (
-              <div
-                key={number}
-                className={`
-                  aspect-square
-                  rounded-lg
-                  flex
-                  items-center
-                  justify-center
-                  text-xs
-                  font-bold
-                  border
-                  transition-all
-                  duration-300
-
-                  ${
-                    isCurrent
-                      ? "border-purple-400 bg-purple-600 text-white scale-110 shadow-lg shadow-purple-500/30"
-                      : isCalled
-                        ? "border-emerald-400/60 bg-emerald-500/20 text-emerald-200"
-                        : "border-slate-700 bg-slate-900 text-slate-500"
-                  }
-                `}
-              >
-                {number}
+          {["B", "I", "N", "G", "O"].map((letter, columnIndex) => (
+            <div key={letter} className="flex min-w-0 flex-col gap-2">
+              <div className="text-center text-sm font-bold text-emerald-300">
+                {letter}
               </div>
-            );
-          })}
+              {Array.from(
+                { length: 15 },
+                (_, rowIndex) => columnIndex * 15 + rowIndex + 1,
+              ).map((number) => {
+                const isCalled = safeCalledNumbers.includes(number);
+                const isCurrent = number === currentNumber;
+
+                return (
+                  <div
+                    key={number}
+                    className={`
+                      aspect-square
+                      rounded-lg
+                      flex
+                      items-center
+                      justify-center
+                      text-xs
+                      font-bold
+                      border
+                      transition-all
+                      duration-300
+
+                      ${
+                        isCurrent
+                          ? "border-purple-400 bg-purple-600 text-white scale-110 shadow-lg shadow-purple-500/30"
+                          : isCalled
+                            ? "border-emerald-400/60 bg-emerald-500/20 text-emerald-200"
+                            : "border-slate-700 bg-slate-900 text-slate-500"
+                      }
+                    `}
+                  >
+                    {number}
+                  </div>
+                );
+              })}
+            </div>
+          ))}
         </div>
       </div>
 
@@ -151,7 +160,7 @@ const LivePage = ({
                   {["B", "I", "N", "G", "O"].map((letter) => (
                     <div
                       key={letter}
-                      className="text-center text-xs font-bold text-emerald-300"
+                      className="text-center text-xs font-bold text-amber-300"
                     >
                       {letter}
                     </div>

@@ -13,23 +13,33 @@ const LivePhase = ({
       {/* Left: Small Grid */}
       <div>
         <div className="grid grid-cols-5 gap-2 mb-4">
-          {Array.from({ length: 75 }, (_, index) => index + 1).map((number) => {
-            const isCalled = calledNumbers.includes(number);
-            const isHighlight = number === currentNumber;
-            return (
-              <button
-                key={number}
-                className={`
-                    aspect-square rounded-lg text-xs font-bold transition-all border
-                    ${isHighlight ? "border-purple-400 bg-purple-600/40 text-purple-100 scale-110" : ""}
-                    ${isCalled && !isHighlight ? "border-emerald-400/50 bg-emerald-500/20 text-emerald-100" : ""}
-                    ${!isCalled && !isHighlight ? "border-slate-700 bg-slate-900 text-slate-300" : ""}
-                  `}
-              >
-                {number}
-              </button>
-            );
-          })}
+          {["B", "I", "N", "G", "O"].map((letter, columnIndex) => (
+            <div key={letter} className="flex min-w-0 flex-col gap-2">
+              <div className="text-center text-sm font-bold text-emerald-300">
+                {letter}
+              </div>
+              {Array.from(
+                { length: 15 },
+                (_, rowIndex) => columnIndex * 15 + rowIndex + 1,
+              ).map((number) => {
+                const isCalled = calledNumbers.includes(number);
+                const isHighlight = number === currentNumber;
+                return (
+                  <button
+                    key={number}
+                    className={`
+                        aspect-square rounded-lg text-xs font-bold transition-all border
+                        ${isHighlight ? "border-purple-400 bg-purple-600/40 text-purple-100 scale-110" : ""}
+                        ${isCalled && !isHighlight ? "border-emerald-400/50 bg-emerald-500/20 text-emerald-100" : ""}
+                        ${!isCalled && !isHighlight ? "border-slate-700 bg-slate-900 text-slate-300" : ""}
+                      `}
+                  >
+                    {number}
+                  </button>
+                );
+              })}
+            </div>
+          ))}
         </div>
       </div>
 
@@ -38,7 +48,7 @@ const LivePhase = ({
         <div className="text-center">
           {currentNumber ? (
             <div className="relative w-48 h-48 flex items-center justify-center">
-              <div className="absolute inset-0 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 opacity-20 animate-pulse"></div>
+              <div className="absolute inset-0 rounded-full bg-linear-to-br from-purple-500 to-pink-500 opacity-20 animate-pulse"></div>
               <div className="relative w-40 h-40 rounded-full border-4 border-purple-400 bg-purple-600/30 flex items-center justify-center">
                 <div className="text-6xl font-bold text-purple-100">
                   {currentNumber}
@@ -100,7 +110,7 @@ const LivePhase = ({
                   {["B", "I", "N", "G", "O"].map((letter) => (
                     <div
                       key={letter}
-                      className="text-center text-xs font-bold text-emerald-300"
+                      className="text-center text-xs font-bold text-amber-300"
                     >
                       {letter}
                     </div>
