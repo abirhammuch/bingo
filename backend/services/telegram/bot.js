@@ -304,6 +304,7 @@ bot.hears("🔗 Referral Link", async (ctx) => {
     user.referralCode = code;
     await user.save();
   }
+  await creditRegistrationBonus(telegramId);
   await ctx.reply(
     `🔗 Your referral link:\nhttps://t.me/${telegramBotUsername}?start=ref_${code}`,
   );
