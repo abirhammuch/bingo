@@ -46,6 +46,15 @@ app.get("/", (req, res) => {
   res.send("Marshal Game backend API is running!");
 });
 
+app.get("/api/health", (req, res) => {
+  res.json({
+    success: true,
+    status: "ok",
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
+  });
+});
+
 app.use("/api/users", userRouter);
 app.use("/api/bingo", bingoRouter);
 app.use("/api/rooms", roomRouter);
