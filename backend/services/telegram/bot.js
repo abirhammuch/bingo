@@ -122,10 +122,7 @@ const launchBot = async () => {
 };
 
 const registrationKeyboard = () =>
-  Markup.keyboard([
-    [Markup.button.contactRequest("📱 Share Phone Number")],
-    ["🔑 Login"],
-  ])
+  Markup.keyboard([[Markup.button.contactRequest("📱 Share Phone Number")]])
     .resize()
     .oneTime();
 
@@ -136,7 +133,7 @@ const needsPhoneRegistration = (user) => {
 const sendLoginPrompt = async (ctx, user) => {
   const message =
     user && needsPhoneRegistration(user)
-      ? "Your account is created but not fully registered yet. Please share your phone number or use Login once complete."
+      ? "Your account is not fully registered yet. Please share your phone number."
       : "Welcome back! Use the button below to login to Casina Bingo.";
 
   await ctx.reply(message, {
