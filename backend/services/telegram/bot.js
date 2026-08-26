@@ -370,16 +370,8 @@ bot.start(async (ctx) => {
 
     if (!user.phoneNumber || !user.isRegistered) {
       await ctx.reply(
-        `To complete your profile, please share your phone number.`,
-        Markup.keyboard([
-          [Markup.button.contactRequest("📱 Share Phone Number")],
-        ])
-          .resize()
-          .oneTime(),
-      );
-      await ctx.reply(
-        "You can open the game now, or share your contact first to unlock account features.",
-        openGameKeyboard(),
+        "Please share your Telegram contact to unlock your account and open the game.",
+        registrationKeyboard(),
       );
       return;
     }
