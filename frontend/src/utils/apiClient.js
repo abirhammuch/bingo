@@ -9,14 +9,19 @@ const defaultHeaders = {
   "Content-Type": "application/json",
 };
 
-const getAuthToken = () =>
-  localStorage.getItem("adminToken") ||
-  localStorage.getItem(getAuthStorageKey("authToken"));
+const getAuthToken = (path) => {
+  const isAdminRequest =
+    path.startsWith("/api/admin") || path.startsWith("/api/users/admin");
+
+  return isAdminRequest
+    ? localStorage.getItem("adminToken")
+    : localStorage.getItem(getAuthStorageKey("authToken"));
+};
 
 const buildUrl = (path) => `${API_BASE_URL}${path}`;
 
 const request = async (path, options = {}) => {
-  const token = getAuthToken();
+  const token = getAuthToken(path);
   const response = await fetch(buildUrl(path), {
     headers: {
       ...defaultHeaders,
