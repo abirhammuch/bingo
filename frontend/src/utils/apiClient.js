@@ -31,6 +31,7 @@ const request = async (path, options = {}) => {
     ...options,
   });
   
+  
   const text = await response.text();
   const data = text ? JSON.parse(text) : null;
 
