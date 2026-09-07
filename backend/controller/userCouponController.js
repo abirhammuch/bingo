@@ -52,6 +52,10 @@ const redeemCoupon = async (req, res) => {
       const balanceBefore = Number(user.balance || 0);
       const balanceAfter = balanceBefore + Number(coupon.value || 0);
       user.balance = balanceAfter;
+      user.bonusBalance =
+        Number(user.bonusBalance || 0) + Number(coupon.value || 0);
+      user.bonusWagerRemaining =
+        Number(user.bonusWagerRemaining || 0) + Number(coupon.value || 0);
       await user.save({ session });
       coupon.usage = Number(coupon.usage || 0) + 1;
       await coupon.save({ session });

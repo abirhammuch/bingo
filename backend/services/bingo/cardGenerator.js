@@ -82,7 +82,12 @@ export const checkBingo = (card, markedNumbers) => {
   return false;
 };
 
-export const createBingoGame = async (roomId, maxPlayers = 10, minBet = 1, maxBet = 100) => {
+export const createBingoGame = async (
+  roomId,
+  maxPlayers = 10,
+  minBet = 1,
+  maxBet = 100,
+) => {
   const gameId = uuidv4();
   const game = new BingoGame({
     gameId,
@@ -140,7 +145,8 @@ export const joinBingoGame = async (gameId, telegramId, betAmount) => {
 export const startGame = async (gameId) => {
   const game = await BingoGame.findOne({ gameId });
   if (!game) throw new Error("Game not found");
-  if (game.players.length < 2) throw new Error("At least 2 players required to start");
+  if (game.players.length < 2)
+    throw new Error("At least 2 players required to start");
   if (game.status !== "waiting") throw new Error("Game already started");
 
   game.status = "active";
@@ -159,7 +165,8 @@ export const callNumber = async (gameId) => {
   );
   if (remainingNumbers.length === 0) throw new Error("No remaining numbers");
 
-  const number = remainingNumbers[Math.floor(Math.random() * remainingNumbers.length)];
+  const number =
+    remainingNumbers[Math.floor(Math.random() * remainingNumbers.length)];
   game.calledNumbers.push(number);
   game.currentNumber = number;
   game.lastCalledAt = new Date();
@@ -173,9 +180,12 @@ export const markNumber = async (gameId, telegramId, number) => {
   if (!game) throw new Error("Game not found");
   const player = game.players.find((p) => p.telegramId === telegramId);
   if (!player) throw new Error("Player not in game");
-  if (!game.calledNumbers.includes(number)) throw new Error("Number has not been called");
-  if (!checkNumberOnCard(player.card, number)) throw new Error("Number not on card");
-  if (player.markedNumbers.includes(number)) throw new Error("Number already marked");
+  if (!game.calledNumbers.includes(number))
+    throw new Error("Number has not been called");
+  if (!checkNumberOnCard(player.card, number))
+    throw new Error("Number not on card");
+  if (player.markedNumbers.includes(number))
+    throw new Error("Number already marked");
 
   player.markedNumbers.push(number);
   await game.save();
@@ -189,7 +199,9 @@ export const markNumber = async (gameId, telegramId, number) => {
 
     const user = await User.findOne({ telegramId });
     if (user) {
-      user.balance += player.betAmount * 5;
+      const winnings = player.betAmount * 5;
+      user.balance += winnings;
+      user.winningsBalance = Number(user.winningsBalance || 0) + winnings;
       user.bingoGames += 1;
       user.bingoWins += 1;
       user.gamesPlayed += 1;

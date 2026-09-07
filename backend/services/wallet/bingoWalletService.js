@@ -227,7 +227,7 @@ export const refundBingoPlayer = async ({
     return await withSession(async (session) => {
       const user = await User.findOneAndUpdate(
         { telegramId: String(telegramId) },
-        { $inc: { balance: refundAmount } },
+        { $inc: { balance: refundAmount, winningsBalance: refundAmount } },
         { new: false, session },
       );
       if (!user) throw new Error("Refund user not found");

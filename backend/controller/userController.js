@@ -690,7 +690,10 @@ export const adminAddCoins = async (req, res) => {
       });
     }
 
-    user.balance += amount;
+    user.balance += Number(amount);
+    user.bonusBalance = Number(user.bonusBalance || 0) + Number(amount);
+    user.bonusWagerRemaining =
+      Number(user.bonusWagerRemaining || 0) + Number(amount);
     await user.save();
 
     res.json({
