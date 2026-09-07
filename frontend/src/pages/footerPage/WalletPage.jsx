@@ -43,6 +43,10 @@ const WalletPage = () => {
   const navigate = useNavigate();
   const { user, updateUserBalance, currency } = useAuth();
   const [balance, setBalance] = useState(Number(user?.balance || 0));
+  const [withdrawableBalance, setWithdrawableBalance] = useState(
+    Number(user?.balance || 0),
+  );
+  const [bonusBalance, setBonusBalance] = useState(0);
   const [loading, setLoading] = useState(true);
   const [recentActivity, setRecentActivity] = useState([]);
   const [error, setError] = useState("");
@@ -58,6 +62,10 @@ const WalletPage = () => {
         if (!mounted) return;
         const nextBalance = Number(balanceResponse.balance || 0);
         setBalance(nextBalance);
+        setWithdrawableBalance(
+          Number(balanceResponse.withdrawableBalance ?? nextBalance),
+        );
+        setBonusBalance(Number(balanceResponse.bonusBalance || 0));
         updateUserBalance(nextBalance);
         setRecentActivity(getRecentActivity(historyResponse));
       })
@@ -89,11 +97,11 @@ const WalletPage = () => {
             {/* Game Balance */}
             <div className="bg-slate-800/40 border border-slate-700 rounded-2xl p-5">
               <p className="text-xs uppercase tracking-widest text-slate-500 font-semibold mb-3">
-                GAME BALANCE ({currency})
+                WITHDRAWABLE BALANCE ({currency})
               </p>
               <div className="flex items-baseline gap-1">
                 <p className="text-4xl font-bold text-white">
-                  {loading ? "..." : balance.toFixed(2)}
+                  {loading ? "..." : withdrawableBalance.toFixed(2)}
                 </p>
                 <p className="text-sm text-slate-400">{currency}</p>
               </div>
@@ -102,11 +110,11 @@ const WalletPage = () => {
             {/* Main Balance */}
             <div className="bg-slate-800/40 border border-emerald-600/30 rounded-2xl p-5">
               <p className="text-xs uppercase tracking-widest text-slate-500 font-semibold mb-3">
-                MAIN BALANCE ({currency})
+                BONUS BALANCE ({currency})
               </p>
               <div className="flex items-baseline gap-1">
                 <p className="text-4xl font-bold text-emerald-400">
-                  {loading ? "..." : balance.toFixed(2)}
+                  {loading ? "..." : bonusBalance.toFixed(2)}
                 </p>
                 <p className="text-sm text-slate-400">{currency}</p>
               </div>

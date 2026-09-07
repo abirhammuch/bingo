@@ -571,9 +571,21 @@ export const getUserBalance = async (req, res) => {
       });
     }
 
+    const balance = Number(user.balance || 0);
+    const bonusWagerRemaining = Number(user.bonusWagerRemaining || 0);
+    const bonusBalance = Math.min(
+      balance,
+      Number(user.bonusBalance ?? bonusWagerRemaining),
+    );
     res.json({
       success: true,
-      balance: user.balance,
+      balance,
+      bonusBalance,
+      bonusWagerRemaining,
+      withdrawableBalance: Math.max(
+        0,
+        balance - (bonusWagerRemaining > 0 ? bonusBalance : 0),
+      ),
       telegramId: user.telegramId,
     });
   } catch (error) {

@@ -64,6 +64,7 @@ export const creditReferralReward = async ({
         balance: reward,
         referralEarnings: reward,
         bonusWagerRemaining: reward,
+        bonusBalance: reward,
       },
     },
   );

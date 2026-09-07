@@ -50,10 +50,21 @@ const submitWithdrawal = async (req, res) => {
         .json({ success: false, message: "User not found" });
     const balanceBefore = Number(user.balance);
     const bonusWagerRemaining = Number(user.bonusWagerRemaining || 0);
-    if (bonusWagerRemaining > 0) {
+    const bonusBalance = Math.min(
+      balanceBefore,
+      Number(user.bonusBalance ?? bonusWagerRemaining),
+    );
+    const withdrawableBalance = Math.max(
+      0,
+      balanceBefore - (bonusWagerRemaining > 0 ? bonusBalance : 0),
+    );
+    if (total > withdrawableBalance) {
       return res.status(400).json({
         success: false,
-        message: `Play ${bonusWagerRemaining.toFixed(2)} ETB more before withdrawing bonus funds`,
+        message:
+          bonusWagerRemaining > 0
+            ? `You can withdraw ${withdrawableBalance.toFixed(2)} ETB. Play ${bonusWagerRemaining.toFixed(2)} ETB more to unlock the bonus.`
+            : "Insufficient withdrawable balance for this withdrawal and fee",
       });
     }
     const updatedUser = await User.findOneAndUpdate(

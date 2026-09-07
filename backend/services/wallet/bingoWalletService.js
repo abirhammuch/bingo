@@ -62,7 +62,15 @@ export const chargeBingoCard = async ({
       if (wagerFromBonus > 0) {
         await User.updateOne(
           { _id: user._id },
-          { $inc: { bonusWagerRemaining: -wagerFromBonus } },
+          {
+            $inc: {
+              bonusWagerRemaining: -wagerFromBonus,
+              bonusBalance: -Math.min(
+                wagerFromBonus,
+                Number(user.bonusBalance || 0),
+              ),
+            },
+          },
           { session },
         );
       }

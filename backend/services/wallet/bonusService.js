@@ -24,6 +24,7 @@ const creditBonus = async ({
   user.balance = balanceBefore + amount;
   user.bonusWagerRemaining =
     Number(user.bonusWagerRemaining || 0) + Number(amount);
+  user.bonusBalance = Number(user.bonusBalance || 0) + Number(amount);
   await user.save();
   await Transaction.create({
     transactionId: `bonus:${randomUUID()}`,
