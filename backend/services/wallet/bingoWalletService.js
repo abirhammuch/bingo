@@ -142,7 +142,7 @@ export const creditBingoWinner = async ({
     return await withSession(async (session) => {
       const user = await User.findOneAndUpdate(
         { telegramId: String(telegramId) },
-        { $inc: { balance: payout } },
+        { $inc: { balance: payout, winningsBalance: payout } },
         { new: false, session },
       );
       if (!user) throw new Error("Winner user not found");

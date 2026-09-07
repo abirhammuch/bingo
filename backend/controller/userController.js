@@ -573,19 +573,22 @@ export const getUserBalance = async (req, res) => {
 
     const balance = Number(user.balance || 0);
     const bonusWagerRemaining = Number(user.bonusWagerRemaining || 0);
-    const bonusBalance = Math.min(
+    const depositBalance = Math.min(balance, Number(user.depositBalance || 0));
+    const winningsBalance = Math.min(
       balance,
-      Number(user.bonusBalance ?? bonusWagerRemaining),
+      Number(user.winningsBalance || 0),
     );
+    const sourceBalance = Math.min(balance, depositBalance + winningsBalance);
+    const withdrawableBalance =
+      bonusWagerRemaining > 0 ? sourceBalance : balance;
+    const bonusBalance = Math.max(0, balance - withdrawableBalance);
     res.json({
       success: true,
       balance,
       bonusBalance,
       bonusWagerRemaining,
-      withdrawableBalance: Math.max(
-        0,
-        balance - (bonusWagerRemaining > 0 ? bonusBalance : 0),
-      ),
+      depositBalance,
+      withdrawableBalance,
       telegramId: user.telegramId,
     });
   } catch (error) {

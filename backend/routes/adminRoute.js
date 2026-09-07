@@ -1682,6 +1682,10 @@ router.patch(
       transaction.balanceBefore = Number(user.balance);
       transaction.balanceAfter = nextBalance;
       user.balance = nextBalance;
+      if (transaction.type === "deposit") {
+        user.depositBalance =
+          Number(user.depositBalance || 0) + Number(transaction.amount);
+      }
       await user.save();
       await transaction.save();
       let referralReward = null;

@@ -54,9 +54,26 @@ const submitWithdrawal = async (req, res) => {
       balanceBefore,
       Number(user.bonusBalance ?? bonusWagerRemaining),
     );
+    const depositBalance = Math.min(
+      balanceBefore,
+      Number(user.depositBalance || 0),
+    );
+    const winningsBalance = Math.min(
+      balanceBefore,
+      Number(user.winningsBalance || 0),
+    );
+    const sourceBalance = Math.min(
+      balanceBefore,
+      depositBalance + winningsBalance,
+    );
     const withdrawableBalance = Math.max(
       0,
-      balanceBefore - (bonusWagerRemaining > 0 ? bonusBalance : 0),
+      bonusWagerRemaining > 0 ? sourceBalance : balanceBefore,
+    );
+    const depositDebit = Math.min(total, depositBalance);
+    const winningsDebit = Math.min(
+      Math.max(0, total - depositDebit),
+      winningsBalance,
     );
     if (total > withdrawableBalance) {
       return res.status(400).json({
@@ -69,7 +86,13 @@ const submitWithdrawal = async (req, res) => {
     }
     const updatedUser = await User.findOneAndUpdate(
       { telegramId, balance: { $gte: total } },
-      { $inc: { balance: -total } },
+      {
+        $inc: {
+          balance: -total,
+          depositBalance: -depositDebit,
+          winningsBalance: -winningsDebit,
+        },
+      },
       { new: true },
     );
     if (!updatedUser) {
@@ -91,10 +114,26 @@ const submitWithdrawal = async (req, res) => {
         description: `${method} withdrawal request`,
         balanceBefore,
         balanceAfter: updatedUser.balance,
-        metadata: { method, name, account, fee, total, walletDebited: true },
+        metadata: {
+          method,
+          name,
+          account,
+          fee,
+          total,
+          walletDebited: true,
+        },
       });
     } catch (error) {
-      await User.updateOne({ _id: user._id }, { $inc: { balance: total } });
+      await User.updateOne(
+        { _id: user._id },
+        {
+          $inc: {
+            balance: total,
+            depositBalance: depositDebit,
+            winningsBalance: winningsDebit,
+          },
+        },
+      );
       throw error;
     }
 

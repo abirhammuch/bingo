@@ -93,6 +93,18 @@ const userSchema = new mongoose.Schema(
       min: 0,
     },
 
+    depositBalance: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
+    winningsBalance: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
     balance: {
       type: Number,
       default: 0,
