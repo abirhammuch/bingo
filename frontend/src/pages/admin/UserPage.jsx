@@ -389,7 +389,8 @@ const UserPage = () => {
 
           <div className="mt-4 flex flex-col gap-3 border-t border-slate-800 pt-4 text-sm text-slate-400 sm:flex-row sm:items-center sm:justify-between">
             <span>
-              Page {pagination.currentPage} of {pagination.totalPages} · {pagination.totalUsers} users
+              Page {pagination.currentPage} of {pagination.totalPages} ·{" "}
+              {pagination.totalUsers} users
             </span>
             <div className="flex gap-2">
               <button
