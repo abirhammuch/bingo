@@ -55,6 +55,17 @@ export const chargeBingoCard = async ({
 
       const balanceBefore = Number(user.balance);
       const balanceAfter = balanceBefore - amount;
+      const wagerFromBonus = Math.min(
+        amount,
+        Math.max(0, Number(user.bonusWagerRemaining || 0)),
+      );
+      if (wagerFromBonus > 0) {
+        await User.updateOne(
+          { _id: user._id },
+          { $inc: { bonusWagerRemaining: -wagerFromBonus } },
+          { session },
+        );
+      }
 
       try {
         await Transaction.create(

@@ -59,7 +59,13 @@ export const creditReferralReward = async ({
 
   await User.updateOne(
     { _id: inviter._id },
-    { $inc: { balance: reward, referralEarnings: reward } },
+    {
+      $inc: {
+        balance: reward,
+        referralEarnings: reward,
+        bonusWagerRemaining: reward,
+      },
+    },
   );
   return { amount: reward, percentage, telegramId: inviter.telegramId };
 };

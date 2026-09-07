@@ -49,6 +49,13 @@ const submitWithdrawal = async (req, res) => {
         .status(404)
         .json({ success: false, message: "User not found" });
     const balanceBefore = Number(user.balance);
+    const bonusWagerRemaining = Number(user.bonusWagerRemaining || 0);
+    if (bonusWagerRemaining > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Play ${bonusWagerRemaining.toFixed(2)} ETB more before withdrawing bonus funds`,
+      });
+    }
     const updatedUser = await User.findOneAndUpdate(
       { telegramId, balance: { $gte: total } },
       { $inc: { balance: -total } },

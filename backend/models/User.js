@@ -81,6 +81,12 @@ const userSchema = new mongoose.Schema(
       min: 0,
     },
 
+    bonusWagerRemaining: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
     balance: {
       type: Number,
       default: 0,
