@@ -21,6 +21,8 @@ import redeemCoupon from "../controller/userCouponController.js";
 import { userAuth } from "../middleware/userAuth.js";
 import WithdrawalSettings from "../models/WithdrawalSettings.js";
 import TournamentSettings from "../models/TournamentSettings.js";
+import User from "../models/User.js";
+import Transaction from "../models/Transaction.js";
 
 const userRouter = express.Router();
 
@@ -42,20 +44,66 @@ userRouter.get("/tournament", userAuth, async (req, res) => {
       new TournamentSettings().toObject();
     const users = await User.find({ isBlocked: { $ne: true } })
       .select("telegramId username firstName lastName referralCount")
-      .sort({ referralCount: -1, createdAt: 1 })
-      .limit(100)
       .lean();
-    const pointsPerReferral = Number(settings.pointsPerReferral || 0);
-    const leaderboard = users.map((entry, index) => ({
-      rank: index + 1,
-      telegramId: entry.telegramId,
-      name:
-        entry.username ||
-        [entry.firstName, entry.lastName].filter(Boolean).join(" ") ||
-        "Player",
-      invited: Number(entry.referralCount || 0),
-      points: Number(entry.referralCount || 0) * pointsPerReferral,
-    }));
+    const referredUsers = await User.find({
+      referredBy: { $in: users.map((entry) => entry.telegramId) },
+    })
+      .select("telegramId referredBy")
+      .lean();
+    const referredOwnerByTelegramId = new Map(
+      referredUsers.map((entry) => [entry.telegramId, entry.referredBy]),
+    );
+    const depositRows = await Transaction.aggregate([
+      {
+        $match: {
+          type: "deposit",
+          status: "completed",
+          telegramId: { $in: referredUsers.map((entry) => entry.telegramId) },
+        },
+      },
+      { $group: { _id: "$telegramId", deposits: { $sum: 1 } } },
+    ]);
+    const depositCountByOwner = new Map();
+    depositRows.forEach((row) => {
+      const owner = referredOwnerByTelegramId.get(row._id);
+      if (owner)
+        depositCountByOwner.set(
+          owner,
+          (depositCountByOwner.get(owner) || 0) + row.deposits,
+        );
+    });
+    const registrationPoints = Number(
+      settings.registrationPoints ?? settings.pointsPerReferral ?? 0,
+    );
+    const depositPoints = Number(settings.depositPoints ?? 50);
+    const leaderboard = users
+      .map((entry) => {
+        const invited = Number(entry.referralCount || 0);
+        const deposits = depositCountByOwner.get(entry.telegramId) || 0;
+        return {
+          ...entry,
+          invited,
+          deposits,
+          points: invited * registrationPoints + deposits * depositPoints,
+        };
+      })
+      .filter((entry) => entry.invited > 0 || entry.deposits > 0)
+      .sort(
+        (left, right) =>
+          right.points - left.points || right.invited - left.invited,
+      )
+      .slice(0, 100)
+      .map((entry, index) => ({
+        rank: index + 1,
+        telegramId: entry.telegramId,
+        name:
+          entry.username ||
+          [entry.firstName, entry.lastName].filter(Boolean).join(" ") ||
+          "Player",
+        invited: entry.invited,
+        deposits: entry.deposits,
+        points: entry.points,
+      }));
     res.json({ success: true, settings, leaderboard });
   } catch {
     res

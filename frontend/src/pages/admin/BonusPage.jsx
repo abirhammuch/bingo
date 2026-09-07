@@ -93,7 +93,8 @@ const BonusPage = ({ section = "all" }) => {
     name: "Monthly Invite Tournament",
     startDate: "2026-09-01",
     endDate: "2026-09-30",
-    pointsPerReferral: 20,
+    registrationPoints: 20,
+    depositPoints: 50,
     prizes: [
       { place: 1, amount: 10000 },
       { place: 2, amount: 5000 },
@@ -118,6 +119,11 @@ const BonusPage = ({ section = "all" }) => {
       .then((response) =>
         setTournamentForm({
           ...response.settings,
+          registrationPoints:
+            response.settings.registrationPoints ??
+            response.settings.pointsPerReferral ??
+            20,
+          depositPoints: response.settings.depositPoints ?? 50,
           startDate: response.settings.startDate.slice(0, 10),
           endDate: response.settings.endDate.slice(0, 10),
         }),
@@ -136,7 +142,9 @@ const BonusPage = ({ section = "all" }) => {
     try {
       const response = await updateAdminTournament({
         ...tournamentForm,
-        pointsPerReferral: Number(tournamentForm.pointsPerReferral),
+        registrationPoints: Number(tournamentForm.registrationPoints),
+        depositPoints: Number(tournamentForm.depositPoints),
+        pointsPerReferral: Number(tournamentForm.registrationPoints),
         prizes: tournamentForm.prizes.map((prize) => ({
           place: Number(prize.place),
           amount: Number(prize.amount),
@@ -888,8 +896,8 @@ const BonusPage = ({ section = "all" }) => {
                     Scoring
                   </p>
                   <p className="mt-1 flex items-center gap-2 text-sm font-bold text-amber-300">
-                    <FaChartLine /> +{tournamentForm.pointsPerReferral} points /
-                    referral
+                    <FaChartLine /> +{tournamentForm.registrationPoints}{" "}
+                    registration / +{tournamentForm.depositPoints} deposit
                   </p>
                 </div>
               </div>
@@ -942,15 +950,30 @@ const BonusPage = ({ section = "all" }) => {
                     />
                   </label>
                   <label className="text-xs text-slate-400 sm:col-span-2">
-                    Points per invited user
+                    Registration invite points
                     <input
                       type="number"
                       min="0"
-                      value={tournamentForm.pointsPerReferral}
+                      value={tournamentForm.registrationPoints}
                       onChange={(event) =>
                         setTournamentForm({
                           ...tournamentForm,
-                          pointsPerReferral: event.target.value,
+                          registrationPoints: event.target.value,
+                        })
+                      }
+                      className="mt-1 block w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100"
+                    />
+                  </label>
+                  <label className="text-xs text-slate-400 sm:col-span-2">
+                    Deposit invite points
+                    <input
+                      type="number"
+                      min="0"
+                      value={tournamentForm.depositPoints}
+                      onChange={(event) =>
+                        setTournamentForm({
+                          ...tournamentForm,
+                          depositPoints: event.target.value,
                         })
                       }
                       className="mt-1 block w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100"

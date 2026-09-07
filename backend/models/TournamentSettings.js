@@ -14,6 +14,8 @@ const tournamentSettingsSchema = new mongoose.Schema(
     name: { type: String, default: "Monthly Invite Tournament", trim: true },
     startDate: { type: Date, default: "2026-09-01T00:00:00.000Z" },
     endDate: { type: Date, default: "2026-09-30T23:59:59.000Z" },
+    registrationPoints: { type: Number, default: 20, min: 0 },
+    depositPoints: { type: Number, default: 50, min: 0 },
     pointsPerReferral: { type: Number, default: 20, min: 0 },
     prizes: {
       type: [prizeSchema],

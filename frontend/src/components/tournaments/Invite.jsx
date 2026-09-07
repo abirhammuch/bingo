@@ -19,11 +19,11 @@ import {
   FaUsers,
 } from "react-icons/fa";
 
-const getSteps = (pointsPerReferral) => [
+const getSteps = (registrationPoints, depositPoints) => [
   [FaLink, "Friend clicks your invite link", "0 points"],
-  [FaUserPlus, "Friend registers on Telegram", `+${pointsPerReferral} points`],
-  [FaUsers, "Friend completes profile", "No extra points"],
-  [FaGamepad, "Friend plays first game", "Leaderboard remains updated"],
+  [FaUserPlus, "Friend registers on Telegram", `+${registrationPoints} points`],
+  [FaUsers, "Friend makes a deposit", `+${depositPoints} points`],
+  [FaGamepad, "Points update the leaderboard", "Highest scores win"],
 ];
 
 const getTimeLeft = (endDate) => {
@@ -95,7 +95,13 @@ const Invite = () => {
   );
   const leaderboard = tournament?.leaderboard || [];
   const prizes = tournament?.settings?.prizes || [];
-  const steps = getSteps(Number(tournament?.settings?.pointsPerReferral || 20));
+  const registrationPoints = Number(
+    tournament?.settings?.registrationPoints ??
+      tournament?.settings?.pointsPerReferral ??
+      20,
+  );
+  const depositPoints = Number(tournament?.settings?.depositPoints || 50);
+  const steps = getSteps(registrationPoints, depositPoints);
 
   const tournamentCode =
     referralUser?.referralCode ||
@@ -320,6 +326,7 @@ const Invite = () => {
                       <th className="px-2 py-2">#</th>
                       <th className="px-2 py-2">Player</th>
                       <th className="px-2 py-2 text-right">Invited</th>
+                      <th className="px-2 py-2 text-right">Deposits</th>
                       <th className="px-2 py-2 text-right">Points</th>
                     </tr>
                   </thead>
@@ -343,6 +350,9 @@ const Invite = () => {
                         <td className="px-2 py-2 font-medium">{entry.name}</td>
                         <td className="px-2 py-2 text-right text-amber-300">
                           {entry.invited}
+                        </td>
+                        <td className="px-2 py-2 text-right text-cyan-300">
+                          {entry.deposits}
                         </td>
                         <td className="px-2 py-2 text-right font-semibold">
                           {entry.points.toLocaleString()}

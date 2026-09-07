@@ -1255,6 +1255,10 @@ router.patch(
       const startDate = new Date(req.body.startDate);
       const endDate = new Date(req.body.endDate);
       const name = String(req.body.name || "Monthly Invite Tournament").trim();
+      const registrationPoints = Number(
+        req.body.registrationPoints ?? req.body.pointsPerReferral,
+      );
+      const depositPoints = Number(req.body.depositPoints);
       const pointsPerReferral = Number(req.body.pointsPerReferral);
       const prizes = Array.isArray(req.body.prizes)
         ? req.body.prizes.map((prize) => ({
@@ -1267,8 +1271,10 @@ router.patch(
         Number.isNaN(endDate.getTime()) ||
         endDate <= startDate ||
         !name ||
-        !Number.isFinite(pointsPerReferral) ||
-        pointsPerReferral < 0 ||
+        !Number.isFinite(registrationPoints) ||
+        registrationPoints < 0 ||
+        !Number.isFinite(depositPoints) ||
+        depositPoints < 0 ||
         !prizes.length ||
         prizes.some(
           (prize) =>
@@ -1284,7 +1290,16 @@ router.patch(
       }
       const settings = await TournamentSettings.findOneAndUpdate(
         { key: "default" },
-        { key: "default", name, startDate, endDate, pointsPerReferral, prizes },
+        {
+          key: "default",
+          name,
+          startDate,
+          endDate,
+          registrationPoints,
+          depositPoints,
+          pointsPerReferral: registrationPoints,
+          prizes,
+        },
         { new: true, upsert: true, runValidators: true },
       );
       res.json({ success: true, settings });
