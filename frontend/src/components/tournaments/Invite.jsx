@@ -412,7 +412,7 @@ const Invite = () => {
           </aside>
         </div>
 
-        <section className="mt-4 flex flex-col items-center justify-between gap-4 rounded-xl border border-violet-700/70 bg-gradient-to-r from-[#111266] to-[#1f0d63] px-5 py-4 sm:flex-row sm:px-8">
+        <section className="mt-4 flex flex-col mb-5 items-center justify-between gap-4 rounded-xl border border-violet-700/70 bg-gradient-to-r from-[#111266] to-[#1f0d63] px-5 py-4 sm:flex-row sm:px-8">
           <div className="flex items-center gap-3">
             <FaShareAlt className="text-3xl text-cyan-300" />
             <div>
