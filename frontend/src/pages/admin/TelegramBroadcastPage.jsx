@@ -1,5 +1,8 @@
 import React, { useState } from "react";
-import { sendAdminTelegramBroadcast } from "../../services/userService";
+import {
+  deleteLastAdminTelegramBroadcast,
+  sendAdminTelegramBroadcast,
+} from "../../services/userService";
 
 const TelegramBroadcastPage = () => {
   const [message, setMessage] = useState("");
@@ -10,6 +13,7 @@ const TelegramBroadcastPage = () => {
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const submit = async (event) => {
     event.preventDefault();
@@ -35,6 +39,24 @@ const TelegramBroadcastPage = () => {
       setError(requestError.message || "Failed to send Telegram message");
     } finally {
       setSending(false);
+    }
+  };
+
+  const deleteLastBroadcast = async () => {
+    if (!window.confirm("Delete the last tracked broadcast for all users?"))
+      return;
+    setStatus("");
+    setError("");
+    setDeleting(true);
+    try {
+      const response = await deleteLastAdminTelegramBroadcast();
+      setStatus(
+        `Deleted for ${response.deleted} users. Failed: ${response.failed}.`,
+      );
+    } catch (requestError) {
+      setError(requestError.message || "Failed to delete broadcast");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -119,6 +141,14 @@ const TelegramBroadcastPage = () => {
           className="rounded-lg bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-500 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {sending ? "Sending..." : "Send to all registered users"}
+        </button>
+        <button
+          type="button"
+          onClick={deleteLastBroadcast}
+          disabled={sending || deleting}
+          className="rounded-lg border border-rose-500/40 px-4 py-2 text-sm font-medium text-rose-300 hover:bg-rose-500/10 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {deleting ? "Deleting..." : "Delete last broadcast for all users"}
         </button>
       </form>
     </section>

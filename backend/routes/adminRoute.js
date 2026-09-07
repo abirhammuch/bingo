@@ -13,6 +13,7 @@ import BonusSettings from "../models/BonusSettings.js";
 import { creditDepositBonuses } from "../services/wallet/bonusService.js";
 import bot from "../services/telegram/bot.js";
 import { Markup } from "telegraf";
+import TelegramBroadcast from "../models/TelegramBroadcast.js";
 import crypto from "node:crypto";
 import AdminUser from "../models/AdminUser.js";
 import { SELECTION_TIME_SECONDS } from "../services/bingo/bingoService.js";
@@ -153,6 +154,10 @@ router.post(
     }
 
     try {
+      const broadcast = await TelegramBroadcast.create({
+        status: "sending",
+        deliveries: [],
+      });
       const replyMarkup = parsedButtonUrl
         ? Markup.inlineKeyboard([
             [Markup.button.url(buttonText.slice(0, 64), parsedButtonUrl.href)],
@@ -169,15 +174,32 @@ router.post(
       for (const user of users) {
         try {
           if (photo) {
-            await bot.telegram.sendPhoto(user.telegramId, photo, {
-              caption: message || undefined,
-              reply_markup: replyMarkup?.reply_markup,
+            const sentMessage = await bot.telegram.sendPhoto(
+              user.telegramId,
+              photo,
+              {
+                caption: message || undefined,
+                reply_markup: replyMarkup?.reply_markup,
+              },
+            );
+            broadcast.deliveries.push({
+              telegramId: user.telegramId,
+              messageId: sentMessage.message_id,
             });
           } else {
-            await bot.telegram.sendMessage(user.telegramId, message, {
-              reply_markup: replyMarkup?.reply_markup,
+            const sentMessage = await bot.telegram.sendMessage(
+              user.telegramId,
+              message,
+              {
+                reply_markup: replyMarkup?.reply_markup,
+              },
+            );
+            broadcast.deliveries.push({
+              telegramId: user.telegramId,
+              messageId: sentMessage.message_id,
             });
           }
+          if (broadcast.deliveries.length % 25 === 0) await broadcast.save();
           sent += 1;
         } catch (error) {
           failed += 1;
@@ -187,12 +209,66 @@ router.post(
           );
         }
       }
+      broadcast.status = "sent";
+      await broadcast.save();
       res.json({ success: true, sent, failed, total: users.length });
     } catch (error) {
       console.error("Telegram broadcast error:", error);
       res
         .status(500)
         .json({ success: false, message: "Failed to send broadcast" });
+    }
+  },
+);
+
+router.delete(
+  "/telegram/broadcast/last",
+  requireAdmin,
+  requireSuperAdmin,
+  async (req, res) => {
+    try {
+      const broadcast = await TelegramBroadcast.findOne({
+        status: { $in: ["sent", "deleting"] },
+      }).sort({ createdAt: -1 });
+      if (!broadcast) {
+        return res.status(404).json({
+          success: false,
+          message: "No tracked broadcast is available to delete",
+        });
+      }
+      broadcast.status = "deleting";
+      await broadcast.save();
+      let deleted = 0;
+      let failed = 0;
+      for (const delivery of broadcast.deliveries) {
+        if (delivery.deleted) {
+          deleted += 1;
+          continue;
+        }
+        try {
+          await bot.telegram.deleteMessage(
+            delivery.telegramId,
+            delivery.messageId,
+          );
+          delivery.deleted = true;
+          deleted += 1;
+        } catch {
+          failed += 1;
+        }
+      }
+      broadcast.status = failed === 0 ? "deleted" : "sent";
+      await broadcast.save();
+      res.json({
+        success: true,
+        deleted,
+        failed,
+        total: broadcast.deliveries.length,
+      });
+    } catch (error) {
+      console.error("Telegram broadcast deletion error:", error);
+      res
+        .status(500)
+        .json({ success: false, message: "Failed to delete broadcast" });
     }
   },
 );
