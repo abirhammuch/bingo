@@ -1254,6 +1254,7 @@ router.patch(
     try {
       const startDate = new Date(req.body.startDate);
       const endDate = new Date(req.body.endDate);
+      const name = String(req.body.name || "Monthly Invite Tournament").trim();
       const pointsPerReferral = Number(req.body.pointsPerReferral);
       const prizes = Array.isArray(req.body.prizes)
         ? req.body.prizes.map((prize) => ({
@@ -1265,6 +1266,7 @@ router.patch(
         Number.isNaN(startDate.getTime()) ||
         Number.isNaN(endDate.getTime()) ||
         endDate <= startDate ||
+        !name ||
         !Number.isFinite(pointsPerReferral) ||
         pointsPerReferral < 0 ||
         !prizes.length ||
@@ -1282,17 +1284,15 @@ router.patch(
       }
       const settings = await TournamentSettings.findOneAndUpdate(
         { key: "default" },
-        { key: "default", startDate, endDate, pointsPerReferral, prizes },
+        { key: "default", name, startDate, endDate, pointsPerReferral, prizes },
         { new: true, upsert: true, runValidators: true },
       );
       res.json({ success: true, settings });
     } catch {
-      res
-        .status(500)
-        .json({
-          success: false,
-          message: "Failed to save tournament settings",
-        });
+      res.status(500).json({
+        success: false,
+        message: "Failed to save tournament settings",
+      });
     }
   },
 );

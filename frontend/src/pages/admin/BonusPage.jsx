@@ -1,5 +1,15 @@
 import React, { useEffect, useState } from "react";
-import { FaEdit, FaTrash } from "react-icons/fa";
+import {
+  FaCalendarAlt,
+  FaChartLine,
+  FaEdit,
+  FaGift,
+  FaLink,
+  FaSave,
+  FaTrophy,
+  FaTrash,
+  FaUsers,
+} from "react-icons/fa";
 import {
   createAdminCoupon,
   deleteAdminCommissionRound,
@@ -80,6 +90,7 @@ const BonusPage = ({ section = "all" }) => {
   const [withdrawFeeError, setWithdrawFeeError] = useState("");
   const [withdrawFeeMessage, setWithdrawFeeMessage] = useState("");
   const [tournamentForm, setTournamentForm] = useState({
+    name: "Monthly Invite Tournament",
     startDate: "2026-09-01",
     endDate: "2026-09-30",
     pointsPerReferral: 20,
@@ -833,73 +844,216 @@ const BonusPage = ({ section = "all" }) => {
         )}
 
         {show("tournament") && (
-          <Panel title="Invite Tournament Settings">
-            <form
-              onSubmit={saveTournament}
-              className="grid gap-4 p-4 sm:grid-cols-2"
-            >
-              {tournamentError && (
-                <div className="sm:col-span-2 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-300">
-                  {tournamentError}
+          <div className="space-y-4">
+            <div className="relative overflow-hidden rounded-2xl border border-indigo-500/40 bg-[radial-gradient(circle_at_85%_15%,#263b9b,transparent_35%),linear-gradient(115deg,#07143b,#101d58_55%,#131044)] p-5 shadow-xl shadow-indigo-950/20 sm:p-7">
+              <div className="relative flex flex-col justify-between gap-5 sm:flex-row sm:items-center">
+                <div>
+                  <div className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-cyan-300">
+                    <FaTrophy /> Monthly Invite Tournament
+                  </div>
+                  <h1 className="text-2xl font-black text-white sm:text-3xl">
+                    {tournamentForm.name || "Invite & Win"}
+                  </h1>
+                  <p className="mt-2 max-w-xl text-sm text-blue-100/75">
+                    Manage campaign dates, referral scoring, prize amounts, and
+                    the experience shown to players.
+                  </p>
                 </div>
-              )}
-              {tournamentMessage && (
-                <div className="sm:col-span-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-300">
-                  {tournamentMessage}
+                <span className="inline-flex items-center gap-2 self-start rounded-full border border-emerald-400/30 bg-emerald-400/15 px-3 py-1.5 text-xs font-bold text-emerald-300 sm:self-center">
+                  <span className="h-2 w-2 rounded-full bg-emerald-300" />{" "}
+                  Active
+                </span>
+              </div>
+              <div className="relative mt-6 grid gap-2 sm:grid-cols-3">
+                <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+                  <p className="text-[10px] uppercase tracking-wider text-blue-200/60">
+                    Start date
+                  </p>
+                  <p className="mt-1 flex items-center gap-2 text-sm font-bold text-white">
+                    <FaCalendarAlt className="text-cyan-300" />{" "}
+                    {tournamentForm.startDate}
+                  </p>
                 </div>
-              )}
-              {["startDate", "endDate"].map((field) => (
-                <label key={field} className="text-xs text-slate-400">
-                  {field === "startDate" ? "Start date" : "End date"}
-                  <input
-                    type="date"
-                    value={tournamentForm[field]}
-                    onChange={(event) =>
-                      setTournamentForm({
-                        ...tournamentForm,
-                        [field]: event.target.value,
-                      })
-                    }
-                    className="mt-1 block w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100"
-                  />
-                </label>
-              ))}
-              <label className="text-xs text-slate-400 sm:col-span-2">
-                Points per invited user
-                <input
-                  type="number"
-                  min="0"
-                  value={tournamentForm.pointsPerReferral}
-                  onChange={(event) =>
-                    setTournamentForm({
-                      ...tournamentForm,
-                      pointsPerReferral: event.target.value,
-                    })
-                  }
-                  className="mt-1 block w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100"
-                />
-              </label>
-              {tournamentForm.prizes.map((prize, index) => (
-                <label key={prize.place} className="text-xs text-slate-400">
-                  Place {prize.place} prize (ETB)
-                  <input
-                    type="number"
-                    min="0"
-                    value={prize.amount}
-                    onChange={(event) => {
-                      const prizes = [...tournamentForm.prizes];
-                      prizes[index] = { ...prize, amount: event.target.value };
-                      setTournamentForm({ ...tournamentForm, prizes });
-                    }}
-                    className="mt-1 block w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100"
-                  />
-                </label>
-              ))}
-              <button className="rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-500 sm:col-span-2">
-                Save tournament settings
-              </button>
-            </form>
-          </Panel>
+                <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+                  <p className="text-[10px] uppercase tracking-wider text-blue-200/60">
+                    End date
+                  </p>
+                  <p className="mt-1 flex items-center gap-2 text-sm font-bold text-white">
+                    <FaCalendarAlt className="text-cyan-300" />{" "}
+                    {tournamentForm.endDate}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+                  <p className="text-[10px] uppercase tracking-wider text-blue-200/60">
+                    Scoring
+                  </p>
+                  <p className="mt-1 flex items-center gap-2 text-sm font-bold text-amber-300">
+                    <FaChartLine /> +{tournamentForm.pointsPerReferral} points /
+                    referral
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
+              <Panel title="Tournament Settings" action="Live">
+                <form
+                  onSubmit={saveTournament}
+                  className="grid gap-4 p-4 sm:grid-cols-2"
+                >
+                  {tournamentError && (
+                    <div className="sm:col-span-2 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-300">
+                      {tournamentError}
+                    </div>
+                  )}
+                  {tournamentMessage && (
+                    <div className="sm:col-span-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-300">
+                      {tournamentMessage}
+                    </div>
+                  )}
+                  {["startDate", "endDate"].map((field) => (
+                    <label key={field} className="text-xs text-slate-400">
+                      {field === "startDate" ? "Start date" : "End date"}
+                      <input
+                        type="date"
+                        value={tournamentForm[field]}
+                        onChange={(event) =>
+                          setTournamentForm({
+                            ...tournamentForm,
+                            [field]: event.target.value,
+                          })
+                        }
+                        className="mt-1 block w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100"
+                      />
+                    </label>
+                  ))}
+                  <label className="text-xs text-slate-400 sm:col-span-2">
+                    Tournament name
+                    <input
+                      type="text"
+                      value={tournamentForm.name || "Monthly Invite Tournament"}
+                      onChange={(event) =>
+                        setTournamentForm({
+                          ...tournamentForm,
+                          name: event.target.value,
+                        })
+                      }
+                      className="mt-1 block w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100"
+                    />
+                  </label>
+                  <label className="text-xs text-slate-400 sm:col-span-2">
+                    Points per invited user
+                    <input
+                      type="number"
+                      min="0"
+                      value={tournamentForm.pointsPerReferral}
+                      onChange={(event) =>
+                        setTournamentForm({
+                          ...tournamentForm,
+                          pointsPerReferral: event.target.value,
+                        })
+                      }
+                      className="mt-1 block w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100"
+                    />
+                  </label>
+                  {tournamentForm.prizes.map((prize, index) => (
+                    <label key={prize.place} className="text-xs text-slate-400">
+                      Place {prize.place} prize (ETB)
+                      <input
+                        type="number"
+                        min="0"
+                        value={prize.amount}
+                        onChange={(event) => {
+                          const prizes = [...tournamentForm.prizes];
+                          prizes[index] = {
+                            ...prize,
+                            amount: event.target.value,
+                          };
+                          setTournamentForm({ ...tournamentForm, prizes });
+                        }}
+                        className="mt-1 block w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100"
+                      />
+                    </label>
+                  ))}
+                  <button className="flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 sm:col-span-2">
+                    <FaSave /> Save changes
+                  </button>
+                </form>
+              </Panel>
+
+              <div className="space-y-4">
+                <Panel title="How It Works" action="Edit">
+                  <div className="space-y-3 p-4 text-xs">
+                    {[
+                      [
+                        FaLink,
+                        "Get your invite link",
+                        "Share it with friends on Telegram",
+                      ],
+                      [
+                        FaUsers,
+                        "Friends register",
+                        "Each referral earns points",
+                      ],
+                      [
+                        FaChartLine,
+                        "Points are ranked",
+                        "Highest scores win prizes",
+                      ],
+                    ].map(([Icon, title, detail], index) => (
+                      <div key={title} className="flex items-center gap-3">
+                        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-indigo-600 text-white">
+                          {index + 1}
+                        </span>
+                        <Icon className="text-cyan-300" />
+                        <div>
+                          <p className="font-semibold text-slate-200">
+                            {title}
+                          </p>
+                          <p className="text-slate-500">{detail}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </Panel>
+                <Panel title="Tournament Rules">
+                  <div className="space-y-2 p-4 text-xs text-slate-300">
+                    <p className="text-emerald-300">
+                      ● Only registered users can participate
+                    </p>
+                    <p className="text-emerald-300">
+                      ● Rankings update from referral activity
+                    </p>
+                    <p className="text-emerald-300">
+                      ● Prize amounts are controlled by admin
+                    </p>
+                  </div>
+                </Panel>
+              </div>
+            </div>
+
+            <Panel title="Prizes" action="Edit">
+              <div className="grid gap-3 p-4 sm:grid-cols-3">
+                {tournamentForm.prizes.map((prize, index) => (
+                  <div
+                    key={prize.place}
+                    className="rounded-xl border border-slate-800 bg-slate-950/70 p-4"
+                  >
+                    <div className="flex items-center gap-2 text-sm font-bold text-amber-300">
+                      <FaGift /> {prize.place}
+                      {index === 0 ? "st" : index === 1 ? "nd" : "rd"} Place
+                    </div>
+                    <p className="mt-2 text-2xl font-black text-white">
+                      {Number(prize.amount || 0).toLocaleString()}{" "}
+                      <span className="text-xs font-medium text-slate-500">
+                        ETB
+                      </span>
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </Panel>
+          </div>
         )}
 
         {show("commission") && (
