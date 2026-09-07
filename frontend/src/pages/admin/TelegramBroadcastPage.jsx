@@ -5,6 +5,8 @@ const TelegramBroadcastPage = () => {
   const [message, setMessage] = useState("");
   const [image, setImage] = useState("");
   const [imageName, setImageName] = useState("");
+  const [buttonUrl, setButtonUrl] = useState("");
+  const [buttonText, setButtonText] = useState("");
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
@@ -15,13 +17,20 @@ const TelegramBroadcastPage = () => {
     setError("");
     setSending(true);
     try {
-      const response = await sendAdminTelegramBroadcast({ message, image });
+      const response = await sendAdminTelegramBroadcast({
+        message,
+        image,
+        buttonUrl,
+        buttonText,
+      });
       setStatus(
         `Message sent to ${response.sent} users. Failed: ${response.failed}.`,
       );
       setMessage("");
       setImage("");
       setImageName("");
+      setButtonUrl("");
+      setButtonText("");
     } catch (requestError) {
       setError(requestError.message || "Failed to send Telegram message");
     } finally {
@@ -71,6 +80,29 @@ const TelegramBroadcastPage = () => {
             </span>
           )}
         </label>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="block text-sm text-slate-300">
+            Button name (optional)
+            <input
+              type="text"
+              maxLength="64"
+              value={buttonText}
+              onChange={(event) => setButtonText(event.target.value)}
+              placeholder="Open website"
+              className="mt-2 block w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none focus:border-teal-500"
+            />
+          </label>
+          <label className="block text-sm text-slate-300">
+            Button link (optional)
+            <input
+              type="url"
+              value={buttonUrl}
+              onChange={(event) => setButtonUrl(event.target.value)}
+              placeholder="https://example.com"
+              className="mt-2 block w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none focus:border-teal-500"
+            />
+          </label>
+        </div>
         <textarea
           required
           minLength="1"

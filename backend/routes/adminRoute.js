@@ -12,6 +12,7 @@ import { creditReferralReward } from "../services/wallet/referralService.js";
 import BonusSettings from "../models/BonusSettings.js";
 import { creditDepositBonuses } from "../services/wallet/bonusService.js";
 import bot from "../services/telegram/bot.js";
+import { Markup } from "telegraf";
 import crypto from "node:crypto";
 import AdminUser from "../models/AdminUser.js";
 import { SELECTION_TIME_SECONDS } from "../services/bingo/bingoService.js";
@@ -93,6 +94,34 @@ router.post(
   async (req, res) => {
     const message = String(req.body.message || "").trim();
     const image = String(req.body.image || "").trim();
+    const buttonUrl = String(req.body.buttonUrl || "").trim();
+    const buttonText = String(req.body.buttonText || "").trim();
+    let parsedButtonUrl;
+    if (buttonUrl) {
+      try {
+        parsedButtonUrl = new URL(buttonUrl);
+        if (!["http:", "https:"].includes(parsedButtonUrl.protocol)) {
+          throw new Error("Unsupported URL protocol");
+        }
+      } catch {
+        return res.status(400).json({
+          success: false,
+          message: "Button link must be a valid HTTP or HTTPS URL",
+        });
+      }
+    }
+    if (buttonText && !buttonUrl) {
+      return res.status(400).json({
+        success: false,
+        message: "Button link is required when a button name is provided",
+      });
+    }
+    if (buttonUrl && !buttonText) {
+      return res.status(400).json({
+        success: false,
+        message: "Button name is required when a button link is provided",
+      });
+    }
     if ((!message && !image) || message.length > 4096) {
       return res.status(400).json({
         success: false,
@@ -124,6 +153,11 @@ router.post(
     }
 
     try {
+      const replyMarkup = parsedButtonUrl
+        ? Markup.inlineKeyboard([
+            [Markup.button.url(buttonText.slice(0, 64), parsedButtonUrl.href)],
+          ])
+        : undefined;
       const users = await User.find({
         isRegistered: true,
         isBlocked: { $ne: true },
@@ -137,9 +171,12 @@ router.post(
           if (photo) {
             await bot.telegram.sendPhoto(user.telegramId, photo, {
               caption: message || undefined,
+              reply_markup: replyMarkup?.reply_markup,
             });
           } else {
-            await bot.telegram.sendMessage(user.telegramId, message);
+            await bot.telegram.sendMessage(user.telegramId, message, {
+              reply_markup: replyMarkup?.reply_markup,
+            });
           }
           sent += 1;
         } catch (error) {
