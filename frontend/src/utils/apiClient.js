@@ -18,6 +18,16 @@ const getAuthToken = (path) => {
     : localStorage.getItem(getAuthStorageKey("authToken"));
 };
 
+const clearInvalidSession = (path) => {
+  if (path.startsWith("/api/admin") || path.startsWith("/api/users/admin")) {
+    localStorage.removeItem("adminToken");
+    return;
+  }
+
+  localStorage.removeItem(getAuthStorageKey("authToken"));
+  localStorage.removeItem(getAuthStorageKey("authUser"));
+};
+
 const buildUrl = (path) => `${API_BASE_URL}${path}`;
 
 const request = async (path, options = {}) => {
@@ -30,11 +40,21 @@ const request = async (path, options = {}) => {
     },
     ...options,
   });
-  
+
   const text = await response.text();
-  const data = text ? JSON.parse(text) : null;
+  let data = null;
+
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = null;
+  }
 
   if (!response.ok) {
+    if (response.status === 401) {
+      clearInvalidSession(path);
+    }
+
     const error = data?.message || response.statusText;
     throw new Error(error || "API request failed");
   }
