@@ -112,7 +112,9 @@ const BonusPage = ({ section = "all" }) => {
         }),
       )
       .catch((error) =>
-        setTournamentError(error.message || "Failed to load tournament settings"),
+        setTournamentError(
+          error.message || "Failed to load tournament settings",
+        ),
       );
   }, [section]);
 
@@ -832,7 +834,10 @@ const BonusPage = ({ section = "all" }) => {
 
         {show("tournament") && (
           <Panel title="Invite Tournament Settings">
-            <form onSubmit={saveTournament} className="grid gap-4 p-4 sm:grid-cols-2">
+            <form
+              onSubmit={saveTournament}
+              className="grid gap-4 p-4 sm:grid-cols-2"
+            >
               {tournamentError && (
                 <div className="sm:col-span-2 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-300">
                   {tournamentError}
@@ -850,7 +855,10 @@ const BonusPage = ({ section = "all" }) => {
                     type="date"
                     value={tournamentForm[field]}
                     onChange={(event) =>
-                      setTournamentForm({ ...tournamentForm, [field]: event.target.value })
+                      setTournamentForm({
+                        ...tournamentForm,
+                        [field]: event.target.value,
+                      })
                     }
                     className="mt-1 block w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100"
                   />
@@ -863,7 +871,10 @@ const BonusPage = ({ section = "all" }) => {
                   min="0"
                   value={tournamentForm.pointsPerReferral}
                   onChange={(event) =>
-                    setTournamentForm({ ...tournamentForm, pointsPerReferral: event.target.value })
+                    setTournamentForm({
+                      ...tournamentForm,
+                      pointsPerReferral: event.target.value,
+                    })
                   }
                   className="mt-1 block w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100"
                 />

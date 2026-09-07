@@ -1,10 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import {
-  fetchTournament,
-  getUserProfile,
-} from "../../services/userService";
+import { fetchTournament, getUserProfile } from "../../services/userService";
 import {
   FaArrowRight,
   FaCalendarAlt,
@@ -328,30 +325,30 @@ const Invite = () => {
                   </thead>
                   <tbody>
                     {leaderboard.map((entry) => (
-                        <tr
-                          key={entry.telegramId}
-                          className={`border-b border-blue-950 ${entry.telegramId === user?.telegramId ? "bg-indigo-700/60" : entry.rank <= 3 ? "bg-amber-500/15" : ""}`}
-                        >
-                          <td className="px-2 py-2 font-bold text-slate-300">
-                            {entry.rank === 1 ? (
-                              <FaCrown className="text-amber-300" />
-                            ) : entry.rank === 2 ? (
-                              <FaMedal className="text-slate-300" />
-                            ) : entry.rank === 3 ? (
-                              <FaMedal className="text-orange-400" />
-                            ) : (
-                              entry.rank
-                            )}
-                          </td>
-                          <td className="px-2 py-2 font-medium">{entry.name}</td>
-                          <td className="px-2 py-2 text-right text-amber-300">
-                            {entry.invited}
-                          </td>
-                          <td className="px-2 py-2 text-right font-semibold">
-                            {entry.points.toLocaleString()}
-                          </td>
-                        </tr>
-                      ))}
+                      <tr
+                        key={entry.telegramId}
+                        className={`border-b border-blue-950 ${entry.telegramId === user?.telegramId ? "bg-indigo-700/60" : entry.rank <= 3 ? "bg-amber-500/15" : ""}`}
+                      >
+                        <td className="px-2 py-2 font-bold text-slate-300">
+                          {entry.rank === 1 ? (
+                            <FaCrown className="text-amber-300" />
+                          ) : entry.rank === 2 ? (
+                            <FaMedal className="text-slate-300" />
+                          ) : entry.rank === 3 ? (
+                            <FaMedal className="text-orange-400" />
+                          ) : (
+                            entry.rank
+                          )}
+                        </td>
+                        <td className="px-2 py-2 font-medium">{entry.name}</td>
+                        <td className="px-2 py-2 text-right text-amber-300">
+                          {entry.invited}
+                        </td>
+                        <td className="px-2 py-2 text-right font-semibold">
+                          {entry.points.toLocaleString()}
+                        </td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
@@ -387,7 +384,13 @@ const Invite = () => {
                     icon={prize.place === 1 ? <FaCrown /> : <FaMedal />}
                     place={`${prize.place}${prize.place === 1 ? "st" : prize.place === 2 ? "nd" : prize.place === 3 ? "rd" : "th"} Place`}
                     amount={`${Number(prize.amount).toLocaleString()} ETB`}
-                    color={prize.place === 1 ? "amber" : prize.place === 2 ? "blue" : "orange"}
+                    color={
+                      prize.place === 1
+                        ? "amber"
+                        : prize.place === 2
+                          ? "blue"
+                          : "orange"
+                    }
                   />
                 ))}
               </div>

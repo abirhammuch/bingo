@@ -1276,7 +1276,9 @@ router.patch(
             prize.amount < 0,
         )
       ) {
-        return res.status(400).json({ success: false, message: "Invalid tournament settings" });
+        return res
+          .status(400)
+          .json({ success: false, message: "Invalid tournament settings" });
       }
       const settings = await TournamentSettings.findOneAndUpdate(
         { key: "default" },
@@ -1285,7 +1287,12 @@ router.patch(
       );
       res.json({ success: true, settings });
     } catch {
-      res.status(500).json({ success: false, message: "Failed to save tournament settings" });
+      res
+        .status(500)
+        .json({
+          success: false,
+          message: "Failed to save tournament settings",
+        });
     }
   },
 );

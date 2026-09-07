@@ -300,7 +300,9 @@ const AdminLayout = () => {
             <aside className="relative h-full w-[min(86vw,320px)] overflow-y-auto border-r border-slate-800 bg-slate-900 p-5 shadow-2xl shadow-black/50">
               <div className="mb-6 flex items-center justify-between">
                 <div>
-                  <div className="font-semibold text-lg">Casina bingo Admin</div>
+                  <div className="font-semibold text-lg">
+                    Casina bingo Admin
+                  </div>
                   <div className="text-xs uppercase tracking-[0.25em] text-slate-500">
                     Management Portal
                   </div>
@@ -363,8 +365,6 @@ const AdminLayout = () => {
               </div>
             </div>
           </div>
-
-         
 
           <nav className="space-y-2">
             {visibleAdminMenu.map((item) => (

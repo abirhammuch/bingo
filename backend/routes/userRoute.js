@@ -58,7 +58,9 @@ userRouter.get("/tournament", userAuth, async (req, res) => {
     }));
     res.json({ success: true, settings, leaderboard });
   } catch {
-    res.status(500).json({ success: false, message: "Failed to load tournament" });
+    res
+      .status(500)
+      .json({ success: false, message: "Failed to load tournament" });
   }
 });
 userRouter.post("/coupons/redeem", userAuth, redeemCoupon);
