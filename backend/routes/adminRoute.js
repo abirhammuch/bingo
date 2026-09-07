@@ -941,7 +941,7 @@ router.get("/coupons", requireAdmin, requireSuperAdmin, async (req, res) => {
 
 router.post("/coupons", requireAdmin, requireSuperAdmin, async (req, res) => {
   try {
-    const { code, type, value, expiry, perUserLimit } = req.body;
+    const { code, type, value, expiry, perUserLimit, maxClaims } = req.body;
     const normalizedCode = String(code || "")
       .trim()
       .toUpperCase();
@@ -957,6 +957,10 @@ router.post("/coupons", requireAdmin, requireSuperAdmin, async (req, res) => {
       value: numericValue,
       expiry: expiry || null,
       perUserLimit: Math.max(1, Number(perUserLimit) || 1),
+      maxClaims:
+        maxClaims === "" || maxClaims === null || maxClaims === undefined
+          ? null
+          : Math.max(1, Number(maxClaims) || 1),
     });
     res.status(201).json({ success: true, coupon });
   } catch (error) {
@@ -985,6 +989,12 @@ router.patch(
         updates.expiry = req.body.expiry || null;
       if (req.body.perUserLimit !== undefined) {
         updates.perUserLimit = Math.max(1, Number(req.body.perUserLimit) || 1);
+      }
+      if (req.body.maxClaims !== undefined) {
+        updates.maxClaims =
+          req.body.maxClaims === "" || req.body.maxClaims === null
+            ? null
+            : Math.max(1, Number(req.body.maxClaims) || 1);
       }
       const coupon = await Coupon.findByIdAndUpdate(req.params.id, updates, {
         new: true,

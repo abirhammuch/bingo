@@ -27,6 +27,12 @@ const redeemCoupon = async (req, res) => {
       if (coupon.expiry && new Date(coupon.expiry) < new Date()) {
         throw new Error("Coupon has expired");
       }
+      if (
+        coupon.maxClaims !== null &&
+        Number(coupon.usage || 0) >= Number(coupon.maxClaims)
+      ) {
+        throw new Error("Coupon has reached its maximum number of users");
+      }
 
       const transactionId = `coupon:${coupon.code}:${telegramId}`;
       const existing = await Transaction.findOne({ transactionId }).session(
@@ -83,6 +89,7 @@ const redeemCoupon = async (req, res) => {
       "User not found",
       "Coupon is not available",
       "Coupon has expired",
+      "Coupon has reached its maximum number of users",
       "You have already redeemed this coupon",
       "You have reached this coupon's usage limit",
     ];
