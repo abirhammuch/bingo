@@ -160,7 +160,12 @@ router.post(
       });
       const replyMarkup = parsedButtonUrl
         ? Markup.inlineKeyboard([
-            [Markup.button.url(buttonText.slice(0, 64), parsedButtonUrl.href)],
+            [
+              Markup.button.webApp(
+                buttonText.slice(0, 64),
+                parsedButtonUrl.href,
+              ),
+            ],
           ])
         : undefined;
       const users = await User.find({
