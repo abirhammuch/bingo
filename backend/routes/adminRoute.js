@@ -95,8 +95,30 @@ router.post(
   async (req, res) => {
     const message = String(req.body.message || "").trim();
     const image = String(req.body.image || "").trim();
-    const buttonUrl = String(req.body.buttonUrl || "").trim();
-    const buttonText = String(req.body.buttonText || "").trim();
+    let buttonUrl = String(req.body.buttonUrl || "").trim();
+    let buttonText = String(req.body.buttonText || "").trim();
+    const buttonTarget = String(req.body.buttonTarget || "").trim();
+    if (buttonTarget) {
+      const webAppBaseUrl = (
+        process.env.TELEGRAM_WEBAPP_URL ||
+        process.env.FRONTEND_URL ||
+        ""
+      ).replace(/\/$/, "");
+      const presetButtons = {
+        deposit: ["💳 Deposit", "/deposit"],
+        withdraw: ["🏦 Withdraw", "/withdraw"],
+        game: ["🎮 Open Casina Bingo", "/"],
+        tournament: ["🏆 Join Tournament", "/tournament/invite"],
+      };
+      const preset = presetButtons[buttonTarget];
+      if (!preset || !webAppBaseUrl) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid Telegram Web App button",
+        });
+      }
+      [buttonText, buttonUrl] = [preset[0], `${webAppBaseUrl}${preset[1]}`];
+    }
     let parsedButtonUrl;
     if (buttonUrl) {
       try {

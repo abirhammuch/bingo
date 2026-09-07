@@ -10,6 +10,7 @@ const TelegramBroadcastPage = () => {
   const [imageName, setImageName] = useState("");
   const [buttonUrl, setButtonUrl] = useState("");
   const [buttonText, setButtonText] = useState("");
+  const [buttonTarget, setButtonTarget] = useState("");
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
@@ -26,6 +27,7 @@ const TelegramBroadcastPage = () => {
         image,
         buttonUrl,
         buttonText,
+        buttonTarget,
       });
       setStatus(
         `Message sent to ${response.sent} users. Failed: ${response.failed}.`,
@@ -35,6 +37,7 @@ const TelegramBroadcastPage = () => {
       setImageName("");
       setButtonUrl("");
       setButtonText("");
+      setButtonTarget("");
     } catch (requestError) {
       setError(requestError.message || "Failed to send Telegram message");
     } finally {
@@ -102,29 +105,32 @@ const TelegramBroadcastPage = () => {
             </span>
           )}
         </label>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <label className="block text-sm text-slate-300">
-            Button name (optional)
-            <input
-              type="text"
-              maxLength="64"
-              value={buttonText}
-              onChange={(event) => setButtonText(event.target.value)}
-              placeholder="Open website"
-              className="mt-2 block w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none focus:border-teal-500"
-            />
-          </label>
-          <label className="block text-sm text-slate-300">
-            Button link (optional)
-            <input
-              type="url"
-              value={buttonUrl}
-              onChange={(event) => setButtonUrl(event.target.value)}
-              placeholder="https://example.com"
-              className="mt-2 block w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none focus:border-teal-500"
-            />
-          </label>
-        </div>
+        <label className="block text-sm text-slate-300">
+          Telegram Web App button (optional)
+          <select
+            value={buttonTarget}
+            onChange={(event) => {
+              const target = event.target.value;
+              const buttons = {
+                deposit: ["💳 Deposit", "/deposit"],
+                withdraw: ["🏦 Withdraw", "/withdraw"],
+                game: ["🎮 Open Casina Bingo", "/"],
+                tournament: ["🏆 Join Tournament", "/tournament/invite"],
+              };
+              const [label, path] = buttons[target] || ["", ""];
+              setButtonTarget(target);
+              setButtonText(label);
+              setButtonUrl(path);
+            }}
+            className="mt-2 block w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-sm text-slate-100 outline-none focus:border-teal-500"
+          >
+            <option value="">No button</option>
+            <option value="deposit">💳 Deposit</option>
+            <option value="withdraw">🏦 Withdraw</option>
+            <option value="game">🎮 Open Casina Bingo</option>
+            <option value="tournament">🏆 Join Tournament</option>
+          </select>
+        </label>
         <textarea
           required
           minLength="1"
