@@ -17,6 +17,14 @@ const UserPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    totalUsers: 0,
+    hasNextPage: false,
+    hasPrevPage: false,
+  });
   const [statusFilter, setStatusFilter] = useState("Active");
   const [actionError, setActionError] = useState("");
   const [editingBalanceId, setEditingBalanceId] = useState(null);
@@ -26,8 +34,14 @@ const UserPage = () => {
     let isMounted = true;
 
     const loadUsers = async () => {
+      setIsLoading(true);
+      setLoadError("");
       try {
-        const response = await fetchUsers();
+        const response = await fetchUsers({
+          page,
+          limit: 20,
+          search: query.trim(),
+        });
         const databaseUsers = (response.users || []).map((user) => ({
           id: user._id,
           name: [user.firstName, user.lastName].filter(Boolean).join(" "),
@@ -46,7 +60,10 @@ const UserPage = () => {
           telegramId: user.telegramId,
         }));
 
-        if (isMounted) setUsers(databaseUsers);
+        if (isMounted) {
+          setUsers(databaseUsers);
+          setPagination(response.pagination || pagination);
+        }
       } catch (error) {
         if (isMounted) setLoadError(error.message || "Failed to load users");
       } finally {
@@ -54,11 +71,12 @@ const UserPage = () => {
       }
     };
 
-    loadUsers();
+    const timer = setTimeout(loadUsers, 250);
     return () => {
       isMounted = false;
+      clearTimeout(timer);
     };
-  }, []);
+  }, [page, query]);
 
   const filteredUsers = useMemo(() => {
     return users.filter((user) => {
@@ -78,6 +96,11 @@ const UserPage = () => {
 
   const totalWallet = users.reduce((total, user) => total + user.wallet, 0);
   const activeUsers = users.filter((user) => user.status === "Active").length;
+
+  const handleSearchChange = (event) => {
+    setQuery(event.target.value);
+    setPage(1);
+  };
 
   const updateUserStatus = async (user, action) => {
     setActionError("");
@@ -162,7 +185,7 @@ const UserPage = () => {
           <div className="rounded-2xl border border-slate-800 bg-slate-900/80 p-3 sm:rounded-3xl sm:p-4 lg:p-5">
             <div className="text-sm text-slate-400">Total Users</div>
             <div className="mt-2 text-2xl font-semibold sm:mt-3 sm:text-3xl">
-              {users.length}
+              {pagination.totalUsers}
             </div>
           </div>
 
@@ -186,7 +209,7 @@ const UserPage = () => {
             <div className="flex-1">
               <input
                 value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                onChange={handleSearchChange}
                 placeholder="Search users by name, username, phone, role, telegram id..."
                 className="w-full rounded-xl border border-slate-700 bg-slate-950/80 px-3 py-2.5 text-xs text-slate-100 placeholder:text-slate-500 outline-none focus:border-emerald-500 sm:rounded-2xl sm:px-4 sm:py-3 sm:text-sm"
               />
@@ -363,6 +386,30 @@ const UserPage = () => {
               No users match your search.
             </div>
           )}
+
+          <div className="mt-4 flex flex-col gap-3 border-t border-slate-800 pt-4 text-sm text-slate-400 sm:flex-row sm:items-center sm:justify-between">
+            <span>
+              Page {pagination.currentPage} of {pagination.totalPages} · {pagination.totalUsers} users
+            </span>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                disabled={!pagination.hasPrevPage || isLoading}
+                onClick={() => setPage((currentPage) => currentPage - 1)}
+                className="rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-300 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Previous
+              </button>
+              <button
+                type="button"
+                disabled={!pagination.hasNextPage || isLoading}
+                onClick={() => setPage((currentPage) => currentPage + 1)}
+                className="rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-300 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Next
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
