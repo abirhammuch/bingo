@@ -24,6 +24,7 @@ import {
   updateCommissionSettings,
   updateAdminReferralSettings,
   fetchAdminTournament,
+  fetchAdminTournamentLeaderboard,
   updateAdminTournament,
   updateAdminBonusSettings,
   updateAdminCoupon,
@@ -103,6 +104,7 @@ const BonusPage = ({ section = "all" }) => {
   });
   const [tournamentError, setTournamentError] = useState("");
   const [tournamentMessage, setTournamentMessage] = useState("");
+  const [tournamentLeaderboard, setTournamentLeaderboard] = useState([]);
 
   useEffect(() => {
     if (section !== "coupons" && section !== "all") return;
@@ -133,6 +135,13 @@ const BonusPage = ({ section = "all" }) => {
           error.message || "Failed to load tournament settings",
         ),
       );
+  }, [section]);
+
+  useEffect(() => {
+    if (section !== "tournament" && section !== "all") return;
+    fetchAdminTournamentLeaderboard()
+      .then((response) => setTournamentLeaderboard(response.leaderboard || []))
+      .catch(() => setTournamentLeaderboard([]));
   }, [section]);
 
   const saveTournament = async (event) => {
@@ -1074,6 +1083,59 @@ const BonusPage = ({ section = "all" }) => {
                     </p>
                   </div>
                 ))}
+              </div>
+            </Panel>
+
+            <Panel title="Current Leaderboard (Top 100)">
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[620px] text-left text-xs">
+                  <thead className="bg-slate-950/80 text-[10px] uppercase tracking-wide text-slate-500">
+                    <tr>
+                      <th className="px-4 py-3">Rank</th>
+                      <th className="px-4 py-3">Player</th>
+                      <th className="px-4 py-3 text-right">
+                        Registered invites
+                      </th>
+                      <th className="px-4 py-3 text-right">Deposits</th>
+                      <th className="px-4 py-3 text-right">Points</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800">
+                    {tournamentLeaderboard.length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan="5"
+                          className="px-4 py-8 text-center text-slate-500"
+                        >
+                          No referral activity yet.
+                        </td>
+                      </tr>
+                    ) : (
+                      tournamentLeaderboard.map((entry) => (
+                        <tr
+                          key={entry.telegramId}
+                          className="hover:bg-slate-800/40"
+                        >
+                          <td className="px-4 py-3 font-bold text-amber-300">
+                            #{entry.rank}
+                          </td>
+                          <td className="px-4 py-3 font-medium text-slate-200">
+                            {entry.name}
+                          </td>
+                          <td className="px-4 py-3 text-right text-cyan-300">
+                            {entry.invited}
+                          </td>
+                          <td className="px-4 py-3 text-right text-emerald-300">
+                            {entry.deposits}
+                          </td>
+                          <td className="px-4 py-3 text-right font-bold text-white">
+                            {entry.points.toLocaleString()}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
               </div>
             </Panel>
           </div>

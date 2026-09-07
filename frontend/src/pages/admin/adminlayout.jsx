@@ -120,7 +120,6 @@ const AdminLayout = () => {
             "/admin/admins",
             "/admin/telegram-broadcast",
             "/admin/referral-bonus",
-            "/admin/tournament",
             "/admin/registration-bonus",
             "/admin/game-commission",
             "/admin/withdraw-fee",

@@ -101,6 +101,8 @@ export const updateAdminReferralSettings = (payload) =>
   api.patch("/api/admin/referral-settings", payload);
 export const fetchTournament = () => api.get("/api/users/tournament");
 export const fetchAdminTournament = () => api.get("/api/admin/tournament");
+export const fetchAdminTournamentLeaderboard = () =>
+  api.get("/api/admin/tournament/leaderboard");
 export const updateAdminTournament = (payload) =>
   api.patch("/api/admin/tournament", payload);
 export const fetchAdminBonusSettings = () =>

@@ -1239,11 +1239,82 @@ router.patch(
   },
 );
 
-router.get("/tournament", requireAdmin, requireSuperAdmin, async (req, res) => {
+router.get("/tournament", requireAdmin, async (req, res) => {
   const settings =
     (await TournamentSettings.findOne({ key: "default" }).lean()) ||
     new TournamentSettings().toObject();
   res.json({ success: true, settings });
+});
+
+router.get("/tournament/leaderboard", requireAdmin, async (req, res) => {
+  try {
+    const settings =
+      (await TournamentSettings.findOne({ key: "default" }).lean()) ||
+      new TournamentSettings().toObject();
+    const users = await User.find({ isBlocked: { $ne: true } })
+      .select("telegramId username firstName lastName referralCount")
+      .lean();
+    const referredUsers = await User.find({
+      referredBy: { $in: users.map((entry) => entry.telegramId) },
+    })
+      .select("telegramId referredBy")
+      .lean();
+    const ownerByReferredId = new Map(
+      referredUsers.map((entry) => [entry.telegramId, entry.referredBy]),
+    );
+    const depositRows = await Transaction.aggregate([
+      {
+        $match: {
+          type: "deposit",
+          status: "completed",
+          telegramId: { $in: referredUsers.map((entry) => entry.telegramId) },
+        },
+      },
+      { $group: { _id: "$telegramId", deposits: { $sum: 1 } } },
+    ]);
+    const depositsByOwner = new Map();
+    depositRows.forEach((row) => {
+      const owner = ownerByReferredId.get(row._id);
+      if (owner) {
+        depositsByOwner.set(
+          owner,
+          (depositsByOwner.get(owner) || 0) + row.deposits,
+        );
+      }
+    });
+    const registrationPoints = Number(
+      settings.registrationPoints ?? settings.pointsPerReferral ?? 0,
+    );
+    const depositPoints = Number(settings.depositPoints ?? 50);
+    const leaderboard = users
+      .map((entry) => {
+        const invited = Number(entry.referralCount || 0);
+        const deposits = depositsByOwner.get(entry.telegramId) || 0;
+        return {
+          telegramId: entry.telegramId,
+          name:
+            entry.username ||
+            [entry.firstName, entry.lastName].filter(Boolean).join(" ") ||
+            "Player",
+          invited,
+          deposits,
+          points: invited * registrationPoints + deposits * depositPoints,
+        };
+      })
+      .filter((entry) => entry.invited > 0 || entry.deposits > 0)
+      .sort(
+        (left, right) =>
+          right.points - left.points || right.invited - left.invited,
+      )
+      .slice(0, 100)
+      .map((entry, index) => ({ ...entry, rank: index + 1 }));
+    res.json({ success: true, leaderboard });
+  } catch {
+    res.status(500).json({
+      success: false,
+      message: "Failed to load tournament leaderboard",
+    });
+  }
 });
 
 router.patch(
