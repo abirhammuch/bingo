@@ -65,7 +65,7 @@ const Invite = () => {
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-end z-50">
       {/* Modal Container */}
-      <div className="w-full bg-slate-900 border-t border-slate-700 rounded-t-3xl p-6 pb-8 max-w-md mx-auto">
+      <div className="mb-16 w-full bg-slate-900 border-t border-slate-700 rounded-t-3xl p-6 pb-8 max-w-md mx-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-2">
           <h1 className="text-2xl font-bold text-white">INVITE FRIENDS</h1>

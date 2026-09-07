@@ -76,7 +76,7 @@ userRouter.get("/tournament", userAuth, async (req, res) => {
       settings.registrationPoints ?? settings.pointsPerReferral ?? 0,
     );
     const depositPoints = Number(settings.depositPoints ?? 50);
-    const leaderboard = users
+    const rankedLeaderboard = users
       .map((entry) => {
         const invited = Number(entry.referralCount || 0);
         const deposits = depositCountByOwner.get(entry.telegramId) || 0;
@@ -92,7 +92,6 @@ userRouter.get("/tournament", userAuth, async (req, res) => {
         (left, right) =>
           right.points - left.points || right.invited - left.invited,
       )
-      .slice(0, 100)
       .map((entry, index) => ({
         rank: index + 1,
         telegramId: entry.telegramId,
@@ -104,7 +103,15 @@ userRouter.get("/tournament", userAuth, async (req, res) => {
         deposits: entry.deposits,
         points: entry.points,
       }));
-    res.json({ success: true, settings, leaderboard });
+    const currentPlayer = rankedLeaderboard.find(
+      (entry) => entry.telegramId === String(req.user.telegramId),
+    );
+    res.json({
+      success: true,
+      settings,
+      leaderboard: rankedLeaderboard.slice(0, 100),
+      currentPlayer: currentPlayer || null,
+    });
   } catch {
     res
       .status(500)

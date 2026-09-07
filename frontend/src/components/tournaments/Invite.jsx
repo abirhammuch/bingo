@@ -94,6 +94,7 @@ const Invite = () => {
     tournament?.settings?.endDate || "2026-09-30T23:59:59.000Z",
   );
   const leaderboard = tournament?.leaderboard || [];
+  const currentPlayer = tournament?.currentPlayer;
   const prizes = tournament?.settings?.prizes || [];
   const registrationPoints = Number(
     tournament?.settings?.registrationPoints ??
@@ -153,21 +154,7 @@ const Invite = () => {
     <div className="min-h-screen overflow-x-hidden bg-[#030b25] px-3 pb-10 pt-4 text-slate-100 sm:px-5 lg:px-8">
       <div className="mx-auto max-w-6xl">
         <header className="mb-4 flex items-center justify-between px-1 sm:mb-5">
-          <div className="flex items-center gap-3">
-            <div className="text-center leading-none">
-              <FaCrown className="mx-auto text-lg text-amber-300" />
-              <span className="block text-lg font-black tracking-tight text-amber-300">
-                MARSHAL
-              </span>
-              <span className="text-[8px] font-bold tracking-[0.35em] text-amber-400">
-                BINGO
-              </span>
-            </div>
-            <div className="hidden h-8 w-px bg-slate-700 sm:block" />
-            <div className="hidden text-xs text-slate-400 sm:block">
-              Invite Tournament
-            </div>
-          </div>
+          <div className="text-xs text-slate-400">Invite Tournament</div>
           <button
             type="button"
             onClick={() => navigate("/profile")}
@@ -197,8 +184,8 @@ const Invite = () => {
                 Invite Tournament
               </h1>
               <p className="mt-3 max-w-lg text-sm leading-relaxed text-blue-100 sm:text-base">
-                Bring your friends to Marshal Bingo and earn points all month
-                long! The top players will win amazing rewards!
+                Bring your friends and earn points all month long. The top
+                players will win amazing rewards!
               </p>
               <div className="mt-4 flex flex-wrap items-center gap-3 rounded-xl border border-cyan-500/60 bg-[#031840]/80 px-3 py-2 text-xs text-slate-300">
                 <FaCalendarAlt className="text-cyan-300" />
@@ -287,26 +274,29 @@ const Invite = () => {
                 </button>
               </div>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                {[<FaUsers />, <FaCheck />, <FaTrophy />, <FaCrown />].map(
-                  (icon, index) => (
-                    <div
-                      key={index}
-                      className="rounded-lg border border-blue-900 bg-[#071b4a] p-3 text-center"
-                    >
-                      <div className="mb-1 text-violet-400">{icon}</div>
-                      <p className="text-[10px] text-slate-400">
-                        {
-                          ["Invited", "Registered", "Points", "Your Rank"][
-                            index
-                          ]
-                        }
-                      </p>
-                      <p className="text-xl font-bold text-cyan-200">
-                        {["24", "18", "180", "#7"][index]}
-                      </p>
-                    </div>
-                  ),
-                )}
+                {[
+                  [<FaUsers />, "Invited", currentPlayer?.invited ?? 0],
+                  [<FaCheck />, "Deposits", currentPlayer?.deposits ?? 0],
+                  [<FaTrophy />, "Points", currentPlayer?.points ?? 0],
+                  [
+                    <FaCrown />,
+                    "Your Rank",
+                    currentPlayer ? `#${currentPlayer.rank}` : "-",
+                  ],
+                ].map(([icon, label, value]) => (
+                  <div
+                    key={label}
+                    className="rounded-lg border border-blue-900 bg-[#071b4a] p-3 text-center"
+                  >
+                    <div className="mb-1 text-violet-400">{icon}</div>
+                    <p className="text-[10px] text-slate-400">{label}</p>
+                    <p className="text-xl font-bold text-cyan-200">
+                      {typeof value === "number"
+                        ? value.toLocaleString()
+                        : value}
+                    </p>
+                  </div>
+                ))}
               </div>
             </section>
 
