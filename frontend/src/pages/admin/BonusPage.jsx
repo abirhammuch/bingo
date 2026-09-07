@@ -13,6 +13,8 @@ import {
   updateAdminWithdrawalSettings,
   updateCommissionSettings,
   updateAdminReferralSettings,
+  fetchAdminTournament,
+  updateAdminTournament,
   updateAdminBonusSettings,
   updateAdminCoupon,
 } from "../../services/userService";
@@ -77,6 +79,18 @@ const BonusPage = ({ section = "all" }) => {
   });
   const [withdrawFeeError, setWithdrawFeeError] = useState("");
   const [withdrawFeeMessage, setWithdrawFeeMessage] = useState("");
+  const [tournamentForm, setTournamentForm] = useState({
+    startDate: "2026-09-01",
+    endDate: "2026-09-30",
+    pointsPerReferral: 20,
+    prizes: [
+      { place: 1, amount: 10000 },
+      { place: 2, amount: 5000 },
+      { place: 3, amount: 2500 },
+    ],
+  });
+  const [tournamentError, setTournamentError] = useState("");
+  const [tournamentMessage, setTournamentMessage] = useState("");
 
   useEffect(() => {
     if (section !== "coupons" && section !== "all") return;
@@ -86,6 +100,45 @@ const BonusPage = ({ section = "all" }) => {
         setCouponError(error.message || "Failed to load coupons"),
       );
   }, [section]);
+
+  useEffect(() => {
+    if (section !== "tournament" && section !== "all") return;
+    fetchAdminTournament()
+      .then((response) =>
+        setTournamentForm({
+          ...response.settings,
+          startDate: response.settings.startDate.slice(0, 10),
+          endDate: response.settings.endDate.slice(0, 10),
+        }),
+      )
+      .catch((error) =>
+        setTournamentError(error.message || "Failed to load tournament settings"),
+      );
+  }, [section]);
+
+  const saveTournament = async (event) => {
+    event.preventDefault();
+    setTournamentError("");
+    setTournamentMessage("");
+    try {
+      const response = await updateAdminTournament({
+        ...tournamentForm,
+        pointsPerReferral: Number(tournamentForm.pointsPerReferral),
+        prizes: tournamentForm.prizes.map((prize) => ({
+          place: Number(prize.place),
+          amount: Number(prize.amount),
+        })),
+      });
+      setTournamentForm({
+        ...response.settings,
+        startDate: response.settings.startDate.slice(0, 10),
+        endDate: response.settings.endDate.slice(0, 10),
+      });
+      setTournamentMessage("Tournament settings saved");
+    } catch (error) {
+      setTournamentError(error.message || "Failed to save tournament settings");
+    }
+  };
 
   useEffect(() => {
     if (section !== "referral" && section !== "all") return;
@@ -772,6 +825,67 @@ const BonusPage = ({ section = "all" }) => {
               </label>
               <button className="sm:col-span-2 rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-500">
                 Save withdrawal settings
+              </button>
+            </form>
+          </Panel>
+        )}
+
+        {show("tournament") && (
+          <Panel title="Invite Tournament Settings">
+            <form onSubmit={saveTournament} className="grid gap-4 p-4 sm:grid-cols-2">
+              {tournamentError && (
+                <div className="sm:col-span-2 rounded-lg border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-300">
+                  {tournamentError}
+                </div>
+              )}
+              {tournamentMessage && (
+                <div className="sm:col-span-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-300">
+                  {tournamentMessage}
+                </div>
+              )}
+              {["startDate", "endDate"].map((field) => (
+                <label key={field} className="text-xs text-slate-400">
+                  {field === "startDate" ? "Start date" : "End date"}
+                  <input
+                    type="date"
+                    value={tournamentForm[field]}
+                    onChange={(event) =>
+                      setTournamentForm({ ...tournamentForm, [field]: event.target.value })
+                    }
+                    className="mt-1 block w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100"
+                  />
+                </label>
+              ))}
+              <label className="text-xs text-slate-400 sm:col-span-2">
+                Points per invited user
+                <input
+                  type="number"
+                  min="0"
+                  value={tournamentForm.pointsPerReferral}
+                  onChange={(event) =>
+                    setTournamentForm({ ...tournamentForm, pointsPerReferral: event.target.value })
+                  }
+                  className="mt-1 block w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100"
+                />
+              </label>
+              {tournamentForm.prizes.map((prize, index) => (
+                <label key={prize.place} className="text-xs text-slate-400">
+                  Place {prize.place} prize (ETB)
+                  <input
+                    type="number"
+                    min="0"
+                    value={prize.amount}
+                    onChange={(event) => {
+                      const prizes = [...tournamentForm.prizes];
+                      prizes[index] = { ...prize, amount: event.target.value };
+                      setTournamentForm({ ...tournamentForm, prizes });
+                    }}
+                    className="mt-1 block w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-slate-100"
+                  />
+                </label>
+              ))}
+              <button className="rounded-lg bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-500 sm:col-span-2">
+                Save tournament settings
               </button>
             </form>
           </Panel>

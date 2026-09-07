@@ -7,6 +7,7 @@ import BingoGame from "../models/BingoGame.js";
 import Transaction from "../models/Transaction.js";
 import WithdrawalSettings from "../models/WithdrawalSettings.js";
 import ReferralSettings from "../models/ReferralSettings.js";
+import TournamentSettings from "../models/TournamentSettings.js";
 import { creditReferralReward } from "../services/wallet/referralService.js";
 import BonusSettings from "../models/BonusSettings.js";
 import { creditDepositBonuses } from "../services/wallet/bonusService.js";
@@ -1235,6 +1236,57 @@ router.patch(
       { new: true, upsert: true, runValidators: true },
     );
     res.json({ success: true, settings });
+  },
+);
+
+router.get("/tournament", requireAdmin, requireSuperAdmin, async (req, res) => {
+  const settings =
+    (await TournamentSettings.findOne({ key: "default" }).lean()) ||
+    new TournamentSettings().toObject();
+  res.json({ success: true, settings });
+});
+
+router.patch(
+  "/tournament",
+  requireAdmin,
+  requireSuperAdmin,
+  async (req, res) => {
+    try {
+      const startDate = new Date(req.body.startDate);
+      const endDate = new Date(req.body.endDate);
+      const pointsPerReferral = Number(req.body.pointsPerReferral);
+      const prizes = Array.isArray(req.body.prizes)
+        ? req.body.prizes.map((prize) => ({
+            place: Number(prize.place),
+            amount: Number(prize.amount),
+          }))
+        : [];
+      if (
+        Number.isNaN(startDate.getTime()) ||
+        Number.isNaN(endDate.getTime()) ||
+        endDate <= startDate ||
+        !Number.isFinite(pointsPerReferral) ||
+        pointsPerReferral < 0 ||
+        !prizes.length ||
+        prizes.some(
+          (prize) =>
+            !Number.isInteger(prize.place) ||
+            prize.place < 1 ||
+            !Number.isFinite(prize.amount) ||
+            prize.amount < 0,
+        )
+      ) {
+        return res.status(400).json({ success: false, message: "Invalid tournament settings" });
+      }
+      const settings = await TournamentSettings.findOneAndUpdate(
+        { key: "default" },
+        { key: "default", startDate, endDate, pointsPerReferral, prizes },
+        { new: true, upsert: true, runValidators: true },
+      );
+      res.json({ success: true, settings });
+    } catch {
+      res.status(500).json({ success: false, message: "Failed to save tournament settings" });
+    }
   },
 );
 

@@ -34,6 +34,7 @@ const adminMenu = [
   { to: "/admin/password", label: "Change Password", icon: <FaKey /> },
   { to: "/admin/admins", label: "Admin Accounts", icon: <FaUserShield /> },
   { to: "/admin/referral-bonus", label: "Referral Bonus", icon: <FaTrophy /> },
+  { to: "/admin/tournament", label: "Tournament", icon: <FaTrophy /> },
   { to: "/admin/coupons", label: "Coupons", icon: <FaCoins /> },
   { to: "/admin/stake", label: "Stake", icon: <FaCoins /> },
   {
@@ -119,6 +120,7 @@ const AdminLayout = () => {
             "/admin/admins",
             "/admin/telegram-broadcast",
             "/admin/referral-bonus",
+            "/admin/tournament",
             "/admin/registration-bonus",
             "/admin/game-commission",
             "/admin/withdraw-fee",

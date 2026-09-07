@@ -160,6 +160,10 @@ const App = () => {
               path="referral-bonus"
               element={<BonusPage section="referral" />}
             />
+            <Route
+              path="tournament"
+              element={<BonusPage section="tournament" />}
+            />
             <Route path="coupons" element={<BonusPage section="coupons" />} />
             <Route path="stake" element={<StakePage />} />
             <Route

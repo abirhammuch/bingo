@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { getUserProfile } from "../../services/userService";
+import {
+  fetchTournament,
+  getUserProfile,
+} from "../../services/userService";
 import {
   FaArrowRight,
   FaCalendarAlt,
@@ -19,35 +22,15 @@ import {
   FaUsers,
 } from "react-icons/fa";
 
-const leaderboard = [
-  ["PlayerOne", "48", "1,250", "gold"],
-  ["PlayerTwo", "36", "980", "silver"],
-  ["PlayerThree", "28", "850", "bronze"],
-  ["PlayerFour", "24", "720", ""],
-  ["PlayerFive", "20", "650", ""],
-  ["PlayerSix", "18", "590", ""],
-  ["You", "24", "180", "you"],
-  ["PlayerEight", "12", "150", ""],
-  ["PlayerNine", "10", "120", ""],
-  ["PlayerTen", "8", "90", ""],
-];
-
-const steps = [
+const getSteps = (pointsPerReferral) => [
   [FaLink, "Friend clicks your invite link", "0 points"],
-  [FaUserPlus, "Friend registers on Telegram", "+5 points"],
-  [FaUsers, "Friend completes profile", "+5 points"],
-  [FaGamepad, "Friend plays first game", "+10 points"],
+  [FaUserPlus, "Friend registers on Telegram", `+${pointsPerReferral} points`],
+  [FaUsers, "Friend completes profile", "No extra points"],
+  [FaGamepad, "Friend plays first game", "Leaderboard remains updated"],
 ];
 
-const tournamentStart = new Date(
-  import.meta.env.VITE_TOURNAMENT_START_DATE || "2026-09-01T00:00:00",
-);
-const tournamentEnd = new Date(
-  import.meta.env.VITE_TOURNAMENT_END_DATE || "2026-09-30T23:59:59",
-);
-
-const getTimeLeft = () => {
-  const difference = Math.max(0, tournamentEnd.getTime() - Date.now());
+const getTimeLeft = (endDate) => {
+  const difference = Math.max(0, new Date(endDate).getTime() - Date.now());
   const totalSeconds = Math.floor(difference / 1000);
 
   return {
@@ -71,7 +54,11 @@ const Invite = () => {
   const { user } = useAuth();
   const [copied, setCopied] = useState("");
   const [referralUser, setReferralUser] = useState(user);
-  const [timeLeft, setTimeLeft] = useState(getTimeLeft);
+  const [tournament, setTournament] = useState(null);
+  const [tournamentError, setTournamentError] = useState("");
+  const [timeLeft, setTimeLeft] = useState(() =>
+    getTimeLeft("2026-09-30T23:59:59.000Z"),
+  );
 
   useEffect(() => {
     if (!user?.telegramId) return undefined;
@@ -88,6 +75,31 @@ const Invite = () => {
     };
   }, [user?.telegramId]);
 
+  useEffect(() => {
+    if (!user?.telegramId) return undefined;
+    let active = true;
+    fetchTournament()
+      .then((response) => {
+        if (!active) return;
+        setTournament(response);
+        setTimeLeft(getTimeLeft(response.settings.endDate));
+      })
+      .catch((error) => active && setTournamentError(error.message));
+    return () => {
+      active = false;
+    };
+  }, [user?.telegramId]);
+
+  const tournamentStart = new Date(
+    tournament?.settings?.startDate || "2026-09-01T00:00:00.000Z",
+  );
+  const tournamentEnd = new Date(
+    tournament?.settings?.endDate || "2026-09-30T23:59:59.000Z",
+  );
+  const leaderboard = tournament?.leaderboard || [];
+  const prizes = tournament?.settings?.prizes || [];
+  const steps = getSteps(Number(tournament?.settings?.pointsPerReferral || 20));
+
   const tournamentCode =
     referralUser?.referralCode ||
     `REF${String(referralUser?.telegramId || "PLAYER")
@@ -99,11 +111,11 @@ const Invite = () => {
 
   useEffect(() => {
     const timer = window.setInterval(() => {
-      setTimeLeft(getTimeLeft());
+      setTimeLeft(getTimeLeft(tournamentEnd));
     }, 1000);
 
     return () => window.clearInterval(timer);
-  }, []);
+  }, [tournamentEnd.getTime()]);
 
   const copyValue = async (value, label) => {
     try {
@@ -315,33 +327,31 @@ const Invite = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {leaderboard.map(
-                      ([name, invited, points, medal], index) => (
+                    {leaderboard.map((entry) => (
                         <tr
-                          key={name}
-                          className={`border-b border-blue-950 ${medal === "you" ? "bg-indigo-700/60" : medal ? "bg-amber-500/15" : ""}`}
+                          key={entry.telegramId}
+                          className={`border-b border-blue-950 ${entry.telegramId === user?.telegramId ? "bg-indigo-700/60" : entry.rank <= 3 ? "bg-amber-500/15" : ""}`}
                         >
                           <td className="px-2 py-2 font-bold text-slate-300">
-                            {medal === "gold" ? (
+                            {entry.rank === 1 ? (
                               <FaCrown className="text-amber-300" />
-                            ) : medal === "silver" ? (
+                            ) : entry.rank === 2 ? (
                               <FaMedal className="text-slate-300" />
-                            ) : medal === "bronze" ? (
+                            ) : entry.rank === 3 ? (
                               <FaMedal className="text-orange-400" />
                             ) : (
-                              index + 1
+                              entry.rank
                             )}
                           </td>
-                          <td className="px-2 py-2 font-medium">{name}</td>
+                          <td className="px-2 py-2 font-medium">{entry.name}</td>
                           <td className="px-2 py-2 text-right text-amber-300">
-                            {invited}
+                            {entry.invited}
                           </td>
                           <td className="px-2 py-2 text-right font-semibold">
-                            {points}
+                            {entry.points.toLocaleString()}
                           </td>
                         </tr>
-                      ),
-                    )}
+                      ))}
                   </tbody>
                 </table>
               </div>
@@ -371,24 +381,15 @@ const Invite = () => {
                 <FaGift className="text-fuchsia-400" /> Tournament Prizes
               </h2>
               <div className="space-y-2">
-                <Prize
-                  icon={<FaCrown />}
-                  place="1st Place"
-                  amount="10,000 ETB"
-                  color="amber"
-                />
-                <Prize
-                  icon={<FaMedal />}
-                  place="2nd Place"
-                  amount="5,000 ETB"
-                  color="blue"
-                />
-                <Prize
-                  icon={<FaMedal />}
-                  place="3rd Place"
-                  amount="2,500 ETB"
-                  color="orange"
-                />
+                {prizes.map((prize) => (
+                  <Prize
+                    key={prize.place}
+                    icon={prize.place === 1 ? <FaCrown /> : <FaMedal />}
+                    place={`${prize.place}${prize.place === 1 ? "st" : prize.place === 2 ? "nd" : prize.place === 3 ? "rd" : "th"} Place`}
+                    amount={`${Number(prize.amount).toLocaleString()} ETB`}
+                    color={prize.place === 1 ? "amber" : prize.place === 2 ? "blue" : "orange"}
+                  />
+                ))}
               </div>
               <div className="mt-4 space-y-2 border-t border-blue-900 pt-3 text-xs text-slate-300">
                 <p>
