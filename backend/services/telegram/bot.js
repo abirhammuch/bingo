@@ -61,7 +61,7 @@ const telegramBotUsername =
 const telegramSupportUrl =
   process.env.TELEGRAM_SUPPORT_URL || "https://t.me/casina_bingo_support";
 const telegramCouponChannelUrl =
-  process.env.TELEGRAM_COUPON_CHANNEL_URL || "https://t.me/casinabingochannel";
+  process.env.TELEGRAM_COUPON_CHANNEL_URL || "https://t.me/couponbingo";
 
 const accountKeyboard = () =>
   Markup.keyboard([
