@@ -1378,6 +1378,33 @@ router.patch("/tournament", requireAdmin, async (req, res) => {
   }
 });
 
+router.patch(
+  "/tournament/leaderboard/:telegramId",
+  requireAdmin,
+  async (req, res) => {
+    const invited = Number(req.body.invited);
+    if (!Number.isInteger(invited) || invited < 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Registered invites must be a non-negative whole number",
+      });
+    }
+    const user = await User.findOneAndUpdate(
+      { telegramId: decodeURIComponent(req.params.telegramId) },
+      { referralCount: invited },
+      { new: true, runValidators: true },
+    )
+      .select("telegramId referralCount")
+      .lean();
+    if (!user) {
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
+    }
+    res.json({ success: true, user });
+  },
+);
+
 router.get("/transactions/requests", requireAdmin, async (req, res) => {
   try {
     const transactions = await Transaction.find({

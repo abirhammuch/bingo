@@ -103,6 +103,11 @@ export const fetchTournament = () => api.get("/api/users/tournament");
 export const fetchAdminTournament = () => api.get("/api/admin/tournament");
 export const fetchAdminTournamentLeaderboard = () =>
   api.get("/api/admin/tournament/leaderboard");
+export const updateAdminTournamentLeaderboard = (telegramId, invited) =>
+  api.patch(
+    `/api/admin/tournament/leaderboard/${encodeURIComponent(telegramId)}`,
+    { invited: Number(invited) },
+  );
 export const updateAdminTournament = (payload) =>
   api.patch("/api/admin/tournament", payload);
 export const fetchAdminBonusSettings = () =>

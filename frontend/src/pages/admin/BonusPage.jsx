@@ -25,6 +25,7 @@ import {
   updateAdminReferralSettings,
   fetchAdminTournament,
   fetchAdminTournamentLeaderboard,
+  updateAdminTournamentLeaderboard,
   updateAdminTournament,
   updateAdminBonusSettings,
   updateAdminCoupon,
@@ -106,6 +107,11 @@ const BonusPage = ({ section = "all" }) => {
   const [tournamentMessage, setTournamentMessage] = useState("");
   const [tournamentLeaderboard, setTournamentLeaderboard] = useState([]);
 
+  const loadTournamentLeaderboard = () =>
+    fetchAdminTournamentLeaderboard()
+      .then((response) => setTournamentLeaderboard(response.leaderboard || []))
+      .catch(() => setTournamentLeaderboard([]));
+
   useEffect(() => {
     if (section !== "coupons" && section !== "all") return;
     fetchAdminCoupons()
@@ -139,10 +145,24 @@ const BonusPage = ({ section = "all" }) => {
 
   useEffect(() => {
     if (section !== "tournament" && section !== "all") return;
-    fetchAdminTournamentLeaderboard()
-      .then((response) => setTournamentLeaderboard(response.leaderboard || []))
-      .catch(() => setTournamentLeaderboard([]));
+    loadTournamentLeaderboard();
   }, [section]);
+
+  const saveRegisteredInvites = async (entry) => {
+    setTournamentError("");
+    setTournamentMessage("");
+    try {
+      await updateAdminTournamentLeaderboard(entry.telegramId, entry.invited);
+      await loadTournamentLeaderboard();
+      setTournamentMessage(
+        "Registered invites updated and leaderboard recalculated",
+      );
+    } catch (error) {
+      setTournamentError(
+        error.message || "Failed to update registered invites",
+      );
+    }
+  };
 
   const saveTournament = async (event) => {
     event.preventDefault();
@@ -1123,7 +1143,34 @@ const BonusPage = ({ section = "all" }) => {
                             {entry.name}
                           </td>
                           <td className="px-4 py-3 text-right text-cyan-300">
-                            {entry.invited}
+                            <div className="flex justify-end gap-2">
+                              <input
+                                type="number"
+                                min="0"
+                                step="1"
+                                value={entry.invited}
+                                onChange={(event) =>
+                                  setTournamentLeaderboard((current) =>
+                                    current.map((item) =>
+                                      item.telegramId === entry.telegramId
+                                        ? {
+                                            ...item,
+                                            invited: event.target.value,
+                                          }
+                                        : item,
+                                    ),
+                                  )
+                                }
+                                className="w-20 rounded border border-slate-700 bg-slate-950 px-2 py-1 text-right text-slate-100"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => saveRegisteredInvites(entry)}
+                                className="rounded bg-indigo-600 px-2 py-1 text-[10px] font-bold text-white hover:bg-indigo-500"
+                              >
+                                Save
+                              </button>
+                            </div>
                           </td>
                           <td className="px-4 py-3 text-right text-emerald-300">
                             {entry.deposits}
