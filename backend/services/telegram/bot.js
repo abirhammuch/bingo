@@ -57,7 +57,7 @@ const telegramWebAppUrl = telegramWebAppBaseUrl;
 const telegramDepositUrl = `${telegramWebAppBaseUrl}/deposit`;
 const telegramWithdrawUrl = `${telegramWebAppBaseUrl}/withdraw`;
 const telegramBotUsername =
-  process.env.TELEGRAM_BOT_USERNAME || "casinabingo_bot";
+  process.env.TELEGRAM_BOT_USERNAME || "casinabingobot";
 const telegramSupportUrl =
   process.env.TELEGRAM_SUPPORT_URL || "https://t.me/casina_bingo_support";
 const telegramCouponChannelUrl =

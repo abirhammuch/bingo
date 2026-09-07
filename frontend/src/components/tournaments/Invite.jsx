@@ -103,7 +103,7 @@ const Invite = () => {
       .slice(-8)
       .toUpperCase()}`;
   const telegramBotUsername =
-    import.meta.env.VITE_TELEGRAM_BOT_USERNAME || "casinabingo_bot";
+    import.meta.env.VITE_TELEGRAM_BOT_USERNAME || "casinabingobot";
   const inviteLink = `https://t.me/${telegramBotUsername}?start=ref_${encodeURIComponent(tournamentCode)}`;
 
   useEffect(() => {
