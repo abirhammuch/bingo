@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
+import { getUserProfile } from "../../services/userService";
 import {
   FaArrowRight,
   FaCalendarAlt,
@@ -66,11 +68,34 @@ const formatDate = (date) =>
 
 const Invite = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [copied, setCopied] = useState("");
+  const [referralUser, setReferralUser] = useState(user);
   const [timeLeft, setTimeLeft] = useState(getTimeLeft);
+
+  useEffect(() => {
+    if (!user?.telegramId) return undefined;
+
+    let active = true;
+    getUserProfile(user.telegramId)
+      .then((response) => {
+        if (active && response?.user) setReferralUser(response.user);
+      })
+      .catch(() => {});
+
+    return () => {
+      active = false;
+    };
+  }, [user?.telegramId]);
+
   const tournamentCode =
-    import.meta.env.VITE_TOURNAMENT_INVITE_CODE || "MARSHAL-AB12";
-  const inviteLink = `${window.location.origin}/tournament/invite?code=${encodeURIComponent(tournamentCode)}`;
+    referralUser?.referralCode ||
+    `REF${String(referralUser?.telegramId || "PLAYER")
+      .slice(-8)
+      .toUpperCase()}`;
+  const telegramBotUsername =
+    import.meta.env.VITE_TELEGRAM_BOT_USERNAME || "casinabingo_bot";
+  const inviteLink = `https://t.me/${telegramBotUsername}?start=ref_${encodeURIComponent(tournamentCode)}`;
 
   useEffect(() => {
     const timer = window.setInterval(() => {
