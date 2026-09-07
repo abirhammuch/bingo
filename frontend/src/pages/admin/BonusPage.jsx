@@ -72,7 +72,7 @@ const BonusPage = ({ section = "all" }) => {
   const [withdrawFeeForm, setWithdrawFeeForm] = useState({
     feeType: "fixed",
     feeAmount: 0,
-    minAmount: 50,
+    minAmount: 200,
     maxAmount: 100000,
   });
   const [withdrawFeeError, setWithdrawFeeError] = useState("");

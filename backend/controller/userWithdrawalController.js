@@ -16,9 +16,10 @@ const submitWithdrawal = async (req, res) => {
     }).lean()) || {
       feeType: "fixed",
       feeAmount: 0,
-      minAmount: 50,
+      minAmount: 200,
       maxAmount: 100000,
     };
+    settings.minAmount = Math.max(Number(settings.minAmount || 200), 200);
     const fee =
       settings.feeType === "percentage"
         ? (amount * Number(settings.feeAmount || 0)) / 100

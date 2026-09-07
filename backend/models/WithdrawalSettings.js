@@ -5,7 +5,7 @@ const withdrawalSettingsSchema = new mongoose.Schema(
     key: { type: String, default: "default", unique: true },
     feeType: { type: String, enum: ["fixed", "percentage"], default: "fixed" },
     feeAmount: { type: Number, default: 0, min: 0 },
-    minAmount: { type: Number, default: 50, min: 0 },
+    minAmount: { type: Number, default: 200, min: 200 },
     maxAmount: { type: Number, default: 100000, min: 0 },
   },
   { timestamps: true },

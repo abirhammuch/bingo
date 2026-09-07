@@ -16,7 +16,7 @@ const TeleBirrWithdrawPage = () => {
   const [phone, setPhone] = useState("");
   const [withdrawData, setWithdrawData] = useState({
     method: "Telebirr",
-    minAmount: 50,
+    minAmount: 200,
     maxAmount: 100000,
     currency: "ETB",
     availableBalance: 0,

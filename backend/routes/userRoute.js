@@ -42,9 +42,10 @@ userRouter.get("/withdraw-settings", userAuth, async (req, res) => {
     }).lean()) || {
       feeType: "fixed",
       feeAmount: 0,
-      minAmount: 50,
+      minAmount: 200,
       maxAmount: 100000,
     };
+    settings.minAmount = Math.max(Number(settings.minAmount || 200), 200);
     res.json({ success: true, settings });
   } catch {
     res

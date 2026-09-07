@@ -16,7 +16,7 @@ const CBEWithdrawPage = () => {
   const [account, setAccount] = useState("");
   const [withdrawData, setWithdrawData] = useState({
     method: "CBE",
-    minAmount: 50,
+    minAmount: 200,
     maxAmount: 100000,
     currency: "ETB",
     availableBalance: 0,

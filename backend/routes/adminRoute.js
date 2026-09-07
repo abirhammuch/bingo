@@ -193,9 +193,10 @@ router.get(
     }).lean()) || {
       feeType: "fixed",
       feeAmount: 0,
-      minAmount: 50,
+      minAmount: 200,
       maxAmount: 100000,
     };
+    settings.minAmount = Math.max(Number(settings.minAmount || 200), 200);
     res.json({ success: true, settings });
   },
 );
@@ -216,7 +217,7 @@ router.patch(
         feeAmount < 0 ||
         !Number.isFinite(minAmount) ||
         !Number.isFinite(maxAmount) ||
-        minAmount < 0 ||
+        minAmount < 200 ||
         maxAmount < minAmount
       ) {
         return res
