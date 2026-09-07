@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FaArrowRight,
@@ -37,22 +37,61 @@ const steps = [
   [FaGamepad, "Friend plays first game", "+10 points"],
 ];
 
+const tournamentStart = new Date(
+  import.meta.env.VITE_TOURNAMENT_START_DATE || "2026-09-01T00:00:00",
+);
+const tournamentEnd = new Date(
+  import.meta.env.VITE_TOURNAMENT_END_DATE || "2026-09-30T23:59:59",
+);
+
+const getTimeLeft = () => {
+  const difference = Math.max(0, tournamentEnd.getTime() - Date.now());
+  const totalSeconds = Math.floor(difference / 1000);
+
+  return {
+    days: Math.floor(totalSeconds / 86400),
+    hours: Math.floor((totalSeconds % 86400) / 3600),
+    minutes: Math.floor((totalSeconds % 3600) / 60),
+    seconds: totalSeconds % 60,
+    ended: difference === 0,
+  };
+};
+
+const formatDate = (date) =>
+  date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+
 const Invite = () => {
   const navigate = useNavigate();
-  const [copied, setCopied] = useState(false);
+  const [copied, setCopied] = useState("");
+  const [timeLeft, setTimeLeft] = useState(getTimeLeft);
   const tournamentCode =
     import.meta.env.VITE_TOURNAMENT_INVITE_CODE || "MARSHAL-AB12";
   const inviteLink = `${window.location.origin}/tournament/invite?code=${encodeURIComponent(tournamentCode)}`;
 
-  const copyInvite = async () => {
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setTimeLeft(getTimeLeft());
+    }, 1000);
+
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const copyValue = async (value, label) => {
     try {
-      await navigator.clipboard.writeText(inviteLink);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 2000);
+      await navigator.clipboard.writeText(value);
+      setCopied(label);
+      window.setTimeout(() => setCopied(""), 2000);
     } catch {
-      setCopied(false);
+      setCopied("");
     }
   };
+
+  const copyCode = () => copyValue(tournamentCode, "code");
+  const copyInvite = () => copyValue(inviteLink, "link");
 
   const shareInvite = async () => {
     if (navigator.share) {
@@ -121,9 +160,26 @@ const Invite = () => {
                 Bring your friends to Marshal Bingo and earn points all month
                 long! The top players will win amazing rewards!
               </p>
-              <div className="mt-4 flex items-center gap-3 rounded-xl border border-cyan-500/60 bg-[#031840]/80 px-3 py-2 text-xs text-slate-300">
+              <div className="mt-4 flex flex-wrap items-center gap-3 rounded-xl border border-cyan-500/60 bg-[#031840]/80 px-3 py-2 text-xs text-slate-300">
                 <FaCalendarAlt className="text-cyan-300" />
-                <span>Sep 1, 2025 - Sep 30, 2025</span>
+                <span>
+                  {formatDate(tournamentStart)} - {formatDate(tournamentEnd)}
+                </span>
+                <span className="ml-auto text-cyan-300">
+                  {timeLeft.ended ? "Tournament ended" : "Tournament ends in"}
+                </span>
+              </div>
+              <div className="mt-3 grid grid-cols-4 gap-2 rounded-xl border border-cyan-500/60 bg-[#031840]/90 p-3 text-center">
+                {["days", "hours", "minutes", "seconds"].map((unit) => (
+                  <div key={unit}>
+                    <p className="text-xl font-black text-amber-300 sm:text-2xl">
+                      {String(timeLeft[unit]).padStart(2, "0")}
+                    </p>
+                    <p className="text-[9px] uppercase tracking-wider text-slate-400">
+                      {unit}
+                    </p>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
@@ -157,7 +213,7 @@ const Invite = () => {
                   </div>
                   <button
                     type="button"
-                    onClick={copyInvite}
+                    onClick={copyCode}
                     className="text-slate-300 hover:text-white"
                     aria-label="Copy invite code"
                   >
@@ -168,7 +224,7 @@ const Invite = () => {
                     onClick={copyInvite}
                     className="rounded-lg bg-gradient-to-r from-violet-600 to-fuchsia-500 px-4 py-2 text-xs font-bold text-white"
                   >
-                    {copied ? "Copied" : "Copy"}
+                    {copied === "code" ? "Copied" : "Copy"}
                   </button>
                 </div>
                 <button
