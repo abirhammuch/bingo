@@ -228,12 +228,13 @@ router.delete(
   async (req, res) => {
     try {
       const broadcast = await TelegramBroadcast.findOne({
-        status: { $in: ["sent", "deleting"] },
+        status: { $ne: "deleted" },
       }).sort({ createdAt: -1 });
       if (!broadcast) {
         return res.status(404).json({
           success: false,
-          message: "No tracked broadcast is available to delete",
+          message:
+            "No tracked broadcast is available. Only broadcasts sent after tracking was enabled can be deleted.",
         });
       }
       broadcast.status = "deleting";
