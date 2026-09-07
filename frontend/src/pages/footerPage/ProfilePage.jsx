@@ -160,7 +160,7 @@ const ProfilePage = () => {
 
             {/* Tournaments */}
             <button
-              onClick={() => navigate("/bingopage")}
+              onClick={() => navigate("/tournament/invite")}
               className="w-full bg-slate-800/40 border border-slate-700 rounded-lg p-4 flex items-center justify-between hover:bg-cyan-950/40 hover:border-cyan-700 transition group"
             >
               <div className="flex items-center gap-4">

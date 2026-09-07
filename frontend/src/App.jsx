@@ -35,6 +35,7 @@ import CBEDepositePage from "./pages/footerPage/CBEDepositePage.jsx";
 import TelegramBroadcastPage from "./pages/admin/TelegramBroadcastPage.jsx";
 import AdminPasswordPage from "./pages/admin/AdminPasswordPage.jsx";
 import AdminUsersPage from "./pages/admin/AdminUsersPage.jsx";
+import TournamentInvite from "./components/tournaments/Invite.jsx";
 import { getAuthStorageKey } from "./utils/telegramStorage";
 import { useAuth } from "./context/AuthContext.jsx";
 
@@ -204,6 +205,7 @@ const App = () => {
               <Route path="/cbe-withdraw" element={<CBEWithdrawPage />} />
               <Route path="/appearance" element={<SettingPage />} />
               <Route path="/coupon" element={<Coupon />} />
+              <Route path="/tournament/invite" element={<TournamentInvite />} />
             </Routes>
           </main>
           {!isLivePage && <Footer />}
