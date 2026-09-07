@@ -157,6 +157,27 @@ const ProfilePage = () => {
                 →
               </span>
             </button>
+
+            {/* Tournaments */}
+            <button
+              onClick={() => navigate("/bingopage")}
+              className="w-full bg-slate-800/40 border border-slate-700 rounded-lg p-4 flex items-center justify-between hover:bg-cyan-950/40 hover:border-cyan-700 transition group"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-lg bg-cyan-500/20 border border-cyan-400/30 flex items-center justify-center group-hover:bg-cyan-600/40">
+                  <span className="text-xl">🏆</span>
+                </div>
+                <div className="text-left">
+                  <h3 className="font-bold text-white">Tournaments</h3>
+                  <p className="text-xs text-slate-400">
+                    Join a bingo tournament and compete for prizes
+                  </p>
+                </div>
+              </div>
+              <span className="text-slate-400 group-hover:text-cyan-400 transition">
+                →
+              </span>
+            </button>
           </div>
         </div>
       </div>
