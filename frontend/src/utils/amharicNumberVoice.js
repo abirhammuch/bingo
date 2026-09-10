@@ -7,9 +7,7 @@ const getBingoColumn = (number) => {
 };
 
 const getNumberAudioPath = (number) =>
-  number === 1
-    ? "/audio/numbers/01.mp3.wav"
-    : `/audio/numbers/${String(number).padStart(2, "0")}.mp3`;
+  `/audio/numbers/${String(number).padStart(2, "0")}.mp3`;
 
 const getLetterAudioPath = (number) =>
   `/audio/letters/${
