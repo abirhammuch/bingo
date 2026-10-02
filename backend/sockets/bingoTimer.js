@@ -212,6 +212,32 @@ export const startSelectionTimer = async (io, gameId) => {
 // CALL NUMBERS DURING LIVE
 // ============================================================
 
+const finishRoundWithoutWinner = async (io, gameId) => {
+  stopBingoTimers(gameId);
+
+  const completedGame = await BingoGame.findOne({ gameId });
+  if (!completedGame) return;
+
+  completedGame.status = "completed";
+  completedGame.roundEndedAt = new Date();
+  completedGame.endTime = completedGame.roundEndedAt;
+  completedGame.roundSummary.endedReason = "all_numbers_called";
+  await completedGame.save();
+
+  io.to(`bingo:${gameId}`).emit("bingo:roundFinished", {
+    gameId,
+    status: "FINISHED",
+    winner: null,
+    winners: [],
+    calledNumbers: completedGame.calledNumbers,
+    reason: "all_numbers_called",
+  });
+
+  setTimeout(async () => {
+    await createNextRound(io, completedGame);
+  }, 8000);
+};
+
 export const startCallingNumbers = async (io, gameId) => {
   if (callingTimers.has(gameId)) return;
 
@@ -226,6 +252,10 @@ export const startCallingNumbers = async (io, gameId) => {
 
     if (!game || game.status !== "active" || !hasSelectedPlayer) return;
     if (callingTimers.has(gameId)) return;
+    if (game.calledNumbers.length >= 75) {
+      await finishRoundWithoutWinner(io, gameId);
+      return;
+    }
   } catch (error) {
     console.error(
       "❌ Unable to verify player selections before calling:",
@@ -251,7 +281,7 @@ export const startCallingNumbers = async (io, gameId) => {
       }
 
       if (game.calledNumbers.length >= 75) {
-        stopBingoTimers(gameId);
+        await finishRoundWithoutWinner(io, gameId);
         return;
       }
 
@@ -321,6 +351,8 @@ export const startCallingNumbers = async (io, gameId) => {
         setTimeout(async () => {
           await createNextRound(io, result.game);
         }, 8000);
+      } else if (result.calledNumbers.length >= 75) {
+        await finishRoundWithoutWinner(io, gameId);
       }
     } catch (error) {
       console.error("❌ Calling number error:", error);
