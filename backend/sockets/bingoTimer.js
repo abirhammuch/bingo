@@ -212,8 +212,24 @@ export const startSelectionTimer = async (io, gameId) => {
 // CALL NUMBERS DURING LIVE
 // ============================================================
 
-export const startCallingNumbers = (io, gameId) => {
+export const startCallingNumbers = async (io, gameId) => {
   if (callingTimers.has(gameId)) return;
+
+  try {
+    const game = await BingoGame.findOne({ gameId });
+    const hasSelectedPlayer = game?.players?.some(
+      (player) =>
+        !player.isSpectator &&
+        Array.isArray(player.selectedLuckyNumbers) &&
+        player.selectedLuckyNumbers.length > 0,
+    );
+
+    if (!game || game.status !== "active" || !hasSelectedPlayer) return;
+    if (callingTimers.has(gameId)) return;
+  } catch (error) {
+    console.error("❌ Unable to verify player selections before calling:", error);
+    return;
+  }
 
   const timer = setInterval(async () => {
     try {
