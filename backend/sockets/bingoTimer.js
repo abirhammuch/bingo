@@ -227,7 +227,10 @@ export const startCallingNumbers = async (io, gameId) => {
     if (!game || game.status !== "active" || !hasSelectedPlayer) return;
     if (callingTimers.has(gameId)) return;
   } catch (error) {
-    console.error("❌ Unable to verify player selections before calling:", error);
+    console.error(
+      "❌ Unable to verify player selections before calling:",
+      error,
+    );
     return;
   }
 
